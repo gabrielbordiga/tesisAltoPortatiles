@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Iniciar Sesión</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/styles.css" />
+  <link rel="icon" type="image/png" href="../recursos/imagenes/logo.png" />
+</head>
+
+<body>
+  <div class="container">
+    <!-- Fondo negro y logo --->
+    <div class="left">
+      <img src="../recursos/imagenes/logo.png" alt="Logo" class="logo" />
+    </div>
+
+    <!-- Panel blanco vertical -->
+    <div class="panel">
+      <form class="form" id="formLogin">
+        <h1 class="title">Iniciar Sesión</h1>
+
+        <label>
+          <span>Usuario</span>
+          <input type="text" id="username" name="username" required />
+        </label>
+
+        <label>
+          <span>Contraseña</span>
+          <input type="password" id="password" name="password" required />
+        </label>
+
+        <a href="./res-passwrod.html" class="forgot">¿Olvidaste tu contraseña?</a>
+
+
+        <button type="submit">Iniciar sesión</button>
+      </form>
+    </div>
+  </div>
+  <script src="../js/app.js"></script>
+</body>
+
+</html>

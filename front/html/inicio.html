@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inicio – Alto Portátiles</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../css/panel.css" />
+    <link rel="icon" type="image/png" href="../recursos/imagenes/logo.png" />
+</head>
+
+<body class="dashboard-body">
+    <div class="layout">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="brand">
+                <img src="../recursos/imagenes/AltoPortatiles.png" alt="Alto Portátiles" class="brand-logo">
+            </div>
+            <div id="whoami" class="whoami" style="text-align:center; padding:6px 0; opacity:.8;"></div> <!-- Muestra el nombre abajo del sidebar -->
+            <nav class="side-nav">
+                <a class="item active" href="./inicio.html" data-roles="Administrador,Empleado">
+                    <img src="../recursos/iconos/inicio.svg" class="icon-svg" alt=""><span>Inicio</span>
+                </a>
+
+                <a class="item" href="./gestion.html" data-roles="Administrador,Empleado">
+                    <img src="../recursos/iconos/gestion.svg" class="icon-svg" alt=""><span>Gestión</span>
+                </a>
+
+                <a class="item" href="./logistica.html" data-roles="Administrador,Empleado">
+                    <img src="../recursos/iconos/logistica.svg" class="icon-svg" alt=""><span>Logística</span>
+                </a>
+
+                <a class="item" href="./tareas.html" data-roles="Administrador,Empleado">
+                    <img src="../recursos/iconos/tareas.svg" class="icon-svg" alt=""><span>Tareas</span>
+                </a>
+
+                <a class="item" href="./reportes.html" data-roles="Administrador">
+                    <img src="../recursos/iconos/reportes.svg" class="icon-svg" alt=""><span>Reportes</span>
+                </a>
+
+                <a class="item" href="./stock.html" data-roles="Administrador">
+                    <img src="../recursos/iconos/stock.svg" class="icon-svg" alt=""><span>Stock</span>
+                </a>
+
+                <a class="item" href="./usuarios.html" data-roles="Administrador">
+                    <img src="../recursos/iconos/usuarios.svg" class="icon-svg" alt=""><span>Usuarios</span>
+                </a>
+            </nav>
+
+            <nav class="side-nav logout">
+                <a class="item logout-item" href="#" data-roles="Administrador,Empleado">
+                    <img src="../recursos/iconos/logout.svg" class="icon-svg" alt=""><span>Logout</span>
+                </a>
+            </nav>
+
+
+        </aside>
+
+        <!-- CONTENIDO -->
+        <main class="content">
+            <!-- Fila de filtros + botón -->
+            <div class="toolbar">
+                <div class="select-wrap">
+                    <select id="filtroTipo">
+                        <option value="todos">Todos</option>
+                        <option value="banios">Baños</option>
+                        <option value="cabinas">Cabinas de seguridad</option>
+                    </select>
+                    <span class="select-caret">▾</span>
+                </div>
+
+                <button class="btn primary" id="btnGestionUnidades">Gestionar unidades</button>
+            </div>
+
+            <!-- TABLA UNIDADES -->
+            <section class="card">
+                <table class="tabla">
+                    <thead>
+                        <tr>
+                            <th>Unidad</th>
+                            <th>Disponibles</th>
+                            <th>Alquiladas</th>
+                            <th>En servicio</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyUnidades">
+                        <!-- se llena por JS -->
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- RECORDATORIOS -->
+            <section class="card">
+                <div class="card-header">
+                    <h3>Recordatorios</h3>
+                    <button class="btn outline" id="btnCalendario">🗓️ Visualizar calendario</button>
+                </div>
+
+                <ul class="reminders" id="listaRecordatorios">
+                    <!-- items por JS -->
+                </ul>
+            </section>
+        </main>
+    </div>
+
+    <script src="../js/app.js"></script>
+  <script src="../js/inicio.js"></script>
+</body>
+
+</html>
