@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestión – Alto Portátiles</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/panel.css" />
+  <link rel="icon" type="image/png" href="../recursos/imagenes/logo.png" />
+</head>
+
+<body class="dashboard-body">
+  <div class="layout">
+
+    <!-- ========== SIDEBAR ========== -->
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="../recursos/imagenes/AltoPortatiles.png" alt="Alto Portátiles" class="brand-logo">
+      </div>
+
+      <div id="whoami" class="whoami" style="text-align:center; padding:6px 0; opacity:.8;"></div>
+
+      <nav class="side-nav">
+        <a class="item" href="./inicio.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/inicio.svg" class="icon-svg" alt=""><span>Inicio</span>
+        </a>
+
+        <a class="item active" href="./gestion.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/gestion.svg" class="icon-svg" alt=""><span>Gestión</span>
+        </a>
+
+        <a class="item" href="./logistica.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/logistica.svg" class="icon-svg" alt=""><span>Logística</span>
+        </a>
+
+        <a class="item" href="./tareas.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/tareas.svg" class="icon-svg" alt=""><span>Tareas</span>
+        </a>
+
+        <a class="item" href="./reportes.html" data-roles="Administrador">
+          <img src="../recursos/iconos/reportes.svg" class="icon-svg" alt=""><span>Reportes</span>
+        </a>
+
+        <a class="item" href="./stock.html" data-roles="Administrador">
+          <img src="../recursos/iconos/stock.svg" class="icon-svg" alt=""><span>Stock</span>
+        </a>
+
+        <a class="item" href="./usuarios.html" data-roles="Administrador">
+          <img src="../recursos/iconos/usuarios.svg" class="icon-svg" alt=""><span>Usuarios</span>
+        </a>
+      </nav>
+
+      <nav class="side-nav logout">
+        <a class="item logout-item" href="#" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/logout.svg" class="icon-svg" alt=""><span>Logout</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- ========== CONTENIDO ========== -->
+    <main class="content">
+
+      <!-- TABS CLIENTES / ALQUILERES -->
+      <section class="card">
+        <div class="tabs">
+          <button class="tab active" data-target="panel-clientes">Clientes</button>
+          <button class="tab" data-target="panel-alquileres">Alquileres</button>
+        </div>
+      </section>
+
+      <!-- ====================================== -->
+      <!-- PANEL CLIENTES                        -->
+      <!-- ====================================== -->
+      <div id="panel-clientes" class="tab-panel">
+        <!-- TABLA CLIENTES -->
+        <section class="card">
+          <div class="toolbar" style="justify-content: space-between;">
+            <div class="input-wrap w-60">
+              <input id="buscarCliente" type="text" class="input"
+                placeholder="Buscar (nombre, razón social, CUIT...)" />
+            </div>
+            <button id="btnNuevoCliente" class="btn primary">+ Nuevo</button>
+          </div>
+
+          <div class="tabla-wrap">
+            <table class="tabla">
+              <thead>
+                <tr>
+                  <th>Nombre / Razón social</th>
+                  <th>CUIT</th>
+                  <th>DNI</th>
+                  <th>Tel.1</th>
+                  <th>Tel.2</th>
+                  <th>Ubicación</th>
+                  <th>Contribuyente</th>
+                  <th style="width:140px">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyClientes"><!-- JS --></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- FORMULARIO CLIENTES -->
+        <section class="card">
+          <form id="formCliente" class="form-grid-clientes">
+            <input type="hidden" id="clienteId" />
+
+            <!-- Tipo de cliente -->
+            <div class="tipo-cliente">
+              <label><input type="radio" name="tipoCliente" value="persona" checked> Persona física</label>
+              <label><input type="radio" name="tipoCliente" value="empresa"> Empresa</label>
+            </div>
+
+            <!-- PERSONA -->
+            <div id="formPersona">
+              <div class="row">
+                <label>Nombre
+                  <input id="nombre" type="text" class="input" placeholder="Ej: Pedro">
+                </label>
+
+                <label>Apellido
+                  <input id="apellido" type="text" class="input" placeholder="Ej: Martínez">
+                </label>
+              </div>
+
+              <div class="row">
+                <label>DNI
+                  <input id="dni" type="text" class="input" placeholder="Ej: 40786315">
+                </label>
+              </div>
+            </div>
+
+            <!-- EMPRESA -->
+            <div id="formEmpresa" class="hidden">
+              <div class="row">
+                <label>Razón social
+                  <input id="razonSocial" type="text" class="input" placeholder="Ej: Cooperativa Horizonte">
+                </label>
+              </div>
+
+              <div class="row">
+                <label>CUIT empresa
+                  <input id="cuitEmpresa" type="text" class="input" placeholder="CUIT de empresa (11 dígitos)">
+                </label>
+              </div>
+            </div>
+
+            <!-- CAMPOS COMUNES -->
+            <div class="row">
+              <label>CUIT
+                <input id="cuit" type="text" class="input" placeholder="CUIT (11 dígitos)">
+              </label>
+
+              <label>Tel.1
+                <input id="tel1" type="text" class="input" placeholder="Teléfono principal">
+              </label>
+
+              <label>Tel.2
+                <input id="tel2" type="text" class="input" placeholder="Teléfono alternativo (opcional)">
+              </label>
+            </div>
+
+            <div class="row">
+              <label>Ubicación
+                <input id="ubicacion" type="text" class="input" placeholder="Dirección completa">
+              </label>
+            </div>
+
+            <div class="row">
+              <label>Contribuyente
+                <select id="contribuyente" class="input">
+                  <option disabled selected>Seleccionar categoría</option>
+                  <option>Consumidor final</option>
+                  <option>Responsable inscripto</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn primary" type="submit">Guardar</button>
+              <button class="btn outline" type="button" id="btnCancelarCliente">Cancelar</button>
+            </div>
+          </form>
+        </section>
+      </div>
+
+      <!-- ====================================== -->
+      <!-- PANEL ALQUILERES                      -->
+      <!-- ====================================== -->
+      <div id="panel-alquileres" class="tab-panel hidden">
+
+        <!-- TABLA ALQUILERES -->
+        <section class="card">
+          <div class="toolbar" style="justify-content: space-between;">
+            <div class="input-wrap w-60">
+              <input id="buscarAlquiler" type="text" class="input"
+                    placeholder="Buscar (cliente, ubicación, estado...)" />
+            </div>
+            <button id="btnNuevoAlquiler" class="btn primary">+ Nuevo</button>
+          </div>
+
+          <div class="tabla-wrap">
+            <table class="tabla">
+              <thead>
+                <tr>
+                  <th>N° Pedido</th>
+                  <th>Cliente</th>
+                  <th>Ubicación</th>
+                  <th>Fecha inicio / fin</th>
+                  <th>Unidades</th>
+                  <th>Estado</th>
+                  <th>Saldo</th>
+                  <th style="width:140px;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyAlquileres">
+                <!-- tus filas por JS / seed -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+
+        <!-- FORMULARIO ALQUILER -->
+        <section class="card">
+          <form id="formAlquiler" class="form-grid-alquileres">
+
+            <!-- Cliente -->
+            <div class="row">
+              <label>Cliente
+                <select id="alqCliente" class="input">
+                  <option value="" disabled selected>Seleccionar cliente</option>
+                  <option>Pedro Manuel Martínez</option>
+                  <option>Cooperativa Horizonte</option>
+                </select>
+              </label>
+            </div>
+
+            <!-- Ubicación -->
+            <div class="row">
+              <label>Ubicación
+                <div class="input-with-icon">
+                  <input id="alqUbicacion" type="text" class="input" placeholder="Dirección de la obra / evento">
+                  
+                </div>
+              </label>
+            </div>
+
+            <!-- Fechas -->
+            <div class="row">
+              <label>Desde
+                <div class="input-with-icon">
+                  <input id="fechaDesde" type="date" class="input">
+                  
+                </div>
+              </label>
+
+              <label>Hasta
+                <div class="input-with-icon">
+                  <input id="fechaHasta" type="date" class="input">
+                  
+                </div>
+              </label>
+            </div>
+
+            <!-- Unidad + cantidad -->
+            <div class="row">
+              <label>Unidad
+                <select id="tipoUnidadAlq" class="input">
+                  <option value="" disabled selected>Seleccionar unidad</option>
+                  <option>Baño estándar</option>
+                  <option>Baño para obras</option>
+                  <option>Baños VIP</option>
+                  <option>Cabinas de seguridad</option>
+                </select>
+              </label>
+
+              <label>Cantidad
+                <div class="input-with-plus">
+                  <input id="cantidadUnidadAlq" type="number" min="1" class="input" placeholder="Ej: 5">
+                  <button type="button" id="btnAgregarUnidad" class="btn-plus-mini">+</button>
+                </div>
+              </label>
+            </div>
+
+            <!-- MINI TABLA DE UNIDADES -->
+            <div class="mini-table-block">
+              <table class="tabla tabla-mini">
+                <thead>
+                  <tr>
+                    <th>Tipo de unidad</th>
+                    <th style="width:120px;">Cantidad</th>
+                    <th style="width:150px;">Precio por unidad</th>
+                    <th style="width:150px;">Precio total</th>
+                    <th style="width:40px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyLineasUnidades">
+                  <!-- ejemplo -->
+                  <tr>
+                    <td>Baño estándar</td>
+                    <td>5</td>
+                    <td>$50.000</td>
+                    <td>$250.000</td>
+                    <td class="col-icon-remove">✖</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="mini-table-total">
+                Precio a cobrar: <span class="precio-total-resaltado">$250.000</span>
+              </div>
+            </div>
+
+            <!-- Monto pagado + método -->
+            <div class="mini-table-block">
+              <div class="row">
+                <label>Monto pagado
+                  <div class="input-with-plus">
+                    <input id="montoPagado" type="number" min="0" class="input" placeholder="Ej: 200000">
+                    <button type="button" id="btnAgregarPago" class="btn-plus-mini">+</button>
+                  </div>
+                </label>
+
+                <label>Método
+                  <select id="metodoPago" class="input">
+                    <option value="" disabled selected>Seleccionar método</option>
+                    <option>Efectivo</option>
+                    <option>Transferencia</option>
+                    <option>Tarjeta</option>
+                  </select>
+                </label>
+              </div>
+
+              <table class="tabla tabla-mini">
+                <thead>
+                  <tr>
+                    <th>Fecha de pago</th>
+                    <th>Monto pagado</th>
+                    <th>Método de pago</th>
+                    <th>Saldo pendiente</th>
+                    <th style="width:40px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyPagos">
+                  <tr>
+                    <td>25/05/25</td>
+                    <td>$200.000</td>
+                    <td>Transferencia</td>
+                    <td class="saldo-pendiente">$50.000</td>
+                    <td class="col-icon-remove">✖</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn primary">Guardar</button>
+              <button type="button" class="btn outline">Cancelar</button>
+            </div>
+          </form>
+        </section>
+
+      </div>
+      <!-- /panel-alquileres -->
+
+    </main>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script src="../js/app.js"></script>
+  <script src="../js/gestionClientes.js"></script>
+  <script src="../js/gestionAlquileres.js"></script>
+
+</body>
+
+</html>
