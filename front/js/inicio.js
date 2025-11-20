@@ -47,7 +47,50 @@ document.addEventListener('DOMContentLoaded', () => {
     alert('Abrir calendario (mock).');
   });
 
-  document.getElementById('btnGestionUnidades').addEventListener('click', () => {
-    alert('Ir a Gestión de unidades (mock).');
+});
+
+// =============================================
+//  MODALES DE UNIDADES
+// =============================================
+document.addEventListener('DOMContentLoaded', () => {
+  const modalGestion = document.getElementById('modalGestionUnidades');
+  const modalNuevoTipo = document.getElementById('modalNuevoTipoUnidad');
+
+  const btnGestion = document.getElementById('btnGestionUnidades');
+  const btnCerrarGestion = document.getElementById('btnCerrarGestionUnidades');
+
+  const btnAbrirNuevoTipo = document.getElementById('btnAbrirNuevoTipoUnidad');
+  const btnCerrarNuevoTipo = document.getElementById('btnCerrarNuevoTipoUnidad');
+
+  if (!modalGestion || !modalNuevoTipo) return;
+
+  const abrir = (modal) => modal.classList.add('is-open');
+  const cerrar = (modal) => modal.classList.remove('is-open');
+
+  // --- ABRIR modal de gestionar unidades ---
+  btnGestion.addEventListener('click', () => {
+    abrir(modalGestion);
+  });
+
+  // --- CERRAR modal de gestionar unidades ---
+  btnCerrarGestion.addEventListener('click', () => {
+    cerrar(modalGestion);
+  });
+
+  // --- ABRIR modal chico al apretar "+" ---
+  btnAbrirNuevoTipo.addEventListener('click', () => {
+    abrir(modalNuevoTipo);
+  });
+
+  // --- CERRAR modal chico ---
+  btnCerrarNuevoTipo.addEventListener('click', () => {
+    cerrar(modalNuevoTipo);
+  });
+
+  // Cerrar haciendo click afuera
+  [modalGestion, modalNuevoTipo].forEach(modal => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) cerrar(modal);
+    });
   });
 });

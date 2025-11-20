@@ -9,6 +9,77 @@
     <link rel="stylesheet" href="../css/panel.css" />
     <link rel="icon" type="image/png" href="../recursos/imagenes/logo.png" />
 </head>
+<!-- MODAL: GESTIONAR UNIDADES -->
+<!-- MODAL: GESTIONAR UNIDADES -->
+<div class="modal-overlay" id="modalGestionUnidades">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>GESTIONAR UNIDADES</h2>
+    </div>
+
+    <div class="modal-body">
+      <form class="form-vertical" id="formGestionUnidades">
+
+        <label>Tipo
+          <div class="select-with-plus">
+            <select id="tipoUnidad" class="input">
+              <option>Baño estándar</option>
+              <option>Baño para obras</option>
+              <option>Baños VIP</option>
+              <option>Cabinas de seguridad</option>
+            </select>
+            <button type="button" class="btn-plus" id="btnAbrirNuevoTipoUnidad">+</button>
+          </div>
+        </label>
+
+        <label>Cantidad
+          <input type="number" class="input" placeholder="Cantidad" />
+        </label>
+
+        <label>Estado
+          <select class="input">
+            <option>Disponible</option>
+            <option>Alquilada</option>
+            <option>En servicio</option>
+          </select>
+        </label>
+
+        <label>Precio
+          <input type="number" step="0.01" class="input" placeholder="0.00" />
+        </label>
+
+        <div class="form-actions">
+          <button type="submit" class="btn primary">Guardar</button>
+          <button type="button" class="btn outline" id="btnCerrarGestionUnidades">Cancelar</button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL: NUEVO TIPO DE UNIDAD -->
+<div class="modal-overlay" id="modalNuevoTipoUnidad">
+  <div class="modal modal-small">
+    <div class="modal-header">
+      <h2>REGISTRAR NUEVO TIPO DE UNIDAD</h2>
+    </div>
+
+    <div class="modal-body">
+      <form class="form-vertical">
+        <label>Nombre
+          <input type="text" class="input" placeholder="Ej: Baño ecológico" />
+        </label>
+
+        <div class="form-actions">
+          <button type="submit" class="btn primary">Guardar</button>
+          <button type="button" id="btnCerrarNuevoTipoUnidad" class="btn outline">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
 <body class="dashboard-body">
     <div class="layout">
@@ -23,7 +94,7 @@
                     <img src="../recursos/iconos/inicio.svg" class="icon-svg" alt=""><span>Inicio</span>
                 </a>
 
-                <a class="item" href="./gestion.html" data-roles="Administrador,Empleado">
+                <a class="item" href="./gestionClientes.html" data-roles="Administrador,Empleado">
                     <img src="../recursos/iconos/gestion.svg" class="icon-svg" alt=""><span>Gestión</span>
                 </a>
 
