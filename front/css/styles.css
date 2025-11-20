@@ -1,0 +1,154 @@
+:root {
+    --black: #000;
+    --white: #fff;
+    --gray: #777;
+    --input-border: #ddd;
+    --btn-bg: #1f2937;
+    --btn-text: #fff;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: "Poppins", sans-serif;
+}
+
+html,
+body {
+    height: 100%;
+    width: 100%;
+    background: var(--black);
+    /* fondo negro total */
+    overflow: hidden;
+}
+
+.container {
+    position: relative;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* LOGO */
+.left {
+  position: relative;
+  height: 100%;
+}
+
+/* Centramos el logo entre el borde izquierdo y el panel blanco */
+.logo {
+  position: absolute;
+  top: 50%;
+  left: calc((100% - 30% - 40%)/2); 
+  transform: translateY(-50%);
+  width: 500px;
+  height: auto;
+}
+
+/* PANEL BLANCO: vertical de arriba a abajo */
+.panel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 15%;
+    /* deja margen negro a la derecha */
+    width: 30%;
+    /* ancho del panel blanco */
+    background: var(--white);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: -4px 0 30px rgba(0, 0, 0, 0.5);
+}
+
+/* FORMULARIO */
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 80%;
+    max-width: 880px;
+}
+
+.title {
+    font-size: 1.4rem;
+    color: var(--gray);
+    margin-bottom: 0.5rem;
+}
+
+label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.parrafo {
+    font-size: 0.8rem;
+    color: #555;
+}
+
+input {
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 0.9rem;
+    outline: none;
+}
+
+input:focus {
+    border-color: #bbb;
+}
+
+.forgot {
+    font-size: 0.8rem;
+    color: var(--gray);
+    text-decoration: none;
+}
+
+.forgot:hover {
+    text-decoration: underline;
+}
+
+button {
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    border: none;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+    .panel {
+        position: static;
+        width: 90%;
+        margin: 2rem auto;
+        box-shadow: none;
+    }
+
+    .left {
+        display: none;
+    }
+}
+
+button {
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: .2s;
+}
+button:hover { opacity: .9; }
+label { color: #333; font-weight: 500; }
