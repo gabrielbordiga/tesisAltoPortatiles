@@ -3,6 +3,7 @@
 
   const KEY_CLIENTES = 'ap_clientes';
 
+  // --------- Helpers storage ---------
   function loadClientes() {
     const raw = localStorage.getItem(KEY_CLIENTES);
     return raw ? JSON.parse(raw) : [];
@@ -12,7 +13,7 @@
     localStorage.setItem(KEY_CLIENTES, JSON.stringify(list));
   }
 
-  // Semilla de ejemplo si está vacío
+  // Datos de ejemplo si está vacío
   function seedIfEmpty() {
     if (!localStorage.getItem(KEY_CLIENTES)) {
       const seed = [
@@ -28,6 +29,17 @@
           ubicacion: 'Cándido Galván',
           contribuyente: 'Consumidor final'
         },
+        {
+          id: 2,
+          tipo: 'empresa',
+          razonSocial: 'Cooperativa Horizonte',
+          cuitEmpresa: '30637327204',
+          cuit: '30637327204',
+          tel1: '3517895660',
+          tel2: '3516432539',
+          ubicacion: 'Sarmiento 251',
+          contribuyente: 'Responsable inscripto'
+        }
       ];
       saveClientes(seed);
     }
@@ -37,34 +49,61 @@
     return String(s || '').trim().toLowerCase();
   }
 
-  // ------- Estado -------
+  // --------- Estado ---------
   let CLIENTES = [];
 
-  // ------- DOM refs -------
-  const tbody  = document.getElementById('tbodyClientes');
-  const txtBuscar = document.getElementById('buscarCliente');
-  const btnNuevo  = document.getElementById('btnNuevoCliente');
+  // --------- DOM refs (clientes) ---------
+  let tbody, txtBuscar, btnNuevo, form, f;
 
-  const form = document.getElementById('formCliente');
-  const f = {
-    id:           document.getElementById('clienteId'),
-    tipoRadios:   document.querySelectorAll('input[name="tipoCliente"]'),
-    nombre:       document.getElementById('nombre'),
-    apellido:     document.getElementById('apellido'),
-    dni:          document.getElementById('dni'),
-    razonSocial:  document.getElementById('razonSocial'),
-    cuitEmpresa:  document.getElementById('cuitEmpresa'),
-    cuit:         document.getElementById('cuit'),
-    tel1:         document.getElementById('tel1'),
-    tel2:         document.getElementById('tel2'),
-    ubicacion:    document.getElementById('ubicacion'),
-    contribuyente:document.getElementById('contribuyente'),
-    formPersona:  document.getElementById('formPersona'),
-    formEmpresa:  document.getElementById('formEmpresa'),
-    btnCancelar:  document.getElementById('btnCancelarCliente')
-  };
+  function initDomRefs() {
+    tbody     = document.getElementById('tbodyClientes');
+    txtBuscar = document.getElementById('buscarCliente');
+    btnNuevo  = document.getElementById('btnNuevoCliente');
+    form      = document.getElementById('formCliente');
 
-  // ------- Render tabla -------
+    if (!tbody || !form) return false;
+
+    f = {
+      id:           document.getElementById('clienteId'),
+      tipoRadios:   document.querySelectorAll('input[name="tipoCliente"]'),
+      nombre:       document.getElementById('nombre'),
+      apellido:     document.getElementById('apellido'),
+      dni:          document.getElementById('dni'),
+      razonSocial:  document.getElementById('razonSocial'),
+      cuitEmpresa:  document.getElementById('cuitEmpresa'),
+      cuit:         document.getElementById('cuit'),
+      tel1:         document.getElementById('tel1'),
+      tel2:         document.getElementById('tel2'),
+      ubicacion:    document.getElementById('ubicacion'),
+      contribuyente:document.getElementById('contribuyente'),
+      formPersona:  document.getElementById('formPersona'),
+      formEmpresa:  document.getElementById('formEmpresa'),
+      btnCancelar:  document.getElementById('btnCancelarCliente')
+    };
+    return true;
+  }
+
+  // --------- Tabs Clientes / Alquileres ---------
+  function initTabs() {
+    const tabs   = document.querySelectorAll('.tabs .tab');
+    const panels = document.querySelectorAll('.tab-panel');
+    if (!tabs.length || !panels.length) return;
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        const target = tab.dataset.target;
+        panels.forEach(p => {
+          if (p.id === target) p.classList.remove('hidden');
+          else p.classList.add('hidden');
+        });
+      });
+    });
+  }
+
+  // --------- Render tabla clientes ---------
   function renderTabla(filtro = '') {
     const q = normalize(filtro);
     const data = CLIENTES.filter(c =>
@@ -91,7 +130,7 @@
     `).join('');
   }
 
-  // ------- Helpers formulario -------
+  // --------- Helpers formulario ---------
   function selectedTipo() {
     let tipo = 'persona';
     f.tipoRadios.forEach(r => { if (r.checked) tipo = r.value; });
@@ -110,7 +149,6 @@
 
   function clearForm() {
     f.id.value = '';
-    // default persona
     f.tipoRadios.forEach(r => { r.checked = (r.value === 'persona'); });
     toggleTipo('persona');
 
@@ -145,19 +183,21 @@
     f.contribuyente.value = c.contribuyente || 'Consumidor final';
   }
 
-  // ------- Eventos -------
+  // --------- Init ---------
   document.addEventListener('DOMContentLoaded', () => {
-    // seed y carga
+    initTabs();                 // pestañas
+    if (!initDomRefs()) return; // si no está el panel de clientes, salimos
+
     seedIfEmpty();
     CLIENTES = loadClientes();
     renderTabla();
 
-    // cambio de tipo
+    // cambio persona/empresa
     f.tipoRadios.forEach(radio => {
       radio.addEventListener('change', () => toggleTipo(radio.value));
     });
 
-    // buscar
+    // búsqueda
     if (txtBuscar) {
       txtBuscar.addEventListener('input', () => renderTabla(txtBuscar.value));
     }
@@ -172,7 +212,7 @@
       f.btnCancelar.addEventListener('click', clearForm);
     }
 
-    // Click en editar / eliminar
+    // Editar / eliminar
     tbody.addEventListener('click', e => {
       const editId = e.target.getAttribute('data-edit');
       const delId  = e.target.getAttribute('data-del');
@@ -215,7 +255,6 @@
         contribuyente:f.contribuyente.value
       };
 
-      // Validaciones muy básicas
       if (tipo === 'persona' && !payload.nombre) {
         return alert('El nombre es obligatorio.');
       }
@@ -225,9 +264,9 @@
 
       const idx = CLIENTES.findIndex(c => c.id === payload.id);
       if (idx >= 0) {
-        CLIENTES[idx] = payload; // editar
+        CLIENTES[idx] = payload;   // editar
       } else {
-        CLIENTES.push(payload); // nuevo
+        CLIENTES.push(payload);    // nuevo
       }
 
       saveClientes(CLIENTES);
@@ -236,7 +275,6 @@
       alert('Cliente guardado');
     });
 
-    // Form empieza limpio para alta
     clearForm();
   });
 })();
