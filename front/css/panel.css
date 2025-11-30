@@ -823,3 +823,227 @@ body.dashboard-body {
   }
 }
 
+/* ===== TAREAS – HEADER ===== */
+.card-tareas-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tabs-empleados {
+  margin: 0;
+}
+
+.tabs-empleados .tab {
+  min-width: 80px;
+  text-align: center;
+}
+
+/* ===== TAREAS – INFO DEL DÍA ===== */
+.card-tareas-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f0f0f0;
+}
+
+.tareas-fecha {
+  text-align: center;
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+.tareas-detalle {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 40px 4px;
+  font-size: 15px;
+}
+
+.link-text {
+  color: var(--rojo);
+  font-weight: 600;
+}
+
+/* ===== TABLA TAREAS ===== */
+.card-tareas-tabla .tabla thead th {
+  text-transform: uppercase;
+}
+
+.card-tareas-tabla .tabla tbody tr {
+  height: 40px;
+}
+
+/* Checkbox custom */
+.check-tarea {
+  width: 20px;
+  height: 20px;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 2px solid var(--rojo);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+}
+
+.check-tarea:checked {
+  background: var(--rojo);
+}
+
+.check-tarea:checked::after {
+  content: "✔";
+  position: absolute;
+  top: -3px;
+  left: 3px;
+  font-size: 16px;
+  color: #fff;
+}
+
+/* Botón borrar pequeño */
+.btn-icon-delete {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 18px;
+  margin-left: 8px;
+}
+
+/* ===== MODAL GENERICO (si no lo tenías, lo dejamos acá) ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal {
+  background: #f5f5f5;
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+  width: 420px;
+  max-width: 90vw;
+  overflow: hidden;
+}
+
+.modal-header {
+  background: var(--rojo);
+  color: #fff;
+  padding: 10px 16px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.modal-body {
+  padding: 16px 18px;
+}
+
+.modal-footer {
+  padding: 12px 18px 16px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* Form modal tareas */
+.form-grid-tarea {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.form-grid-tarea label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+}
+
+
+/* =========================
+   CALENDARIO DE RECORDATORIOS (FullCalendar)
+   ========================= */
+
+.card-calendar-title {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.card-calendar-title h1 {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--rojo);
+  text-align: center;
+  text-decoration: underline;
+}
+
+.card-calendar {
+  padding: 18px 22px 24px;
+}
+
+/* Contenedor del calendario */
+#calendar {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* Toolbar de FullCalendar */
+.fc .fc-toolbar.fc-header-toolbar {
+  margin-bottom: 14px;
+}
+
+.fc .fc-toolbar-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Botones (prev, next, hoy, año) */
+.fc .fc-button {
+  border-radius: 999px;
+  font-size: 12px;
+  padding: 4px 10px;
+  border: none;
+}
+
+.fc .fc-button-primary {
+  background: var(--negro);
+  color: #fff;
+}
+
+.fc .fc-button-primary:hover {
+  background: #171717;
+}
+
+.fc .fc-button-primary:disabled {
+  opacity: 0.6;
+}
+
+/* Cabecera de días */
+.fc .fc-col-header-cell-cushion {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Celdas de días */
+.fc .fc-daygrid-day-number {
+  font-size: 11px;
+}
+
+/* Eventos (recordatorios) como pastillas negras */
+.fc .fc-daygrid-event {
+  background: #000;
+  border-radius: 4px;
+  border: none;
+  font-size: 10px;
+  padding: 2px 4px;
+  white-space: nowrap;
+}
+
+.fc .fc-daygrid-event-dot {
+  display: none;
+}
+
+

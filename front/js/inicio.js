@@ -1,4 +1,6 @@
-// --- Datos de ejemplo ---
+// ===================================================================
+// DATOS DE EJEMPLO
+// ===================================================================
 const UNIDADES = [
   { id: 1, nombre: 'Baño estándar', tipo: 'banios', disp: 50, alquiladas: 15, servicio: 3 },
   { id: 2, nombre: 'Baño para obras', tipo: 'banios', disp: 28, alquiladas: 10, servicio: 2 },
@@ -7,14 +9,27 @@ const UNIDADES = [
 ];
 
 const RECORDATORIOS = [
-  { tipo: 'date',  texto: '25/05 Cobranza a nombre de Juan Pérez (Contrato #1823).' },
-  { tipo: 'warn',  texto: 'Retiro de baños químicos (3) en obra Manantiales – 17:30 hs.' }
+  { tipo: 'date', texto: '25/05 Cobranza a nombre de Juan Pérez (Contrato #1823).' },
+  { tipo: 'warn', texto: 'Retiro de baños químicos (3) en obra Manantiales – 17:30 hs.' }
 ];
 
-// --- Helpers de render ---
+// Tipos para el select de gestión
+let TIPOS_UNIDAD = [
+  'Baño estándar',
+  'Baño para obras',
+  'Baños VIP',
+  'Cabinas de seguridad'
+];
+
+// ===================================================================
+// HELPERS DE UI
+// ===================================================================
 function renderUnidades(filtro = 'todos') {
   const tb = document.getElementById('tbodyUnidades');
+  if (!tb) return;
+
   const data = UNIDADES.filter(u => filtro === 'todos' ? true : u.tipo === filtro);
+
   tb.innerHTML = data.map(u => `
     <tr>
       <td>${u.nombre}</td>
@@ -27,6 +42,8 @@ function renderUnidades(filtro = 'todos') {
 
 function renderRecordatorios() {
   const ul = document.getElementById('listaRecordatorios');
+  if (!ul) return;
+
   ul.innerHTML = RECORDATORIOS.map(r => `
     <li>
       <div class="ico ${r.tipo}">${r.tipo === 'warn' ? '❗' : '📅'}</div>
@@ -35,24 +52,49 @@ function renderRecordatorios() {
   `).join('');
 }
 
-// --- Eventos ---
+function loadTiposUnidad(select) {
+  if (!select) return;
+  select.innerHTML = '';
+  TIPOS_UNIDAD.forEach((t) => {
+    const op = document.createElement('option');
+    op.textContent = t;
+    op.value = t;
+    select.appendChild(op);
+  });
+}
+
+function openModal(el) {
+  el?.classList.remove('hidden');
+}
+
+function closeModal(el) {
+  el?.classList.add('hidden');
+}
+
+// ===================================================================
+// EVENTOS PRINCIPALES
+// ===================================================================
 document.addEventListener('DOMContentLoaded', () => {
-  renderUnidades('todos');
+
+  // Render inicial
+  renderUnidades();
   renderRecordatorios();
+  loadTiposUnidad(document.getElementById('tipoUnidad'));
 
-  const filtro = document.getElementById('filtroTipo');
-  filtro.addEventListener('change', () => renderUnidades(filtro.value));
-
-  document.getElementById('btnCalendario').addEventListener('click', () => {
-    alert('Abrir calendario (mock).');
+  // Filtros
+  document.getElementById('filtroTipo')?.addEventListener('change', (e) => {
+    renderUnidades(e.target.value);
   });
 
-});
+ document.getElementById('btnCalendario')?.addEventListener('click', () => {
+    // Ir a la pantalla de calendario de recordatorios
+    location.href = './calendario.html';
+  });
 
-// =============================================
-//  MODALES DE UNIDADES
-// =============================================
-document.addEventListener('DOMContentLoaded', () => {
+
+  // ===================================================================
+  // MODAL: GESTIONAR UNIDADES
+  // ===================================================================
   const modalGestion = document.getElementById('modalGestionUnidades');
   const modalNuevoTipo = document.getElementById('modalNuevoTipoUnidad');
 
@@ -62,35 +104,32 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnAbrirNuevoTipo = document.getElementById('btnAbrirNuevoTipoUnidad');
   const btnCerrarNuevoTipo = document.getElementById('btnCerrarNuevoTipoUnidad');
 
-  if (!modalGestion || !modalNuevoTipo) return;
-
-  const abrir = (modal) => modal.classList.add('is-open');
-  const cerrar = (modal) => modal.classList.remove('is-open');
-
-  // --- ABRIR modal de gestionar unidades ---
-  btnGestion.addEventListener('click', () => {
-    abrir(modalGestion);
+  // abrir mod. gestión
+  btnGestion?.addEventListener('click', () => {
+    loadTiposUnidad(document.getElementById('tipoUnidad'));
+    openModal(modalGestion);
   });
 
-  // --- CERRAR modal de gestionar unidades ---
-  btnCerrarGestion.addEventListener('click', () => {
-    cerrar(modalGestion);
+  // cerrar mod. gestión
+  btnCerrarGestion?.addEventListener('click', () => {
+    closeModal(modalGestion);
   });
 
-  // --- ABRIR modal chico al apretar "+" ---
-  btnAbrirNuevoTipo.addEventListener('click', () => {
-    abrir(modalNuevoTipo);
+  // abrir mod. Nuevo Tipo
+  btnAbrirNuevoTipo?.addEventListener('click', () => {
+    openModal(modalNuevoTipo);
   });
 
-  // --- CERRAR modal chico ---
-  btnCerrarNuevoTipo.addEventListener('click', () => {
-    cerrar(modalNuevoTipo);
+  // cerrar mod. Nuevo Tipo
+  btnCerrarNuevoTipo?.addEventListener('click', () => {
+    closeModal(modalNuevoTipo);
   });
 
-  // Cerrar haciendo click afuera
-  [modalGestion, modalNuevoTipo].forEach(modal => {
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) cerrar(modal);
-    });
+  // Escape → cierra modales
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeModal(modalGestion);
+      closeModal(modalNuevoTipo);
+    }
   });
 });

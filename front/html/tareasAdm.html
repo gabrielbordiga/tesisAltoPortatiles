@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tareas – Alto Portátiles</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/panel.css" />
+  <link rel="icon" type="image/png" href="../recursos/imagenes/logo.png" />
+</head>
+
+<body class="dashboard-body">
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="../recursos/imagenes/AltoPortatiles.png" alt="Alto Portátiles" class="brand-logo">
+      </div>
+
+      <div id="whoami" class="whoami" style="text-align:center; padding:6px 0; opacity:.8;"></div>
+
+      <nav class="side-nav">
+        <a class="item" href="./inicio.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/inicio.svg" class="icon-svg" alt=""><span>Inicio</span>
+        </a>
+
+        <a class="item" href="./gestion.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/gestion.svg" class="icon-svg" alt=""><span>Gestión</span>
+        </a>
+
+        <a class="item" href="./logistica.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/logistica.svg" class="icon-svg" alt=""><span>Logística</span>
+        </a>
+
+        <a class="item active" href="./tareasAdm.html" data-roles="Administrador">
+          <img src="../recursos/iconos/tareas.svg" class="icon-svg" alt=""><span>Tareas</span>
+        </a>
+
+        <a class="item" href="./reportes.html" data-roles="Administrador">
+          <img src="../recursos/iconos/reportes.svg" class="icon-svg" alt=""><span>Reportes</span>
+        </a>
+
+        <a class="item" href="./stock.html" data-roles="Administrador">
+          <img src="../recursos/iconos/stock.svg" class="icon-svg" alt=""><span>Stock</span>
+        </a>
+
+        <a class="item" href="./usuarios.html" data-roles="Administrador">
+          <img src="../recursos/iconos/usuarios.svg" class="icon-svg" alt=""><span>Usuarios</span>
+        </a>
+      </nav>
+
+      <nav class="side-nav logout">
+        <a class="item logout-item" href="#" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/logout.svg" class="icon-svg" alt=""><span>Logout</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- CONTENIDO -->
+    <main class="content">
+
+      <!-- HEADER: tabs empleados + botón -->
+      <section class="card card-tareas-header">
+        <div class="tabs tabs-empleados">
+          <button class="tab active" data-emp="noel">Noel</button>
+          <button class="tab" data-emp="dario">Dario</button>
+          <button class="tab" data-emp="damian">Damian</button>
+        </div>
+
+        <button id="btnAgregarTarea" class="btn primary">Agregar tarea</button>
+      </section>
+
+      <!-- INFO DEL DÍA -->
+      <section class="card card-tareas-info">
+        <p class="tareas-fecha">
+          Actividad del día:
+          <span id="tareasFecha" class="link-text"></span>
+        </p>
+
+        <div class="tareas-detalle">
+          <span>Empleado:
+            <span id="tareasEmpleado" class="link-text"></span>
+          </span>
+          <span>Zona:
+            <span id="tareasZona" class="link-text"></span>
+          </span>
+        </div>
+      </section>
+
+      <!-- TABLA DE TAREAS -->
+      <section class="card card-tareas-tabla">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Ubicación</th>
+              <th>Datos</th>
+              <th style="width:140px;">Completo</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyTareas">
+            <!-- filas por JS -->
+          </tbody>
+        </table>
+      </section>
+
+      <!-- MODAL GESTIONAR TAREAS -->
+      <div id="modalTarea" class="modal-overlay hidden">
+        <div class="modal">
+          <div class="modal-header">
+            <h3>GESTIONAR TAREAS</h3>
+          </div>
+          <div class="modal-body">
+            <form id="formTarea" class="form-grid-tarea">
+              <label>Empleado
+                <select id="tareaEmpleado" class="input">
+                  <!-- se llena por JS con la misma lista de tabs -->
+                </select>
+              </label>
+
+              <label>N° Pedido
+                <input id="tareaPedido" type="text" class="input" placeholder="Ej: 001" />
+              </label>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button id="btnGuardarTarea" class="btn primary">Guardar</button>
+            <button id="btnCancelarTarea" class="btn outline">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="../js/app.js"></script>
+  <script src="../js/tareasAdm.js"></script>
+</body>
+
+</html>
