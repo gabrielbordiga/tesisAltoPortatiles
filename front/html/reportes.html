@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reportes – Alto Portátiles</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/panel.css" />
+  <link rel="icon" type="image/png" href="../recursos/imagenes/logo.png" />
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+
+<body class="dashboard-body">
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="../recursos/imagenes/AltoPortatiles.png" alt="Alto Portátiles" class="brand-logo">
+      </div>
+      <div id="whoami" class="whoami" style="text-align:center; padding:6px 0; opacity:.8;"></div>
+
+      <nav class="side-nav">
+        <a class="item" href="./inicio.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/inicio.svg" class="icon-svg" alt=""><span>Inicio</span>
+        </a>
+
+        <a class="item" href="./gestion.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/gestion.svg" class="icon-svg" alt=""><span>Gestión</span>
+        </a>
+
+        <a class="item" href="./logistica.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/logistica.svg" class="icon-svg" alt=""><span>Logística</span>
+        </a>
+
+        <a class="item" href="./tareasAdm.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/tareas.svg" class="icon-svg" alt=""><span>Tareas</span>
+        </a>
+
+        <a class="item active" href="./reportes.html" data-roles="Administrador">
+          <img src="../recursos/iconos/reportes.svg" class="icon-svg" alt=""><span>Reportes</span>
+        </a>
+
+        <a class="item" href="./stock.html" data-roles="Administrador">
+          <img src="../recursos/iconos/stock.svg" class="icon-svg" alt=""><span>Stock</span>
+        </a>
+
+        <a class="item" href="./usuarios.html" data-roles="Administrador">
+          <img src="../recursos/iconos/usuarios.svg" class="icon-svg" alt=""><span>Usuarios</span>
+        </a>
+      </nav>
+
+      <nav class="side-nav logout">
+        <a class="item logout-item" href="#" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/logout.svg" class="icon-svg" alt=""><span>Logout</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- CONTENIDO -->
+    <main class="content">
+
+      <!-- FILTROS -->
+      <section class="card">
+        <div class="reportes-filtros">
+          <div class="filtro-item">
+            <label for="repDesde">Desde</label>
+            <input type="date" id="repDesde" class="input" />
+          </div>
+
+          <div class="filtro-item">
+            <label for="repHasta">Hasta</label>
+            <input type="date" id="repHasta" class="input" />
+          </div>
+
+          <div class="filtro-item">
+            <label for="repCategoria">Categoría</label>
+            <select id="repCategoria" class="select">
+              <option value="todos">Todas</option>
+              <option value="Gastos">Gastos</option>
+              <option value="Ingresos">Ingresos</option>
+              <option value="Mantenimiento">Mantenimiento</option>
+            </select>
+          </div>
+
+          <div class="filtro-btn">
+            <button id="btnGenerarReporte" class="btn primary">Generar reporte</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TABLA RESULTADOS -->
+      <section class="card">
+        <div class="card-header">
+          <h3>Resultados</h3>
+        </div>
+        <div class="tabla-wrap">
+          <table class="tabla tabla-reportes">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Categoría</th>
+                <th>Proveedor / Cliente</th>
+                <th>Producto / Servicio</th>
+                <th>Cantidad</th>
+                <th>Precio</th>
+                <th>Método</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyReportes">
+              <!-- filas por JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- GRÁFICOS -->
+      <section class="card">
+        <h3 style="margin-bottom:10px;">Costos por categoría</h3>
+        <div class="charts-wrap">
+          <div class="chart-block">
+            <h4>Distribución (%)</h4>
+            <canvas id="chartPie"></canvas>
+          </div>
+          <div class="chart-block">
+            <h4>Montos por categoría</h4>
+            <canvas id="chartBar"></canvas>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="../js/app.js"></script>
+  <script src="../js/reportes.js"></script>
+</body>
+</html>

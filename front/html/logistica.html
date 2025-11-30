@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Logística – Alto Portátiles</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/panel.css" />
+  <link rel="icon" type="image/png" href="../recursos/imagenes/logo.png" />
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    /* ajustamos el mapa dentro de la card */
+    #map {
+      height: 650px;
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid #ddd;
+    }
+
+    .popup-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+
+<body class="dashboard-body">
+  <div class="layout">
+
+    <!-- SIDEBAR (igual al resto de módulos) -->
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="../recursos/imagenes/AltoPortatiles.png" alt="Alto Portátiles" class="brand-logo">
+      </div>
+
+      <div id="whoami" class="whoami" style="text-align:center; padding:6px 0; opacity:.8;"></div>
+
+      <nav class="side-nav">
+        <a class="item" href="./inicio.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/inicio.svg" class="icon-svg" alt=""><span>Inicio</span>
+        </a>
+
+        <a class="item" href="./gestion.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/gestion.svg" class="icon-svg" alt=""><span>Gestión</span>
+        </a>
+
+        <a class="item active" href="./logistica.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/logistica.svg" class="icon-svg" alt=""><span>Logística</span>
+        </a>
+
+        <a class="item" href="./tareasAdm.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/tareas.svg" class="icon-svg" alt=""><span>Tareas</span>
+        </a>
+
+        <a class="item" href="./reportes.html" data-roles="Administrador">
+          <img src="../recursos/iconos/reportes.svg" class="icon-svg" alt=""><span>Reportes</span>
+        </a>
+
+        <a class="item" href="./stock.html" data-roles="Administrador">
+          <img src="../recursos/iconos/stock.svg" class="icon-svg" alt=""><span>Stock</span>
+        </a>
+
+        <a class="item" href="./usuarios.html" data-roles="Administrador">
+          <img src="../recursos/iconos/usuarios.svg" class="icon-svg" alt=""><span>Usuarios</span>
+        </a>
+      </nav>
+
+      <nav class="side-nav logout">
+        <a class="item logout-item" href="#" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/logout.svg" class="icon-svg" alt=""><span>Logout</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- CONTENIDO -->
+    <main class="content">
+      <section class="card">
+        <h2 class="titulo-logistica">Mapa con Unidades Alquiladas</h2>
+        <div id="map"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Lógica general de sesión/roles -->
+  <script src="../js/app.js"></script>
+  <!-- Lógica del mapa -->
+  <script src="../js/logistica.js"></script>
+</body>
+</html>
