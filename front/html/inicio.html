@@ -9,86 +9,91 @@
     <link rel="stylesheet" href="../css/panel.css" />
     <link rel="icon" type="image/png" href="../recursos/imagenes/logo.png" />
 </head>
-<!-- MODAL: GESTIONAR UNIDADES -->
-<!-- MODAL: GESTIONAR UNIDADES -->
-<div class="modal-overlay" id="modalGestionUnidades">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>GESTIONAR UNIDADES</h2>
-    </div>
-
-    <div class="modal-body">
-      <form class="form-vertical" id="formGestionUnidades">
-
-        <label>Tipo
-          <div class="select-with-plus">
-            <select id="tipoUnidad" class="input">
-              <option>Baño estándar</option>
-              <option>Baño para obras</option>
-              <option>Baños VIP</option>
-              <option>Cabinas de seguridad</option>
-            </select>
-            <button type="button" class="btn-plus" id="btnAbrirNuevoTipoUnidad">+</button>
-          </div>
-        </label>
-
-        <label>Cantidad
-          <input type="number" class="input" placeholder="Cantidad" />
-        </label>
-
-        <label>Estado
-          <select class="input">
-            <option>Disponible</option>
-            <option>Alquilada</option>
-            <option>En servicio</option>
-          </select>
-        </label>
-
-        <label>Precio
-          <input type="number" step="0.01" class="input" placeholder="0.00" />
-        </label>
-
-        <div class="form-actions">
-          <button type="submit" class="btn primary">Guardar</button>
-          <button type="button" class="btn outline" id="btnCerrarGestionUnidades">Cancelar</button>
-        </div>
-
-      </form>
-    </div>
-  </div>
-</div>
-
-
-<!-- MODAL: NUEVO TIPO DE UNIDAD -->
-<div class="modal-overlay" id="modalNuevoTipoUnidad">
-  <div class="modal modal-small">
-    <div class="modal-header">
-      <h2>REGISTRAR NUEVO TIPO DE UNIDAD</h2>
-    </div>
-
-    <div class="modal-body">
-      <form class="form-vertical">
-        <label>Nombre
-          <input type="text" class="input" placeholder="Ej: Baño ecológico" />
-        </label>
-
-        <div class="form-actions">
-          <button type="submit" class="btn primary">Guardar</button>
-          <button type="button" id="btnCerrarNuevoTipoUnidad" class="btn outline">Cancelar</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
 
 <body class="dashboard-body">
+
+    <!-- ========================================================= -->
+    <!-- MODAL GESTIONAR UNIDADES -->
+    <!-- ========================================================= -->
+    <div class="modal-overlay hidden" id="modalGestionUnidades">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>GESTIONAR UNIDADES</h2>
+            </div>
+
+            <div class="modal-body">
+                <form class="form-vertical" id="formGestionUnidades">
+
+                    <label>Tipo
+                        <div class="select-with-plus">
+                            <select id="tipoUnidad" class="input"></select>
+                            <button type="button" class="btn-plus" id="btnAbrirNuevoTipoUnidad">+</button>
+                        </div>
+                    </label>
+
+                    <label>Cantidad
+                        <input id="cantidadUnidad" type="number" class="input" placeholder="Cantidad" />
+                    </label>
+
+                    <label>Estado
+                        <select id="estadoUnidad" class="input">
+                            <option>Disponible</option>
+                            <option>Alquilada</option>
+                            <option>En servicio</option>
+                        </select>
+                    </label>
+
+                    <label>Precio
+                        <input id="precioUnidad" type="number" step="0.01" class="input" placeholder="0.00" />
+                    </label>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn primary">Guardar</button>
+                        <button type="button" class="btn outline" id="btnCerrarGestionUnidades">Cancelar</button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MODAL NUEVO TIPO DE UNIDAD -->
+    <!-- ========================================================= -->
+    <div class="modal-overlay hidden" id="modalNuevoTipoUnidad">
+        <div class="modal modal-small">
+            <div class="modal-header">
+                <h2>REGISTRAR NUEVO TIPO DE UNIDAD</h2>
+            </div>
+
+            <div class="modal-body">
+                <form id="formNuevoTipoUnidad" class="form-vertical">
+                    <label>Nombre
+                        <input id="nombreNuevoTipoUnidad" type="text" class="input" placeholder="Ej: Baño ecológico" />
+                    </label>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn primary">Guardar</button>
+                        <button type="button" id="btnCerrarNuevoTipoUnidad" class="btn outline">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- PANEL -->
+    <!-- ========================================================= -->
+
     <div class="layout">
         <!-- SIDEBAR -->
         <aside class="sidebar">
             <div class="brand">
                 <img src="../recursos/imagenes/AltoPortatiles.png" alt="Alto Portátiles" class="brand-logo">
             </div>
-            <div id="whoami" class="whoami" style="text-align:center; padding:6px 0; opacity:.8;"></div> <!-- Muestra el nombre abajo del sidebar -->
+            <div id="whoami" class="whoami" style="text-align:center; padding:6px 0; opacity:.8;"></div>
+
             <nav class="side-nav">
                 <a class="item active" href="./inicio.html" data-roles="Administrador,Empleado">
                     <img src="../recursos/iconos/inicio.svg" class="icon-svg" alt=""><span>Inicio</span>
@@ -102,7 +107,7 @@
                     <img src="../recursos/iconos/logistica.svg" class="icon-svg" alt=""><span>Logística</span>
                 </a>
 
-                <a class="item" href="./tareas.html" data-roles="Administrador,Empleado">
+                <a class="item" href="./tareasAdm.html" data-roles="Administrador,Empleado">
                     <img src="../recursos/iconos/tareas.svg" class="icon-svg" alt=""><span>Tareas</span>
                 </a>
 
@@ -125,12 +130,11 @@
                 </a>
             </nav>
 
-
         </aside>
 
         <!-- CONTENIDO -->
         <main class="content">
-            <!-- Fila de filtros + botón -->
+
             <div class="toolbar">
                 <div class="select-wrap">
                     <select id="filtroTipo">
@@ -155,9 +159,7 @@
                             <th>En servicio</th>
                         </tr>
                     </thead>
-                    <tbody id="tbodyUnidades">
-                        <!-- se llena por JS -->
-                    </tbody>
+                    <tbody id="tbodyUnidades"></tbody>
                 </table>
             </section>
 
@@ -168,15 +170,14 @@
                     <button class="btn outline" id="btnCalendario">🗓️ Visualizar calendario</button>
                 </div>
 
-                <ul class="reminders" id="listaRecordatorios">
-                    <!-- items por JS -->
-                </ul>
+                <ul class="reminders" id="listaRecordatorios"></ul>
             </section>
+
         </main>
     </div>
 
     <script src="../js/app.js"></script>
-  <script src="../js/inicio.js"></script>
-</body>
+    <script src="../js/inicio.js"></script>
 
+</body>
 </html>

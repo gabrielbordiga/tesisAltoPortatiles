@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calendario de Recordatorios – Alto Portátiles</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/panel.css" />
+  <link rel="icon" type="image/png" href="../recursos/imagenes/logo.png" />
+
+  <!-- FullCalendar - bundle global -->
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.19/index.global.min.js"></script>
+</head>
+
+<body class="dashboard-body">
+
+  <!-- MODAL: NUEVO RECORDATORIO -->
+  <div class="modal-overlay hidden" id="modalRecordatorio">
+    <div class="modal modal-small">
+      <div class="modal-header">
+        <h2>NUEVO RECORDATORIO</h2>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom:8px; font-size:14px;">
+          Fecha: <strong id="modalFechaTexto"></strong>
+        </p>
+        <form id="formRecordatorio" class="form-vertical">
+          <label>Detalle
+            <textarea id="textoRecordatorio" class="input"
+                      rows="3"
+                      placeholder="Ej: Cobranza a Juan Pérez a las 17:30 hs."></textarea>
+          </label>
+
+          <div class="form-actions">
+            <button type="submit" class="btn primary">Guardar</button>
+            <button type="button" id="btnCerrarRecordatorio" class="btn outline">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+    <!-- MODAL: CONFIRMAR ELIMINAR RECORDATORIO -->
+  <div class="modal-overlay hidden" id="modalEliminarRecordatorio">
+    <div class="modal modal-small">
+      <div class="modal-header">
+        <h2>ELIMINAR RECORDATORIO</h2>
+      </div>
+      <div class="modal-body">
+        <p id="textoEliminarRecordatorio" style="margin-bottom:16px; font-size:14px;">
+          ¿Seguro que querés eliminar este recordatorio?
+        </p>
+        <div class="form-actions">
+          <button type="button" class="btn outline" id="btnCancelarEliminarRec">Cancelar</button>
+          <button type="button" class="btn primary" id="btnConfirmarEliminarRec">Eliminar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="../recursos/imagenes/AltoPortatiles.png" alt="Alto Portátiles" class="brand-logo">
+      </div>
+      <div id="whoami" class="whoami" style="text-align:center; padding:6px 0; opacity:.8;"></div>
+
+      <nav class="side-nav">
+        <a class="item active" href="./inicio.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/inicio.svg" class="icon-svg" alt=""><span>Inicio</span>
+        </a>
+
+        <a class="item" href="./gestion.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/gestion.svg" class="icon-svg" alt=""><span>Gestión</span>
+        </a>
+
+        <a class="item" href="./logistica.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/logistica.svg" class="icon-svg" alt=""><span>Logística</span>
+        </a>
+
+        <a class="item" href="./tareasAdm.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/tareas.svg" class="icon-svg" alt=""><span>Tareas</span>
+        </a>
+
+        <a class="item" href="./reportes.html" data-roles="Administrador">
+          <img src="../recursos/iconos/reportes.svg" class="icon-svg" alt=""><span>Reportes</span>
+        </a>
+
+        <a class="item" href="./stock.html" data-roles="Administrador">
+          <img src="../recursos/iconos/stock.svg" class="icon-svg" alt=""><span>Stock</span>
+        </a>
+
+        <a class="item" href="./usuarios.html" data-roles="Administrador">
+          <img src="../recursos/iconos/usuarios.svg" class="icon-svg" alt=""><span>Usuarios</span>
+        </a>
+      </nav>
+
+      <nav class="side-nav logout">
+        <a class="item logout-item" href="#" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/logout.svg" class="icon-svg" alt=""><span>Logout</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- CONTENIDO -->
+    <main class="content">
+      <section class="card card-calendar-title">
+        <h1>Calendario de Recordatorios</h1>
+      </section>
+
+      <section class="card card-calendar">
+        <div id="calendar"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="../js/app.js"></script>
+  <script src="../js/calendario.js"></script>
+</body>
+</html>
