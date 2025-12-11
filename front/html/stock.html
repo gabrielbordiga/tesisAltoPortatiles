@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stock – Alto Portátiles</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/panel.css" />
+  <link rel="icon" type="image/png" href="../recursos/imagenes/logo.png" />
+</head>
+
+<body class="dashboard-body">
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="../recursos/imagenes/AltoPortatiles.png" alt="Alto Portátiles" class="brand-logo" />
+      </div>
+      <div id="whoami" class="whoami" style="text-align:center; padding:6px 0; opacity:.8;"></div>
+
+      <nav class="side-nav">
+        <a class="item" href="./inicio.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/inicio.svg" class="icon-svg" alt=""><span>Inicio</span>
+        </a>
+
+        <a class="item" href="./gestion.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/gestion.svg" class="icon-svg" alt=""><span>Gestión</span>
+        </a>
+
+        <a class="item" href="./logistica.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/logistica.svg" class="icon-svg" alt=""><span>Logística</span>
+        </a>
+
+        <a class="item" href="./tareasAdm.html" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/tareas.svg" class="icon-svg" alt=""><span>Tareas</span>
+        </a>
+
+        <a class="item" href="./reportes.html" data-roles="Administrador">
+          <img src="../recursos/iconos/reportes.svg" class="icon-svg" alt=""><span>Reportes</span>
+        </a>
+
+        <a class="item active" href="./stock.html" data-roles="Administrador">
+          <img src="../recursos/iconos/stock.svg" class="icon-svg" alt=""><span>Stock</span>
+        </a>
+
+        <a class="item" href="./usuarios.html" data-roles="Administrador">
+          <img src="../recursos/iconos/usuarios.svg" class="icon-svg" alt=""><span>Usuarios</span>
+        </a>
+      </nav>
+
+      <nav class="side-nav logout">
+        <a class="item logout-item" href="#" data-roles="Administrador,Empleado">
+          <img src="../recursos/iconos/logout.svg" class="icon-svg" alt=""><span>Logout</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- CONTENIDO -->
+    <main class="content">
+
+      <!-- PESTAÑAS -->
+      <section class="card" style="margin-bottom:14px;">
+        <div class="tabs-toggle">
+          <button class="tabs-btn active" data-tab="proveedores">Proveedores</button>
+          <button class="tabs-btn" data-tab="productos">Productos</button>
+        </div>
+      </section>
+
+      <!-- ================== TAB PROVEEDORES ================== -->
+      <section id="tabProveedores" class="tab-panel">
+
+        <!-- BUSCADOR + TABLA PROVEEDORES -->
+        <section class="card">
+          <div class="toolbar" style="justify-content: space-between;">
+            <div class="input-wrap w-60" style="width:100%;">
+              <input id="provBuscar" type="text" class="input"
+                     placeholder="Buscar (nombre, teléfono, dirección, email)" />
+            </div>
+          </div>
+
+          <div class="tabla-wrap">
+            <table class="tabla">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Teléfono</th>
+                  <th>Dirección</th>
+                  <th>Email</th>
+                  <th style="width:130px;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyProveedores"><!-- JS --></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- FORMULARIO PROVEEDOR -->
+        <section class="card">
+          <form id="formProveedor" class="form-vertical form-proveedor">
+            <input type="hidden" id="provId">
+
+            <label>Nombre
+              <input id="provNombre" class="input" type="text" placeholder="Ej: Limpieza S.A" required>
+            </label>
+
+            <label>Teléfono
+              <input id="provTelefono" class="input" type="text" placeholder="Ej: 3516789865">
+            </label>
+
+            <label>Dirección
+              <input id="provDireccion" class="input" type="text" placeholder="Ej: Arturo Capdevila 2032">
+            </label>
+
+            <label>Email
+              <input id="provEmail" class="input" type="email" placeholder="Ej: proveedor@empresa.com">
+            </label>
+
+            <div class="form-actions right">
+              <button type="submit" class="btn primary">Guardar</button>
+              <button type="button" id="provCancelar" class="btn outline">Cancelar</button>
+            </div>
+          </form>
+        </section>
+      </section>
+
+      <!-- ================== TAB PRODUCTOS ================== -->
+      <section id="tabProductos" class="tab-panel hidden">
+
+        <!-- BUSCADOR + TABLA MOVIMIENTOS DE PRODUCTOS -->
+        <section class="card">
+          <div class="toolbar" style="justify-content: space-between;">
+            <div class="input-wrap w-60" style="width:100%;">
+              <input id="movBuscar" type="text" class="input"
+                     placeholder="Buscar (fecha, proveedor, producto, método)" />
+            </div>
+          </div>
+
+          <div class="tabla-wrap">
+            <table class="tabla">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Proveedor</th>
+                  <th>Producto</th>
+                  <th>Cantidad útil</th>
+                  <th>Precio</th>
+                  <th>Método</th>
+                  <th style="width:130px;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyMovimientos"><!-- JS --></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- FORMULARIO MOVIMIENTO / COMPRA -->
+        <section class="card">
+          <form id="formMovimiento" class="form-vertical form-proveedor">
+
+            <input type="hidden" id="movId">
+
+            <label>Fecha
+              <input id="movFecha" type="date" class="input">
+            </label>
+
+            <label>Proveedor
+              <select id="movProveedor" class="input">
+                <!-- opciones por JS -->
+              </select>
+            </label>
+
+            <label>Producto
+              <div class="select-with-plus">
+                <select id="movProducto" class="input">
+                  <!-- opciones por JS -->
+                </select>
+                <button type="button" class="btn-plus" id="btnNuevoProducto">+</button>
+              </div>
+            </label>
+
+            <label>Cantidad
+              <input id="movCantidad" type="number" min="0" class="input" placeholder="Ej: 50">
+            </label>
+
+            <label>Precio
+              <input id="movPrecio" type="number" min="0" step="0.01" class="input" placeholder="Ej: 150000">
+            </label>
+
+            <label>Método
+              <select id="movMetodo" class="input">
+                <option value="">Seleccionar método</option>
+                <option>Transferencia</option>
+                <option>Efectivo</option>
+                <option>Tarjeta</option>
+              </select>
+            </label>
+
+            <div class="form-actions right">
+              <button type="submit" class="btn primary">Guardar</button>
+              <button type="button" id="movCancelar" class="btn outline">Cancelar</button>
+            </div>
+          </form>
+        </section>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL: NUEVO PRODUCTO -->
+  <div class="modal-overlay hidden" id="modalNuevoProducto">
+    <div class="modal modal-small">
+      <div class="modal-header">
+        <h2>CARGAR NUEVO PRODUCTO</h2>
+      </div>
+
+      <div class="modal-body">
+        <form id="formNuevoProducto" class="form-vertical">
+          <label>Nombre
+            <input id="prodNombre" type="text" class="input" placeholder="Ej: Papel higiénico" required />
+          </label>
+
+          <label>Unidad
+            <input id="prodUnidad" type="text" class="input" placeholder="Ej: rollos, unidades, litros" />
+          </label>
+
+          <div class="form-actions">
+            <button type="submit" class="btn primary">Guardar</button>
+            <button type="button" id="btnCerrarNuevoProducto" class="btn outline">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+    <script src="../js/app.js"></script>
+    <script src="../js/stockProveedores.js"></script>
+    <script src="../js/stockProductos.js"></script>
+
+    <script>
+    // Tabs Proveedores / Productos
+    document.addEventListener('DOMContentLoaded', () => {
+        const btns = document.querySelectorAll('.tabs-btn');
+        const tabProv = document.getElementById('tabProveedores');
+        const tabProd = document.getElementById('tabProductos');
+
+        btns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tab = btn.dataset.tab;
+
+            btns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            if (tab === 'proveedores') {
+            tabProv.classList.remove('hidden');
+            tabProd.classList.add('hidden');
+            } else {
+            tabProd.classList.remove('hidden');
+            tabProv.classList.add('hidden');
+            }
+        });
+        });
+    });
+    </script>
+
+</body>
+</html>
