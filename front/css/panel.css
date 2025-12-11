@@ -909,7 +909,7 @@ body.dashboard-body {
   margin-left: 8px;
 }
 
-/* ===== MODAL GENERICO (si no lo tenías, lo dejamos acá) ===== */
+/* ===== MODAL GENERICO ===== */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -1128,3 +1128,86 @@ body.dashboard-body {
   margin-bottom: 18px;
   margin-top: 5px;
 }
+
+
+/* =========================
+   STOCK
+   ========================= */
+.tabs-toggle {
+  display: inline-flex;
+  border-radius: 999px;
+  background: #e5e5e5;
+  padding: 4px;
+}
+
+.tabs-btn {
+  border: none;
+  background: transparent;
+  padding: 6px 26px;
+  border-radius: 999px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.tabs-btn.active {
+  background: #000;
+  color: #fff;
+}
+
+.tab-panel.hidden {
+  display: none;
+}
+
+/* FORMULARIO VERTICAL */
+.form-proveedor {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px;
+}
+
+.form-proveedor label {
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-proveedor .input {
+  width: 100%;
+  height: 40px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background: #fff;
+  font-size: 14px;
+}
+
+/* Botones alineados a la derecha */
+.form-actions.right {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.btn.primary {
+  background: #e53935;
+  color: #fff;
+}
+
+.btn.outline {
+  background: #000;
+  color: #fff;
+}
+
+
+.tabla td.acciones,
+.tabla td:last-child {
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+}
+
