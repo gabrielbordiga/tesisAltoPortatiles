@@ -233,35 +233,40 @@
     </div>
   </div>
 
-    <script src="../js/app.js"></script>
-    <script src="../js/stockProveedores.js"></script>
-    <script src="../js/stockProductos.js"></script>
+  <!-- ================== SCRIPTS ================== -->
 
-    <script>
-    // Tabs Proveedores / Productos
+  <!-- app.js debe ser module porque usa import -->
+  <script type="module" src="../js/app.js"></script>
+
+  <!-- Si estos archivos después importan supabase, también deben ser module -->
+  <script type="module" src="../js/stockProveedores.js"></script>
+  <script type="module" src="../js/stockProductos.js"></script>
+
+  <!-- Tabs Proveedores / Productos -->
+  <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const btns = document.querySelectorAll('.tabs-btn');
-        const tabProv = document.getElementById('tabProveedores');
-        const tabProd = document.getElementById('tabProductos');
+      const btns = document.querySelectorAll('.tabs-btn');
+      const tabProv = document.getElementById('tabProveedores');
+      const tabProd = document.getElementById('tabProductos');
 
-        btns.forEach(btn => {
+      btns.forEach(btn => {
         btn.addEventListener('click', () => {
-            const tab = btn.dataset.tab;
+          const tab = btn.dataset.tab;
 
-            btns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+          btns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
 
-            if (tab === 'proveedores') {
+          if (tab === 'proveedores') {
             tabProv.classList.remove('hidden');
             tabProd.classList.add('hidden');
-            } else {
+          } else {
             tabProd.classList.remove('hidden');
             tabProv.classList.add('hidden');
-            }
+          }
         });
-        });
+      });
     });
-    </script>
+  </script>
 
 </body>
 </html>
