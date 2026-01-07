@@ -62,17 +62,18 @@
     <main class="content">
 
       <!-- TABS CLIENTES / ALQUILERES -->
-      <section class="card">
-        <div class="tabs">
-          <button class="tab active" data-target="panel-clientes">Clientes</button>
-          <button class="tab" data-target="panel-alquileres">Alquileres</button>
+      <section class="card" style="margin-bottom:14px;">
+        <div class="tabs-toggle">
+          <button class="tabs-btn active" data-tab="clientes" type="button">Clientes</button>
+          <button class="tabs-btn" data-tab="alquileres" type="button">Alquileres</button>
         </div>
       </section>
+
 
       <!-- ====================================== -->
       <!-- PANEL CLIENTES                        -->
       <!-- ====================================== -->
-      <div id="panel-clientes" class="tab-panel">
+      <section id="tabClientes" class="tab-panel">
         <!-- TABLA CLIENTES -->
         <section class="card">
           <div class="toolbar" style="justify-content: space-between;">
@@ -84,7 +85,7 @@
           </div>
 
           <div class="tabla-wrap">
-            <table class="tabla">
+            <table class="tabla tabla-stack">
               <thead>
                 <tr>
                   <th>Nombre / Razón social</th>
@@ -184,12 +185,12 @@
             </div>
           </form>
         </section>
-      </div>
+      </section>
 
       <!-- ====================================== -->
       <!-- PANEL ALQUILERES                      -->
       <!-- ====================================== -->
-      <div id="panel-alquileres" class="tab-panel hidden">
+      <section id="tabAlquileres" class="tab-panel hidden">
 
         <!-- TABLA ALQUILERES -->
         <section class="card">
@@ -202,7 +203,7 @@
           </div>
 
           <div class="tabla-wrap">
-            <table class="tabla">
+            <table class="tabla tabla-stack">
               <thead>
                 <tr>
                   <th>N° Pedido</th>
@@ -357,13 +358,12 @@
 
             <div class="form-actions">
               <button type="submit" class="btn primary">Guardar</button>
-              <button type="button" class="btn outline">Cancelar</button>
+              <button type="button" class="btn outline" id="btnCancelarAlquiler">Cancelar</button>
             </div>
           </form>
         </section>
 
-      </div>
-      <!-- /panel-alquileres -->
+      <section>
 
     </main>
   </div>
@@ -372,6 +372,43 @@
   <script src="../js/app.js"></script>
   <script src="../js/gestionClientes.js"></script>
   <script src="../js/gestionAlquileres.js"></script>
+
+
+  <!-- Tabs Clientes / Alquileres -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const btns = document.querySelectorAll(".tabs-btn");
+      const tabClientes = document.getElementById("tabClientes");
+      const tabAlquileres = document.getElementById("tabAlquileres");
+
+      function show(tab) {
+        btns.forEach(b => b.classList.remove("active"));
+
+        if (tab === "clientes") {
+          btns.forEach(b => {
+            if (b.dataset.tab === "clientes") b.classList.add("active");
+          });
+          tabClientes.classList.remove("hidden");
+          tabAlquileres.classList.add("hidden");
+          window.refreshClientes?.();
+        } else {
+          btns.forEach(b => {
+            if (b.dataset.tab === "alquileres") b.classList.add("active");
+          });
+          tabAlquileres.classList.remove("hidden");
+          tabClientes.classList.add("hidden");
+          window.refreshAlquileres?.();
+        }
+      }
+
+      btns.forEach(btn => {
+        btn.addEventListener("click", () => show(btn.dataset.tab));
+      });
+
+      // Inicial
+      show("clientes");
+    });
+  </script>
 
 </body>
 

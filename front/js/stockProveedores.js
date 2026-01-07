@@ -26,11 +26,11 @@ function renderProveedores(lista = proveedores) {
     lista.forEach(prov => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-            <td>${prov.nombre}</td>
-            <td>${prov.telefono || "-"}</td>
-            <td>${prov.direccion || "-"}</td>
-            <td>${prov.email || "-"}</td>
-            <td class="acciones">
+            <td data-label="Nombre">${prov.nombre}</td>
+            <td data-label="Telefono">${prov.telefono || "-"}</td>
+            <td data-label="Direccion">${prov.direccion || "-"}</td>
+            <td data-label="Email">${prov.email || "-"}</td>
+            <td data-label="Acciones" class="acciones">
                 <button class="action" data-edit="${prov.id}">Editar</button>
                 <button class="action danger" data-del="${prov.id}">🗑</button>
             </td>
