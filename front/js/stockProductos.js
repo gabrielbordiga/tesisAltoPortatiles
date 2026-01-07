@@ -43,13 +43,13 @@ function renderMovimientos(lista = movimientos) {
 
         const tr = document.createElement("tr");
         tr.innerHTML = `
-            <td>${mov.fecha}</td>
-            <td>${proveedor}</td>
-            <td>${producto}</td>
-            <td>${mov.cantidad}</td>
-            <td>$${mov.precio.toLocaleString("es-AR")}</td>
-            <td>${mov.metodo}</td>
-            <td class="acciones">
+            <td data-label="Fecha">${mov.fecha}</td>
+            <td data-label="Proveedor">${proveedor}</td>
+            <td data-label="Producto">${producto}</td>
+            <td data-label="Cantidad">${mov.cantidad}</td>
+            <td data-label="Precio">$${mov.precio.toLocaleString("es-AR")}</td>
+            <td data-label="Metodo">${mov.metodo}</td>
+            <td data-label="Acciones" class="acciones">
                 <button class="action" data-edit="${mov.id}">Editar</button>
                 <button class="action danger" data-del="${mov.id}">🗑</button>
             </td>

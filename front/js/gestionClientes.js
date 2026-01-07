@@ -83,25 +83,6 @@
     return true;
   }
 
-  // --------- Tabs Clientes / Alquileres ---------
-  function initTabs() {
-    const tabs   = document.querySelectorAll('.tabs .tab');
-    const panels = document.querySelectorAll('.tab-panel');
-    if (!tabs.length || !panels.length) return;
-
-    tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        tabs.forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-
-        const target = tab.dataset.target;
-        panels.forEach(p => {
-          if (p.id === target) p.classList.remove('hidden');
-          else p.classList.add('hidden');
-        });
-      });
-    });
-  }
 
   // --------- Render tabla clientes ---------
   function renderTabla(filtro = '') {
@@ -184,8 +165,7 @@
   }
 
   // --------- Init ---------
-  document.addEventListener('DOMContentLoaded', () => {
-    initTabs();                 // pestañas
+  document.addEventListener('DOMContentLoaded', () => {                 // pestañas
     if (!initDomRefs()) return; // si no está el panel de clientes, salimos
 
     seedIfEmpty();
@@ -277,4 +257,10 @@
 
     clearForm();
   });
+  
+    // Exponer refresh para tabs externas
+  window.refreshClientes = function() {
+    CLIENTES = loadClientes();
+    renderTabla(txtBuscar ? txtBuscar.value : '');
+  };
 })();

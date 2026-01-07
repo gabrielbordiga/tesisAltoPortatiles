@@ -21,21 +21,19 @@
 
   // Semilla de ejemplo si está vacío
   function seedIfEmptyAlq() {
-    if (!localStorage.getItem(KEY_ALQUILERES)) {
+  const raw = localStorage.getItem(KEY_ALQUILERES);
+  const arr = raw ? JSON.parse(raw) : [];
+    if (!arr.length) {
       const seed = [
         {
           id: 1,
           numero: '001',
           cliente: 'Pedro Martínez',
           ubicacion: 'Obispo Salguero',
-          fechaDesde: '27/05/2025',
-          fechaHasta: '31/05/2025',
-          lineas: [
-            { unidad: 'Baño estándar', cantidad: 5, precioUnit: 50000 }
-          ],
-          pagos: [
-            { fecha: '25/05/2025', monto: 200000, metodo: 'Transferencia' }
-          ]
+          fechaDesde: '2025-05-27',
+          fechaHasta: '2025-05-31',
+          lineas: [{ unidad: 'Baño estándar', cantidad: 5, precioUnit: 50000 }],
+          pagos: [{ fecha: '25/05/2025', monto: 200000, metodo: 'Transferencia' }]
         }
       ];
       saveAlquileres(seed);
@@ -400,5 +398,13 @@
 
     // arrancamos con el formulario limpio y placeholders seleccionados
     clearFormAlquiler();
+
+    // Exponer refresh para tabs externas
+  window.refreshAlquileres = function() {
+    ALQUILERES = loadAlquileres();
+    renderTablaAlquileres(txtBuscar ? txtBuscar.value : '');
+  };
   });
+
+
 })();
