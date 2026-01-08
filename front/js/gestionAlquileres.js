@@ -21,8 +21,8 @@
 
   // Semilla de ejemplo si está vacío
   function seedIfEmptyAlq() {
-  const raw = localStorage.getItem(KEY_ALQUILERES);
-  const arr = raw ? JSON.parse(raw) : [];
+    const raw = localStorage.getItem(KEY_ALQUILERES);
+    const arr = raw ? JSON.parse(raw) : [];
     if (!arr.length) {
       const seed = [
         {

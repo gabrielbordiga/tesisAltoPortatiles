@@ -1,47 +1,17 @@
 (() => {
   'use strict';
 
-  const KEY_CLIENTES = 'ap_clientes';
+  const API_URL = '/api/clientes';
 
-  // --------- Helpers storage ---------
-  function loadClientes() {
-    const raw = localStorage.getItem(KEY_CLIENTES);
-    return raw ? JSON.parse(raw) : [];
-  }
-
-  function saveClientes(list) {
-    localStorage.setItem(KEY_CLIENTES, JSON.stringify(list));
-  }
-
-  // Datos de ejemplo si está vacío
-  function seedIfEmpty() {
-    if (!localStorage.getItem(KEY_CLIENTES)) {
-      const seed = [
-        {
-          id: 1,
-          tipo: 'persona',
-          nombre: 'Pedro',
-          apellido: 'Martínez',
-          dni: '40786315',
-          cuit: '25407863155',
-          tel1: '3517895660',
-          tel2: '3516432539',
-          ubicacion: 'Cándido Galván',
-          contribuyente: 'Consumidor final'
-        },
-        {
-          id: 2,
-          tipo: 'empresa',
-          razonSocial: 'Cooperativa Horizonte',
-          cuitEmpresa: '30637327204',
-          cuit: '30637327204',
-          tel1: '3517895660',
-          tel2: '3516432539',
-          ubicacion: 'Sarmiento 251',
-          contribuyente: 'Responsable inscripto'
-        }
-      ];
-      saveClientes(seed);
+  // --------- Helpers API ---------
+  async function loadClientes() {
+    try {
+      const res = await fetch(API_URL);
+      if (!res.ok) throw new Error('Error al cargar clientes');
+      return await res.json();
+    } catch (err) {
+      console.error(err);
+      return [];
     }
   }
 
@@ -165,11 +135,10 @@
   }
 
   // --------- Init ---------
-  document.addEventListener('DOMContentLoaded', () => {                 // pestañas
+  document.addEventListener('DOMContentLoaded', async () => {
     if (!initDomRefs()) return; // si no está el panel de clientes, salimos
 
-    seedIfEmpty();
-    CLIENTES = loadClientes();
+    CLIENTES = await loadClientes();
     renderTabla();
 
     // cambio persona/empresa
@@ -193,35 +162,41 @@
     }
 
     // Editar / eliminar
-    tbody.addEventListener('click', e => {
-      const editId = e.target.getAttribute('data-edit');
-      const delId  = e.target.getAttribute('data-del');
+    tbody.addEventListener('click', async (e) => {
+      const btnEdit = e.target.closest('[data-edit]');
+      const btnDel  = e.target.closest('[data-del]');
 
-      if (editId) {
-        const c = CLIENTES.find(x => x.id === Number(editId));
+      if (btnEdit) {
+        const id = Number(btnEdit.dataset.edit);
+        const c = CLIENTES.find(x => x.id === id);
         if (c) fillForm(c);
       }
 
-      if (delId) {
-        const id = Number(delId);
+      if (btnDel) {
+        const id = Number(btnDel.dataset.del);
         if (confirm('¿Eliminar cliente?')) {
-          CLIENTES = CLIENTES.filter(c => c.id !== id);
-          saveClientes(CLIENTES);
-          renderTabla(txtBuscar.value);
-          if (Number(f.id.value) === id) clearForm();
+          try {
+            const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Error al eliminar');
+            
+            CLIENTES = CLIENTES.filter(c => c.id !== id);
+            renderTabla(txtBuscar.value);
+            if (Number(f.id.value) === id) clearForm();
+          } catch (err) {
+            alert('Error al eliminar: ' + err.message);
+          }
         }
       }
     });
 
     // Guardar (alta / edición)
-    form.addEventListener('submit', e => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const tipo = selectedTipo();
       const id   = f.id.value ? Number(f.id.value) : null;
 
       const payload = {
-        id: id ?? (Math.max(0, ...CLIENTES.map(c => c.id)) + 1),
         tipo,
         nombre:       tipo === 'persona' ? f.nombre.value.trim() : '',
         apellido:     tipo === 'persona' ? f.apellido.value.trim() : '',
@@ -242,25 +217,41 @@
         return alert('La razón social es obligatoria.');
       }
 
-      const idx = CLIENTES.findIndex(c => c.id === payload.id);
-      if (idx >= 0) {
-        CLIENTES[idx] = payload;   // editar
-      } else {
-        CLIENTES.push(payload);    // nuevo
-      }
+      try {
+        if (id) {
+          // UPDATE
+          const res = await fetch(`${API_URL}/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error('Error al actualizar');
+        } else {
+          // CREATE
+          const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error('Error al crear');
+        }
 
-      saveClientes(CLIENTES);
-      renderTabla(txtBuscar.value);
-      clearForm();
-      alert('Cliente guardado');
+        // Recargar todo para tener IDs correctos
+        CLIENTES = await loadClientes();
+        renderTabla(txtBuscar.value);
+        clearForm();
+        alert('Cliente guardado');
+      } catch (err) {
+        alert('Error al guardar: ' + err.message);
+      }
     });
 
     clearForm();
   });
   
     // Exponer refresh para tabs externas
-  window.refreshClientes = function() {
-    CLIENTES = loadClientes();
+  window.refreshClientes = async function() {
+    CLIENTES = await loadClientes();
     renderTabla(txtBuscar ? txtBuscar.value : '');
   };
 })();

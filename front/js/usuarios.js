@@ -2,15 +2,71 @@
   'use strict';
 
   // ---- Storage helpers (mock persistente) ----
-  const LS_USERS   = 'ap_usuarios';
   const LS_CURRENT = 'ap_current';
+  const API_URL    = '/api/usuarios';
+  const API_AREAS  = '/api/usuarios/areas';
 
-  // ➜ No sembramos acá. El seed vive en app.js.
-  function loadUsuarios() {
-    const raw = localStorage.getItem(LS_USERS);
-    return raw ? JSON.parse(raw) : [];
+  // ➜ Carga desde el Backend
+  async function loadUsuarios() {
+    try {
+      const res = await fetch(API_URL);
+      if (!res.ok) throw new Error('Error al cargar usuarios');
+      const data = await res.json();
+      
+      // DEBUG: Ver en consola del navegador qué columnas llegan realmente
+      console.log("Usuarios cargados:", data);
+
+      // Mapeamos los campos de la BD (backend) a los que usa este archivo
+      return data.map(u => {
+        // 1. Estrategia robusta: probamos nombres conocidos
+        let uid = u.idUsuarios ?? u.idusuarios ?? u.IDUsuario ?? u.id_usuario ?? u.id ?? u.IdUsuarios ?? u.IDUsuarios;
+
+        // 2. Fallback dinámico: si sigue siendo nulo, buscamos cualquier propiedad que empiece con 'id'
+        if (uid === undefined || uid === null) {
+            const key = Object.keys(u).find(k => /^(id|id_)/i.test(k) && (typeof u[k] === 'number' || typeof u[k] === 'string'));
+            if (key) uid = u[key];
+        }
+      
+        return {
+            id: uid,
+            usuario: u.usuario || u.nombre || u.Nombre,
+            correo: u.email || u.correo || u.CorreoElectronico,
+            pass: '', 
+            rol: u.rol || u.permisos || u.Permisos,
+            estado: (u.activo === true || u.activo === 'true' || u.activo === 'Activo') ? 'Activo' : 'Inactivo',
+            area: u.idArea || u.idarea || u.IDArea || u.id_area
+        };
+      });
+    } catch (error) {
+      console.error(error);
+      alert('No se pudo conectar con el servidor.');
+      return [];
+    }
   }
-  function saveUsuarios(list) { localStorage.setItem(LS_USERS, JSON.stringify(list)); }
+
+  // ➜ Cargar Áreas para el Select
+  async function loadAreas() {
+    try {
+      const res = await fetch(API_AREAS);
+      if (!res.ok) throw new Error('Error al cargar áreas');
+      const areas = await res.json();
+      
+      console.log("Áreas recibidas del backend:", areas);
+
+      // Llenar el select
+      let options = '<option value="">Seleccionar área...</option>';
+      areas.forEach(a => {
+        if (a.id && a.nombre) {
+            options += `<option value="${a.id}">${a.nombre}</option>`;
+        }
+      });
+      f.area.innerHTML = options;
+    } catch (error) {
+      console.error("No se pudieron cargar las áreas:", error);
+      f.area.innerHTML = '<option value="">Error al cargar áreas (ver consola)</option>';
+    }
+  }
+
   function getCurrent() {
     const r = localStorage.getItem(LS_CURRENT);
     return r ? JSON.parse(r) : null;
@@ -52,7 +108,11 @@
       .filter(u =>
         [u.usuario,u.correo,u.rol,u.estado].some(val => normalize(val).includes(q))
       )
-      .sort((a,b) => a.id - b.id);
+      .sort((a,b) => {
+        // Ordenamiento seguro para números o UUIDs
+        if (typeof a.id === 'number' && typeof b.id === 'number') return a.id - b.id;
+        return String(a.id).localeCompare(String(b.id));
+      });
 
     tbody.innerHTML = data.map((u)=>`
       <tr>
@@ -95,10 +155,11 @@
   }
 
   // ---- Eventos ----
-  document.addEventListener('DOMContentLoaded', () => {
-    // Cargamos después de que app.js ya sembró
-    USUARIOS = loadUsuarios();
-    renderTabla();
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Cargamos desde la API
+    await loadAreas(); // Cargar áreas primero
+    USUARIOS = await loadUsuarios();
+    renderTabla(); // Render inicial
 
     // Buscar
     txtBuscar.addEventListener('input', () => renderTabla(txtBuscar.value));
@@ -107,36 +168,56 @@
     btnNuevo.addEventListener('click', clearForm);
 
     // Click en acciones de la tabla
-    tbody.addEventListener('click', (e) => {
-      const idEdit = e.target.getAttribute('data-edit');
-      const idDel  = e.target.getAttribute('data-del');
+    tbody.addEventListener('click', async (e) => {
+      const btnEdit = e.target.closest('[data-edit]');
+      const btnDel  = e.target.closest('[data-del]');
 
-      if (idEdit) {
-        const u = USUARIOS.find(x => x.id === Number(idEdit));
+      if (btnEdit) {
+        // Comparamos como String para soportar UUIDs
+        const editId = btnEdit.dataset.edit;
+        const u = USUARIOS.find(x => String(x.id) === editId);
         if (u) fillForm(u);
       }
 
-      if (idDel) {
-        const id = Number(idDel);
+      if (btnDel) {
+        const rawId = btnDel.dataset.del;
+        
+        if (!rawId || rawId === 'undefined' || rawId === 'null') {
+            console.error("Fila sin ID válido (datos crudos):", btnDel.closest('tr'));
+            return alert('Error: No se pudo leer el ID de la fila. Revisa la consola (F12) para ver los datos.');
+        }
+
+        const id = rawId; // Usamos el ID tal cual viene (puede ser UUID string)
+
         const me = getCurrent();
-        if (me && me.id === id) {
+        if (me && String(me.idUsuarios) === String(id)) {
           return alert('No podés eliminar tu propio usuario mientras estás logueado.');
         }
         if (confirm('¿Eliminar usuario?')) {
-          USUARIOS = USUARIOS.filter(x => x.id !== id);
-          saveUsuarios(USUARIOS);
-          renderTabla(txtBuscar.value);
-          if (Number(f.id.value) === id) clearForm();
+          try {
+            const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            if (!res.ok) {
+              const errData = await res.json().catch(() => ({}));
+              throw new Error(errData.error || 'Error al eliminar');
+            }
+            
+            USUARIOS = USUARIOS.filter(x => x.id !== id);
+            renderTabla(txtBuscar.value);
+            if (String(f.id.value) === String(id)) clearForm();
+          } catch (err) {
+            alert(err.message);
+          }
         }
       }
     });
 
     // Guardar (crear/editar)
-    f.form.addEventListener('submit', (e) => {
+    f.form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      const payload = {
-        id: f.id.value ? Number(f.id.value) : (Math.max(0,...USUARIOS.map(u=>u.id))+1),
+      // 1. Objeto local para validaciones
+      const localUser = {
+        id: f.id.value ? f.id.value : null, // No forzamos Number()
         usuario: f.usuario.value.trim(),
         correo:  f.correo.value.trim(),
         pass:    f.pass.value,
@@ -146,44 +227,67 @@
       };
 
       // Validaciones mínimas
-      if (!payload.usuario) return alert('Usuario requerido');
-      if (!emailValido(payload.correo)) return alert('Correo inválido');
-      if (payload.pass !== f.pass2.value) return alert('Las contraseñas no coinciden');
-      if (payload.pass.length < 3) return alert('Contraseña demasiado corta');
+      if (!localUser.usuario) return alert('Usuario requerido');
+      if (!emailValido(localUser.correo)) return alert('Correo inválido');
+      if (localUser.pass !== f.pass2.value) return alert('Las contraseñas no coinciden');
+      if (localUser.pass.length < 3) return alert('Contraseña demasiado corta');
 
-      // Unicidad usuario/correo (case-insensitive)
-      const idActual = payload.id;
-      const dupUser = USUARIOS.some(u => normalize(u.usuario) === normalize(payload.usuario) && u.id !== idActual);
-      if (dupUser) return alert('Ese nombre de usuario ya existe.');
-      const dupMail = USUARIOS.some(u => normalize(u.correo) === normalize(payload.correo) && u.id !== idActual);
-      if (dupMail) return alert('Ese correo ya está en uso.');
+      // 2. Payload mapeado para el Backend
+      const backendPayload = {
+        nombre: localUser.usuario,
+        correo: localUser.correo,
+        contrasena: localUser.pass,
+        permisos: localUser.rol,
+        estado: localUser.estado,
+        id_area: localUser.area
+      };
 
-      const idx = USUARIOS.findIndex(u => u.id === payload.id);
       const me = getCurrent();
 
-      if (idx >= 0) {
-        // --- UPDATE ---
-        USUARIOS[idx] = payload;
-
-        // Si estoy editando al usuario logueado:
-        if (me && me.id === payload.id) {
-          if (payload.estado !== 'Activo') {
-            alert('Tu usuario fue marcado como Inactivo. Se cerrará la sesión.');
-            saveUsuarios(USUARIOS);
-            return logoutToLogin();
+      try {
+        if (localUser.id) {
+          // --- UPDATE (PUT) ---
+          const res = await fetch(`${API_URL}/${localUser.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(backendPayload)
+          });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || 'Error al actualizar');
           }
-          // actualizar ap_current con los nuevos datos visibles
-          setCurrent({ id: payload.id, usuario: payload.usuario, rol: payload.rol, area: payload.area });
+          
+          // Si estoy editando al usuario logueado:
+          if (me && String(me.idUsuarios) === String(localUser.id)) {
+            if (localUser.estado !== 'Activo') {
+              alert('Tu usuario fue marcado como Inactivo. Se cerrará la sesión.');
+              return logoutToLogin();
+            }
+            // actualizar ap_current con los nuevos datos visibles
+            // Nota: mantenemos el token y idUsuarios, actualizamos el resto
+            setCurrent({ ...me, usuario: localUser.usuario, rol: localUser.rol, idArea: localUser.area });
+          }
+        } else {
+          // --- CREATE (POST) ---
+          const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(backendPayload)
+          });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || 'Error al crear');
+          }
         }
-      } else {
-        // --- CREATE ---
-        USUARIOS.push(payload);
+        
+        // Recargamos la tabla desde el servidor para tener los IDs correctos
+        USUARIOS = await loadUsuarios();
+        renderTabla(txtBuscar.value);
+        clearForm();
+        alert('Guardado');
+      } catch (err) {
+        alert('Error al guardar: ' + err.message);
       }
-
-      saveUsuarios(USUARIOS);
-      renderTabla(txtBuscar.value);
-      clearForm();
-      alert('Guardado');
     });
 
     // Cancelar

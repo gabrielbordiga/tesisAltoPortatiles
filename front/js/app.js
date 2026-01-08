@@ -2,45 +2,9 @@
 // app.js – Sistema de sesión, roles y guardas de ruta
 // ==========================
 
-import { supabase } from "../base/supabase.js";
-
-const KEY_USERS = "ap_usuarios";
 const KEY_CURRENT = "ap_current";
 
-// ==========================
-// TEST CONEXIÓN SUPABASE
-// ==========================
-async function testSupabaseConnection() {
-  const { data, error } = await supabase.from("Cliente").select("idCliente").limit(1);
-
-  if (error) {
-    console.error("Error conexión Supabase:", error.message);
-    return false;
-  }
-
-  console.log("Supabase conectado OK", data);
-  return true;
-}
-testSupabaseConnection();
-
 // ---------------- Helpers de storage ----------------
-function seedIfEmpty() {
-  if (!localStorage.getItem(KEY_USERS)) {
-    const seed = [
-      { id: 1, usuario: "admin", correo: "admin@alto.com", pass: "admin", rol: "Administrador", estado: "Activo", area: "Administración" },
-      { id: 2, usuario: "bordiga", correo: "bordiga@gmail.com", pass: "admin", rol: "Administrador", estado: "Activo", area: "Administración" },
-      { id: 3, usuario: "martina", correo: "martina@alto.com", pass: "martina", rol: "Empleado", estado: "Activo", area: "Logística" },
-      { id: 4, usuario: "pedro", correo: "pedro@alto.com", pass: "clave", rol: "Empleado", estado: "Inactivo", area: "Ventas" }
-    ];
-    localStorage.setItem(KEY_USERS, JSON.stringify(seed));
-  }
-}
-seedIfEmpty(); // fallback local
-
-function getUsers() {
-  return JSON.parse(localStorage.getItem(KEY_USERS) || "[]");
-}
-
 function setCurrent(user) {
   localStorage.setItem(KEY_CURRENT, JSON.stringify(user));
 }
@@ -54,29 +18,7 @@ function clearCurrent() {
   localStorage.removeItem(KEY_CURRENT);
 }
 
-// ---------------- Auth Supabase ----------------
-async function signInSupabase(email, password) {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw error;
-  return data;
-}
-
-async function fetchPerfilByAuthId(authId) {
-  const { data, error } = await supabase
-    .from("Usuarios")
-    .select("idUsuarios, usuario, rol, idArea, activo, auth_id")
-    .eq("auth_id", authId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
-}
-
 async function logout() {
-  try {
-    await supabase.auth.signOut();
-  } catch (_) {}
-
   clearCurrent();
   location.href = "./login.html";
 }
@@ -130,43 +72,6 @@ function applyRoleVisibility(role) {
   document.head.appendChild(st);
 })();
 
-// ==========================
-// Rehidratar sesión si existe en Supabase, pero falta en localStorage
-// ==========================
-async function ensureLocalSessionFromSupabase() {
-  const existing = getCurrent();
-  if (existing) return existing;
-
-  const { data, error } = await supabase.auth.getSession();
-  if (error) {
-    console.error("Error getSession:", error.message);
-    return null;
-  }
-
-  const session = data?.session;
-  if (!session?.user?.id) return null;
-
-  try {
-    const perfil = await fetchPerfilByAuthId(session.user.id);
-    if (!perfil) return null;
-
-    const userObj = {
-      auth_id: session.user.id,
-      email: session.user.email,
-      idUsuarios: perfil.idUsuarios,
-      usuario: perfil.usuario,
-      rol: perfil.rol,
-      idArea: perfil.idArea
-    };
-
-    setCurrent(userObj);
-    return userObj;
-  } catch (err) {
-    console.error("No pude rehidratar perfil:", err?.message || err);
-    return null;
-  }
-}
-
 // ---------------- Lógica principal ----------------
 document.addEventListener("DOMContentLoaded", async () => {
   // --- LOGIN (pública) ---
@@ -184,49 +89,45 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       try {
-        // 1) Login en Supabase Auth
-        const authData = await signInSupabase(email, password);
-        const authId = authData?.user?.id;
+        // 1) Login contra TU Backend (API propia)
+        // Ajustamos la URL al puerto donde corre tu servidor (3000)
+        const res = await fetch('/api/usuarios/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            correo: email, 
+            contrasena: password 
+          })
+        });
 
-        if (!authId) {
-          alert("No pude obtener el usuario autenticado.");
-          return;
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Error al iniciar sesión');
         }
 
-        // 2) Perfil en tabla Usuarios (RLS debe permitir leer su propia fila)
-        let perfil = null;
-        try {
-          perfil = await fetchPerfilByAuthId(authId);
-        } catch (errPerfil) {
-          console.error("Error leyendo Usuarios:", errPerfil?.message || errPerfil);
-          alert('No puedo leer tabla "Usuarios". Revisá RLS/policies.');
-          return;
-        }
+        const { token, usuario } = data;
 
-        if (!perfil) {
-          alert('No existe perfil en "Usuarios" para este auth_id. Falta vincular auth_id.');
-          return;
-        }
-
-        if (perfil.activo === false) {
+        // Validar estado (tu controlador devuelve 'estado', no 'activo')
+        if (!usuario.activo) { // Ahora es booleano (true/false)
           alert("Usuario inactivo.");
           return;
         }
 
-        // 3) Guardar sesión local para el front
+        // 2) Guardar sesión local mapeando los campos de tu tabla 'usuarios'
         setCurrent({
-          auth_id: authId,
-          email: authData.user.email,
-          idUsuarios: perfil.idUsuarios,
-          usuario: perfil.usuario,
-          rol: perfil.rol,
-          idArea: perfil.idArea
+          token: token,
+          idUsuarios: usuario.idUsuarios,
+          usuario: usuario.usuario,
+          email: usuario.email,
+          rol: usuario.rol,
+          idArea: usuario.idArea
         });
 
         location.href = "./inicio.html";
       } catch (err) {
-        console.error("Login error:", err?.message || err);
-        alert("Error al iniciar sesión. Revisá email/contraseña.");
+        console.error("Login error:", err);
+        alert(err.message || "Error al iniciar sesión.");
       }
     });
 
@@ -244,8 +145,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (isLoginPage || isResPassPage) return;
 
   // --- PÁGINAS INTERNAS ---
-  const hydrated = await ensureLocalSessionFromSupabase();
-  const user = hydrated || requireAuth();
+  const user = requireAuth();
   if (!user) return;
 
   applyRoleVisibility(user.rol);
