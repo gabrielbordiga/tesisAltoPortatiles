@@ -852,3 +852,26 @@ body.dashboard-body{
     width: 100%;
   }
 }
+
+/* Estilo para el input con error */
+.is-invalid {
+    border: 2px solid #e74c3c !important;
+    background-color: #fdf2f2 !important;
+    animation: shake 0.2s ease-in-out 0s 2;
+}
+
+/* Texto de error debajo del input */
+.error-message {
+    color: #e74c3c;
+    font-size: 12px;
+    margin-top: 4px;
+    display: block;
+    font-weight: 500;
+}
+
+@keyframes shake {
+    0% { margin-left: 0rem; }
+    25% { margin-left: 0.5rem; }
+    75% { margin-left: -0.5rem; }
+    100% { margin-left: 0rem; }
+}

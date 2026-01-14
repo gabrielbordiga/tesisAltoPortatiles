@@ -5,10 +5,13 @@ const path = require('path');
 const app = express();
 const usuarioRoutes = require('./routes/usuarioRoutes');
 const clienteRoutes = require('./routes/clienteRoutes');
+const unidadRoutes = require('./routes/unidadRoutes');
 
 // --- MIDDLEWARES ---
 app.use(cors()); // 2. Habilitas CORS para que el frontend pueda conectarse
 app.use(express.json()); 
+app.use('/api/clientes', clienteRoutes);
+app.use('/api/unidades', unidadRoutes);
 
 // --- FRONTEND ---
 // Servir los archivos de la carpeta 'front' como estáticos
