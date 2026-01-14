@@ -31,7 +31,7 @@
             id: uid,
             usuario: u.usuario || u.nombre || u.Nombre,
             correo: u.email || u.correo || u.CorreoElectronico,
-            pass: '', 
+            pass: u.contrasena || u.contrasenia || u.Contrasena || u.password || u.Password || u.clave || u.pass || '', 
             rol: u.rol || u.permisos || u.Permisos,
             estado: (u.activo === true || u.activo === 'true' || u.activo === 'Activo') ? 'Activo' : 'Inactivo',
             area: u.idArea || u.idarea || u.IDArea || u.id_area
@@ -39,7 +39,7 @@
       });
     } catch (error) {
       console.error(error);
-      alert('No se pudo conectar con el servidor.');
+      window.showAlert('Error', 'No se pudo conectar con el servidor.', 'error');
       return [];
     }
   }
@@ -89,6 +89,8 @@
     correo: document.getElementById('correo'),
     pass:   document.getElementById('pass'),
     pass2:  document.getElementById('pass2'),
+    chkPass: document.getElementById('chkCambiarPass'),
+    lblPass: document.getElementById('lblCambiarPass'),
     rol:    document.getElementById('rol'),
     estado: document.getElementById('estado'),
     area:   document.getElementById('area'),
@@ -109,17 +111,14 @@
         [u.usuario,u.correo,u.rol,u.estado].some(val => normalize(val).includes(q))
       )
       .sort((a,b) => {
-        // Ordenamiento seguro para números o UUIDs
-        if (typeof a.id === 'number' && typeof b.id === 'number') return a.id - b.id;
-        return String(a.id).localeCompare(String(b.id));
+        // Ordenamiento alfabético por usuario
+        return String(a.usuario || '').localeCompare(String(b.usuario || ''));
       });
 
     tbody.innerHTML = data.map((u)=>`
       <tr>
-        <td>${u.id}</td>
         <td>${u.usuario}</td>
         <td>${u.correo}</td>
-        <td>${maskPass(u.pass)}</td>
         <td><span class="tag">${u.rol}</span></td>
         <td><span class="tag">${u.estado}</span></td>
         <td>
@@ -137,9 +136,15 @@
     f.correo.value = '';
     f.pass.value = '';
     f.pass2.value = '';
+    f.pass.disabled = false;
+    f.pass2.disabled = false;
+    f.pass.required = true;
+    f.pass2.required = true;
     f.rol.value = 'Empleado';
     f.estado.value = 'Activo';
     f.area.value = '';
+    if (f.chkPass) f.chkPass.checked = false;
+    if (f.lblPass) f.lblPass.classList.add('hidden');
     f.usuario.focus();
   }
 
@@ -147,11 +152,17 @@
     f.id.value = user.id;
     f.usuario.value = user.usuario;
     f.correo.value = user.correo;
-    f.pass.value = user.pass;
-    f.pass2.value = user.pass;
+    f.pass.value = '';
+    f.pass2.value = '';
+    f.pass.disabled = true;
+    f.pass2.disabled = true;
+    f.pass.required = false;
+    f.pass2.required = false;
     f.rol.value = user.rol;
     f.estado.value = user.estado;
     f.area.value = user.area || '';
+    if (f.chkPass) f.chkPass.checked = false;
+    if (f.lblPass) f.lblPass.classList.remove('hidden');
   }
 
   // ---- Eventos ----
@@ -166,6 +177,25 @@
 
     // Nuevo
     btnNuevo.addEventListener('click', clearForm);
+
+    // Checkbox cambiar contraseña
+    if (f.chkPass) {
+      f.chkPass.addEventListener('change', () => {
+        const habilitar = f.chkPass.checked;
+        f.pass.disabled = !habilitar;
+        f.pass2.disabled = !habilitar;
+        if (habilitar) {
+          f.pass.required = true;
+          f.pass2.required = true;
+          f.pass.focus();
+        } else {
+          f.pass.required = false;
+          f.pass2.required = false;
+          f.pass.value = '';
+          f.pass2.value = '';
+        }
+      });
+    }
 
     // Click en acciones de la tabla
     tbody.addEventListener('click', async (e) => {
@@ -184,16 +214,16 @@
         
         if (!rawId || rawId === 'undefined' || rawId === 'null') {
             console.error("Fila sin ID válido (datos crudos):", btnDel.closest('tr'));
-            return alert('Error: No se pudo leer el ID de la fila. Revisa la consola (F12) para ver los datos.');
+            return window.showAlert('Error', 'No se pudo leer el ID de la fila. Revisa la consola (F12) para ver los datos.', 'error');
         }
 
         const id = rawId; // Usamos el ID tal cual viene (puede ser UUID string)
 
         const me = getCurrent();
         if (me && String(me.idUsuarios) === String(id)) {
-          return alert('No podés eliminar tu propio usuario mientras estás logueado.');
+          return window.showAlert('Atención', 'No podés eliminar tu propio usuario mientras estás logueado.', 'warning');
         }
-        if (confirm('¿Eliminar usuario?')) {
+        if (await window.confirmAction('¿Eliminar usuario?', 'Esta acción no se puede deshacer.')) {
           try {
             const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
             if (!res.ok) {
@@ -205,7 +235,7 @@
             renderTabla(txtBuscar.value);
             if (String(f.id.value) === String(id)) clearForm();
           } catch (err) {
-            alert(err.message);
+            window.showAlert('Error', err.message, 'error');
           }
         }
       }
@@ -227,20 +257,25 @@
       };
 
       // Validaciones mínimas
-      if (!localUser.usuario) return alert('Usuario requerido');
-      if (!emailValido(localUser.correo)) return alert('Correo inválido');
-      if (localUser.pass !== f.pass2.value) return alert('Las contraseñas no coinciden');
-      if (localUser.pass.length < 3) return alert('Contraseña demasiado corta');
+      if (!localUser.usuario) return window.showAlert('Error', 'Usuario requerido', 'error');
+      if (!emailValido(localUser.correo)) return window.showAlert('Error', 'Correo inválido', 'error');
+      if (!f.pass.disabled) {
+        if (localUser.pass !== f.pass2.value) return window.showAlert('Error', 'Las contraseñas no coinciden', 'error');
+        if (localUser.pass.length < 3) return window.showAlert('Error', 'Contraseña demasiado corta', 'error');
+      }
 
       // 2. Payload mapeado para el Backend
       const backendPayload = {
         nombre: localUser.usuario,
         correo: localUser.correo,
-        contrasena: localUser.pass,
         permisos: localUser.rol,
         estado: localUser.estado,
         id_area: localUser.area
       };
+
+      if (!f.pass.disabled) {
+        backendPayload.contrasena = localUser.pass;
+      }
 
       const me = getCurrent();
 
@@ -254,13 +289,14 @@
           });
           if (!res.ok) {
             const errData = await res.json().catch(() => ({}));
+            console.error("Error respuesta backend:", errData); // Para ver el error real en consola F12
             throw new Error(errData.error || 'Error al actualizar');
           }
           
           // Si estoy editando al usuario logueado:
           if (me && String(me.idUsuarios) === String(localUser.id)) {
             if (localUser.estado !== 'Activo') {
-              alert('Tu usuario fue marcado como Inactivo. Se cerrará la sesión.');
+              await window.showAlert('Atención', 'Tu usuario fue marcado como Inactivo. Se cerrará la sesión.', 'warning');
               return logoutToLogin();
             }
             // actualizar ap_current con los nuevos datos visibles
@@ -284,9 +320,17 @@
         USUARIOS = await loadUsuarios();
         renderTabla(txtBuscar.value);
         clearForm();
-        alert('Guardado');
+        window.showAlert('Éxito', 'Guardado', 'success');
       } catch (err) {
-        alert('Error al guardar: ' + err.message);
+        let msg = err.message;
+        if (msg.includes('duplicate key') || msg.includes('unique constraint')) {
+          if (msg.includes('usuario')) msg = 'Ese usuario ya existe.';
+          else if (msg.includes('email') || msg.includes('correo')) msg = 'Ese correo ya está registrado.';
+          else msg = 'Ya existe un registro con esos datos.';
+          window.showAlert('Error', msg, 'warning');
+        } else {
+          window.showAlert('Error', 'Error al guardar: ' + msg, 'error');
+        }
       }
     });
 

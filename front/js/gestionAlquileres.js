@@ -277,7 +277,7 @@
     }
 
     // Click en tabla principal (editar / eliminar)
-    tbody.addEventListener('click', e => {
+    tbody.addEventListener('click', async e => {
       const btnEdit = e.target.getAttribute('data-edit');
       const btnDel  = e.target.getAttribute('data-del');
 
@@ -289,7 +289,7 @@
 
       if (btnDel) {
         const id = Number(btnDel);
-        if (confirm('¿Eliminar alquiler?')) {
+        if (await window.confirmAction('¿Eliminar alquiler?', 'Esta acción no se puede deshacer.')) {
           ALQUILERES = ALQUILERES.filter(a => a.id !== id);
           saveAlquileres(ALQUILERES);
           renderTablaAlquileres(txtBuscar.value);
@@ -303,8 +303,8 @@
       const unidad = selUnidad.value;
       const cant   = Number(inpCantidad.value);
 
-      if (!unidad) return alert('Seleccioná una unidad.');
-      if (!cant || cant <= 0) return alert('Ingresá una cantidad válida.');
+      if (!unidad) return window.showAlert('Atención', 'Seleccioná una unidad.', 'warning');
+      if (!cant || cant <= 0) return window.showAlert('Atención', 'Ingresá una cantidad válida.', 'warning');
 
       const precioUnit = PRECIOS_UNIDAD[unidad] || 50000;
 
@@ -329,9 +329,9 @@
       const monto  = Number(inpMontoPagado.value);
       const metodo = selMetodoPago.value;
 
-      if (!monto || monto <= 0) return alert('Ingresá un monto válido.');
+      if (!monto || monto <= 0) return window.showAlert('Atención', 'Ingresá un monto válido.', 'warning');
       if (!metodo || metodo === '' || metodo.startsWith('Seleccionar')) {
-        return alert('Seleccioná un método de pago.');
+        return window.showAlert('Atención', 'Seleccioná un método de pago.', 'warning');
       }
 
       const hoy = new Date();
@@ -363,9 +363,9 @@
       const fechaDesde = inpDesde.value.trim();
       const fechaHasta = inpHasta.value.trim();
 
-      if (!cliente || !clienteTxt)   return alert('Seleccioná un cliente.');
-      if (!ubicacion)                return alert('Ingresá la ubicación.');
-      if (!lineas.length)            return alert('Agregá al menos una unidad.');
+      if (!cliente || !clienteTxt)   return window.showAlert('Atención', 'Seleccioná un cliente.', 'warning');
+      if (!ubicacion)                return window.showAlert('Atención', 'Ingresá la ubicación.', 'warning');
+      if (!lineas.length)            return window.showAlert('Atención', 'Agregá al menos una unidad.', 'warning');
 
       const id = currentId ?? (Math.max(0, ...ALQUILERES.map(a => a.id)) + 1);
       const numero = currentId
@@ -393,7 +393,7 @@
       saveAlquileres(ALQUILERES);
       renderTablaAlquileres(txtBuscar.value);
       clearFormAlquiler();
-      alert('Alquiler guardado');
+      window.showAlert('Éxito', 'Alquiler guardado', 'success');
     });
 
     // arrancamos con el formulario limpio y placeholders seleccionados

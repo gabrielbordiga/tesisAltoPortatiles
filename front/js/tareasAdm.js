@@ -180,14 +180,14 @@
     const empleadoId = selEmpleadoModal.value;
     const pedido     = inpPedido.value.trim();
 
-    if (!empleadoId) return alert('Seleccioná un empleado.');
-    if (!pedido)     return alert('Ingresá el número de pedido.');
+    if (!empleadoId) return window.showAlert('Atención', 'Seleccioná un empleado.', 'warning');
+    if (!pedido)     return window.showAlert('Atención', 'Ingresá el número de pedido.', 'warning');
 
     const alquileres = loadAlquileres();
     const alq = alquileres.find(a => a.numero === pedido);
 
     if (!alq) {
-      return alert('No se encontró ese N° de pedido en los alquileres.');
+      return window.showAlert('Error', 'No se encontró ese N° de pedido en los alquileres.', 'error');
     }
 
     const ubicacion = alq.ubicacion || '-';
@@ -249,7 +249,7 @@
     });
 
     // Completar / eliminar desde la tabla
-    tbody.addEventListener('click', e => {
+    tbody.addEventListener('click', async e => {
       const chkId = e.target.getAttribute('data-id');
       const delId = e.target.getAttribute('data-del');
 
@@ -264,7 +264,7 @@
 
       if (delId) {
         const id = Number(delId);
-        if (confirm('¿Eliminar tarea?')) {
+        if (await window.confirmAction('¿Eliminar tarea?', 'Se borrará de la lista.')) {
           tareas = tareas.filter(t => t.id !== id);
           saveTareas(tareas);
           renderHeader();

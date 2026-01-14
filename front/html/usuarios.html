@@ -73,10 +73,8 @@
                     <table class="tabla tabla-usuarios">
                         <thead>
                             <tr>
-                                <th style="width:80px;">#</th>
                                 <th>Usuario</th>
                                 <th>Correo</th>
-                                <th>Contraseña</th>
                                 <th>Permisos</th>
                                 <th>Estado</th>
                                 <th style="width:150px;">Acciones</th>
@@ -126,6 +124,10 @@
                         <select id="area" class="input">
                             <option value="">Cargando áreas...</option>
                         </select>
+                    </label>
+
+                    <label id="lblCambiarPass" class="hidden" style="flex-direction:row; align-items:center; gap:5px;">
+                        <input type="checkbox" id="chkCambiarPass" style="accent-color: red;" /> Cambiar contraseña
                     </label>
 
                     <div class="form-actions">

@@ -10,6 +10,7 @@ exports.obtenerUsuarios = async (req, res) => {
         .from('Usuarios')
         .select('*')
         .order('idUsuarios', { ascending: true }); // Ordenamos para que la lista sea estable
+
     if (error) return res.status(400).json({ error: error.message });
     res.json(data);
 };
@@ -158,7 +159,7 @@ exports.login = async (req, res) => {
         const { data: usuario, error } = await supabase
             .from('Usuarios')
             .select('*')
-            .ilike('email', correo)
+            .or(`email.ilike.${correo},usuario.ilike.${correo}`)
             .maybeSingle();
 
         if (error) {
@@ -181,7 +182,7 @@ exports.login = async (req, res) => {
         
         res.json({ token, usuario });
     } catch (err) {
-        console.error("[LOGIN] Error interno:", err);
+        console.error("[LOGIN] Error interno:", err.message);
         res.status(500).json({ error: "Error interno del servidor" });
     }
 };

@@ -4,6 +4,37 @@
 
 const KEY_CURRENT = "ap_current";
 
+// --- SWEETALERT2 & HELPERS ---
+(function() {
+  if (!document.getElementById('swal-lib')) {
+    const s = document.createElement('script');
+    s.id = 'swal-lib';
+    s.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
+    document.head.appendChild(s);
+  }
+})();
+
+window.showAlert = function(title, text, icon='info') {
+  if (typeof Swal !== 'undefined') {
+    return Swal.fire({ title, text, icon, confirmButtonColor: '#3085d6' });
+  }
+  alert(title + '\n' + (text||''));
+  return Promise.resolve();
+};
+
+window.confirmAction = async function(title, text='') {
+  if (typeof Swal !== 'undefined') {
+    const r = await Swal.fire({
+      title, text, icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33', cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Sí, confirmar', cancelButtonText: 'Cancelar'
+    });
+    return r.isConfirmed;
+  }
+  return confirm(title);
+};
+
 // ---------------- Helpers de storage ----------------
 function setCurrent(user) {
   localStorage.setItem(KEY_CURRENT, JSON.stringify(user));
@@ -83,11 +114,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       const email = (document.getElementById("username")?.value || "").trim();
       const password = document.getElementById("password")?.value || "";
 
-      if (!email.includes("@")) {
-        alert("Ingresá con email (usuario lo hacemos después).");
-        return;
-      }
-
       try {
         // 1) Login contra TU Backend (API propia)
         // Ajustamos la URL al puerto donde corre tu servidor (3000)
@@ -110,7 +136,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // Validar estado (tu controlador devuelve 'estado', no 'activo')
         if (!usuario.activo) { // Ahora es booleano (true/false)
-          alert("Usuario inactivo.");
+          window.showAlert("Error", "Usuario inactivo.", "error");
           return;
         }
 
@@ -127,7 +153,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         location.href = "./inicio.html";
       } catch (err) {
         console.error("Login error:", err);
-        alert(err.message || "Error al iniciar sesión.");
+        window.showAlert("Error", err.message || "Error al iniciar sesión.", "error");
       }
     });
 
@@ -153,7 +179,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const whoami = document.getElementById("whoami");
   if (whoami) {
     const name = user.usuario || user.email || "";
-    whoami.textContent = `${name} · ${roleLabel(user.rol)}`;
+    whoami.innerHTML = `<a href="./mis-datos.html" style="color: inherit; text-decoration: none; border-bottom: 1px dotted rgba(255,255,255,0.5); cursor: pointer;" title="Ver mis datos">${name} · ${roleLabel(user.rol)}</a>`;
   }
 
   // Restricción por página (además del data-roles)
@@ -167,7 +193,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const roleNorm = normalizeRole(user.rol);
   if (restricted[file] && !restricted[file].includes(roleNorm)) {
-    alert("No tenés permisos para acceder a esta sección.");
+    await window.showAlert("Acceso denegado", "No tenés permisos para acceder a esta sección.", "error");
     location.href = "./inicio.html";
     return;
   }
