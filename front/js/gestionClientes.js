@@ -5,13 +5,28 @@
   let CLIENTES = [];
   let tbody, txtBuscar, btnNuevo, form, f;
 
+  // Helper para headers con Token
+  function getHeaders() {
+    const token = localStorage.getItem('ap_token'); 
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}` 
+    };
+  }
+
   // --------- Helpers API ---------
   async function loadClientes() {
     try {
-      const res = await fetch(API_URL);
+      const res = await fetch(API_URL, {
+        method: 'GET',
+        headers: getHeaders()
+      });
       if (!res.ok) throw new Error('Error al cargar clientes');
       return await res.json();
-    } catch (err) { return []; }
+    } catch (err) { 
+      console.error("Error en loadClientes:", err);
+      return []; 
+    }
   }
 
   function normalize(s) { return String(s || '').trim().toLowerCase(); }
@@ -31,13 +46,14 @@
     return true;
   }
 
-  // --------- DOM Refs ---------
+  // --------- DOM Refs (CORREGIDO) ---------
   function initDomRefs() {
     tbody = document.getElementById('tbodyClientes');
     txtBuscar = document.getElementById('buscarCliente');
     btnNuevo = document.getElementById('btnNuevoCliente');
     form = document.getElementById('formCliente');
     if (!tbody || !form) return false;
+
     f = {
       id: document.getElementById('clienteId'),
       tipoRadios: document.querySelectorAll('input[name="tipoCliente"]'),
@@ -66,6 +82,7 @@
       const nombreB = (b.tipo === 'PERSONA' ? `${b.nombre} ${b.apellido}` : b.razonSocial) || '';
       return nombreA.localeCompare(nombreB, 'es', { sensitivity: 'base' });
     });
+
     tbody.innerHTML = data.map(c => `
       <tr>
         <td>${c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial}</td>
@@ -152,7 +169,10 @@
       }
       if (idDel) {
         if (await window.confirmAction('¿Eliminar cliente?', 'Esta acción no se puede deshacer.')) {
-          await fetch(`${API_URL}/${idDel}`, { method: 'DELETE' });
+          await fetch(`${API_URL}/${idDel}`, { 
+            method: 'DELETE',
+            headers: getHeaders()
+          });
           CLIENTES = await loadClientes();
           renderTabla();
         }
@@ -181,7 +201,7 @@
       try {
         const res = await fetch(id ? `${API_URL}/${id}` : API_URL, {
           method: id ? 'PUT' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getHeaders(),
           body: JSON.stringify(payload)
         });
 
@@ -190,7 +210,7 @@
           if (await window.confirmAction('Atención', data.mensaje)) {
             await fetch(`${API_URL}/${data.idCliente}`, {
               method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
+              headers: getHeaders(),
               body: JSON.stringify(payload)
             });
             CLIENTES = await loadClientes();
@@ -203,20 +223,11 @@
           clearForm();
           window.showAlert('Éxito', 'Guardado con éxito', 'success');
         } else {
-          // Usamos .catch() por si el backend devuelve algo que no es JSON (ej: error 400 vacío)
-          const err = await res.json().catch(() => ({ error: res.statusText || "Error desconocido" }));
-          console.error("Error backend:", err); 
-          if (err.mensaje) {
-            window.showAlert('Error', err.mensaje, 'error');
-          } else if (err.error && String(err.error).includes('unique')) {
-            window.showAlert('Error', "El CUIT ya se encuentra registrado.", 'error');
-          } else {
-            window.showAlert('Error', err.error || "Error desconocido", 'error');
-          }
+          const err = await res.json().catch(() => ({ error: "Error desconocido" }));
+          window.showAlert('Error', err.error || "Error al procesar", 'error');
         }
       } catch (error) {
-        console.error("Error en petición:", error);
-        window.showAlert('Error', "Ocurrió un error inesperado: " + error.message, 'error');
+        window.showAlert('Error', "Error de red: " + error.message, 'error');
       }
     });
   });

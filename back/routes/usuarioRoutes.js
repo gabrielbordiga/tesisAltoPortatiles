@@ -11,4 +11,9 @@ router.delete('/:id', usuarioController.eliminarUsuario);
 // ¡Esta es la ruta importante para el login!
 router.post('/login', usuarioController.login);
 
+// PASO 1: Solicitar el correo 
+router.post('/recuperar-password', usuarioController.recuperarPassword);
+// PASO 2: Guardar la nueva contraseña
+router.post('/actualizar-password-olvidada', usuarioController.actualizarPasswordOlvidada);
+
 module.exports = router;
