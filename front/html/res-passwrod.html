@@ -23,15 +23,13 @@
         <h1 class="title">Recuperar Contraseña</h1>
 
         <label>
-          <span>Usuario o Correo electronico</span>
-          <input type="text" />
+          <span>Correo electrónico</span>
+          <input type="email" id="resEmail" required placeholder="ejemplo@correo.com" />
         </label>
 
-        <p class="parrafo">Se le notificara al administrador para restablecer su contraseña</p>
+        <p class="parrafo">Recibirás un enlace en tu correo para crear una nueva contraseña.</p>
 
-        <button type="submit">Enviar Solicitud</button>
-
-        <!-- 👇 el botón/Link de volver, dentro del panel -->
+        <button type="submit" id="btnRes">Enviar Enlace</button>
         <a href="./login.html" class="forgot back-link">← Volver</a>
       </form>
 

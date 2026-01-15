@@ -5,7 +5,6 @@
     const API_AREAS    = '/api/usuarios/areas';
     const LS_CURRENT   = 'ap_current';
   
-    // Referencias DOM
     const f = {
       usuario: document.getElementById('mdUsuario'),
       correo:  document.getElementById('mdCorreo'),
@@ -17,7 +16,16 @@
       form:    document.getElementById('formMisDatos')
     };
   
-    let currentUserFull = null; // Guardará el objeto completo traído de la BD
+    let currentUserFull = null;
+
+    // Helper para obtener el token y armar los headers
+    function getHeaders() {
+        const token = localStorage.getItem('ap_token'); // O 'token', según uses en login.js
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        };
+    }
   
     function getCurrentLocal() {
       const r = localStorage.getItem(LS_CURRENT);
@@ -26,42 +34,37 @@
   
     async function init() {
       const localUser = getCurrentLocal();
-      if (!localUser) return; // app.js redirigirá si no hay sesión
-  
+      if (!localUser) return;
+
       try {
-        // 1. Traer todos los usuarios para encontrar el mío (ya que no tenemos endpoint GET /:id)
-        const resU = await fetch(API_USUARIOS);
+        // Agregamos headers para que la lista de usuarios no venga vacía
+        const resU = await fetch(API_USUARIOS, { headers: getHeaders() });
         if (!resU.ok) throw new Error('Error al cargar datos de usuario');
         const usuarios = await resU.json();
         
-        // Buscamos por ID
-        // Normalizamos IDs a string para comparar
         const miUsuario = usuarios.find(u => 
-            String(u.idUsuarios || u.id || u.id_usuario) === String(localUser.idUsuarios || localUser.id)
+            String(u.idUsuarios || u.id) === String(localUser.idUsuarios || localUser.id)
         );
   
-        if (!miUsuario) throw new Error('Usuario no encontrado en la base de datos');
+        if (!miUsuario) throw new Error('Usuario no encontrado');
         currentUserFull = miUsuario;
   
-        // 2. Traer áreas para mostrar el nombre del área
         let nombreArea = 'Sin área';
         const idAreaUser = miUsuario.idArea || miUsuario.id_area;
         
         if (idAreaUser) {
-            try {
-                const resA = await fetch(API_AREAS);
-                if (resA.ok) {
-                    const areas = await resA.json();
-                    const areaObj = areas.find(a => String(a.id) === String(idAreaUser));
-                    if (areaObj) nombreArea = areaObj.nombre;
-                }
-            } catch (e) { console.error(e); }
+            // Agregamos headers para cargar las áreas
+            const resA = await fetch(API_AREAS, { headers: getHeaders() });
+            if (resA.ok) {
+                const areas = await resA.json();
+                const areaObj = areas.find(a => String(a.id) === String(idAreaUser));
+                if (areaObj) nombreArea = areaObj.nombre;
+            }
         }
   
-        // 3. Llenar formulario
         f.usuario.value = miUsuario.usuario || miUsuario.nombre || '';
         f.correo.value  = miUsuario.email || miUsuario.correo || '';
-        f.rol.value     = miUsuario.rol || miUsuario.permisos || '';
+        f.rol.value     = miUsuario.rol || '';
         f.estado.value  = (miUsuario.activo) ? 'Activo' : 'Inactivo';
         f.area.value    = nombreArea;
   
@@ -71,45 +74,40 @@
       }
     }
   
-    // Manejo del submit
     f.form.addEventListener('submit', async (e) => {
       e.preventDefault();
   
       const p1 = f.pass.value;
       const p2 = f.pass2.value;
   
-      if (!currentUserFull) return window.showAlert('Error', 'No se cargaron los datos del usuario.', 'error');
-      if (!p1) return window.showAlert('Atención', 'Por favor ingresá una nueva contraseña.', 'warning');
+      if (!currentUserFull) return window.showAlert('Error', 'No se cargaron los datos.', 'error');
+      if (!p1) return window.showAlert('Atención', 'Ingresá una nueva contraseña.', 'warning');
       if (p1 !== p2) return window.showAlert('Error', 'Las contraseñas no coinciden.', 'error');
-      if (p1.length < 3) return window.showAlert('Error', 'La contraseña es muy corta.', 'error');
+      if (p1.length < 6) return window.showAlert('Error', 'Mínimo 6 caracteres para seguridad.', 'error');
   
-      // Preparamos el payload. Debemos enviar TODOS los datos requeridos por editarUsuario
-      // ya que es un PUT completo en el backend actual.
       const id = currentUserFull.idUsuarios || currentUserFull.id;
       
-      const payload = {
-        nombre: currentUserFull.usuario || currentUserFull.nombre,
-        correo: currentUserFull.email || currentUserFull.correo,
-        contrasena: p1, // La nueva contraseña
-        permisos: currentUserFull.rol || currentUserFull.permisos,
-        estado: (currentUserFull.activo) ? 'Activo' : 'Inactivo',
-        id_area: currentUserFull.idArea || currentUserFull.id_area
-      };
-  
       try {
+        // ENVIAMOS EL PUT: Ahora el backend debe usar supabase.auth.admin.updateUserById
         const res = await fetch(`${API_USUARIOS}/${id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            headers: getHeaders(),
+            body: JSON.stringify({
+                nombre: f.usuario.value,
+                correo: f.correo.value,
+                contrasena: p1, // El controlador ahora usará esto para Auth
+                permisos: f.rol.value,
+                estado: f.estado.value,
+                id_area: currentUserFull.idArea || currentUserFull.id_area
+            })
         });
   
         if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            console.error("Error respuesta backend:", errData);
-            throw new Error(errData.error || 'Error al actualizar contraseña');
+            const errData = await res.json();
+            throw new Error(errData.error || 'Error al actualizar');
         }
         
-        window.showAlert('Éxito', 'Contraseña actualizada correctamente.', 'success');
+        window.showAlert('Éxito', 'Contraseña actualizada correctamente en el sistema.', 'success');
         f.pass.value = '';
         f.pass2.value = '';
       } catch (error) {
@@ -117,6 +115,5 @@
       }
     });
   
-    // Iniciar
     document.addEventListener('DOMContentLoaded', init);
   })();
