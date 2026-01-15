@@ -114,13 +114,13 @@ document.getElementById("formMovimiento").addEventListener("submit", e => {
 // ------------------------
 // Editar / eliminar movimiento
 // ------------------------
-document.getElementById("tbodyMovimientos").addEventListener("click", e => {
+document.getElementById("tbodyMovimientos").addEventListener("click", async e => {
     if (e.target.dataset.edit) {
         cargarMovimientoEnForm(Number(e.target.dataset.edit));
     }
 
     if (e.target.dataset.del) {
-        eliminarMovimiento(Number(e.target.dataset.del));
+        await eliminarMovimiento(Number(e.target.dataset.del));
     }
 });
 
@@ -136,8 +136,8 @@ function cargarMovimientoEnForm(id) {
     document.getElementById("movMetodo").value = mov.metodo;
 }
 
-function eliminarMovimiento(id) {
-    if (!confirm("¿Eliminar movimiento?")) return;
+async function eliminarMovimiento(id) {
+    if (!await window.confirmAction("¿Eliminar movimiento?", "Esta acción no se puede deshacer.")) return;
     movimientos = movimientos.filter(m => m.id !== id);
     renderMovimientos();
 }
@@ -168,7 +168,7 @@ document.getElementById("formNuevoProducto").addEventListener("submit", e => {
     const nombre = document.getElementById("prodNombre").value.trim();
     const unidad = document.getElementById("prodUnidad").value.trim();
 
-    if (!nombre) return alert("El nombre es obligatorio");
+    if (!nombre) return window.showAlert("Atención", "El nombre es obligatorio", "warning");
 
     productos.push({ id: Date.now(), nombre, unidad });
 

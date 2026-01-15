@@ -6,6 +6,7 @@ const app = express();
 const usuarioRoutes = require('./routes/usuarioRoutes');
 const clienteRoutes = require('./routes/clienteRoutes');
 const unidadRoutes = require('./routes/unidadRoutes');
+const alquilerRoutes = require('./routes/alquilerRoutes');
 
 // --- MIDDLEWARES ---
 app.use(cors()); // 2. Habilitas CORS para que el frontend pueda conectarse
@@ -25,6 +26,7 @@ app.get('/', (req, res) => {
 // --- RUTAS ---
 app.use('/api/usuarios', usuarioRoutes);
 app.use('/api/clientes', clienteRoutes);
+app.use('/api/alquileres', alquilerRoutes);
 
 // --- INICIO DEL SERVIDOR ---
 const PORT = process.env.PORT || 3000;

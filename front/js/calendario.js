@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const texto = textoRecordatorioEl.value.trim();
     if (!texto) {
-      alert('Ingresá un detalle para el recordatorio.');
+      window.showAlert('Atención', 'Ingresá un detalle para el recordatorio.', 'warning');
       return;
     }
 
