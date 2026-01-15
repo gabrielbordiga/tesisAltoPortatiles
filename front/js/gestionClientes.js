@@ -17,34 +17,18 @@
   function normalize(s) { return String(s || '').trim().toLowerCase(); }
 
   // --------- Manejo de Errores Visuales ---------
-  function mostrarError(elemento, mensaje) {
-    elemento.classList.add('is-invalid');
-    let errorPrevio = elemento.parentElement.querySelector('.error-message');
-    if (errorPrevio) errorPrevio.remove();
-    const span = document.createElement('span');
-    span.className = 'error-message';
-    span.innerText = mensaje;
-    elemento.parentElement.appendChild(span);
-  }
-
-  function limpiarErrores() {
-    form.querySelectorAll('.is-invalid').forEach(i => i.classList.remove('is-invalid'));
-    form.querySelectorAll('.error-message').forEach(m => m.remove());
-  }
-
   function validarFormulario() {
-    let esValido = true;
     const tipo = selectedTipo();
     if (tipo === 'persona') {
-      if (!f.nombre.value.trim()) { mostrarError(f.nombre, "Nombre obligatorio"); esValido = false; }
-      if (!f.apellido.value.trim()) { mostrarError(f.apellido, "Apellido obligatorio"); esValido = false; }
-      if (f.dni.value.length < 7) { mostrarError(f.dni, "DNI inválido"); esValido = false; }
+      if (!f.nombre.value.trim()) { window.showAlert('Atención', "Nombre obligatorio", 'warning'); return false; }
+      if (!f.apellido.value.trim()) { window.showAlert('Atención', "Apellido obligatorio", 'warning'); return false; }
+      if (f.dni.value.length < 7) { window.showAlert('Atención', "DNI inválido", 'warning'); return false; }
     } else {
-      if (!f.razonSocial.value.trim()) { mostrarError(f.razonSocial, "Razón social obligatoria"); esValido = false; }
+      if (!f.razonSocial.value.trim()) { window.showAlert('Atención', "Razón social obligatoria", 'warning'); return false; }
     }
-    if (f.cuit.value.length < 11) { mostrarError(f.cuit, "CUIT debe tener 11 dígitos"); esValido = false; }
-    if (!f.ubicacion.value.trim()) { mostrarError(f.ubicacion, "Ubicación obligatoria"); esValido = false; }
-    return esValido;
+    if (f.cuit.value.length < 11) { window.showAlert('Atención', "CUIT debe tener 11 dígitos", 'warning'); return false; }
+    if (!f.ubicacion.value.trim()) { window.showAlert('Atención', "Ubicación obligatoria", 'warning'); return false; }
+    return true;
   }
 
   // --------- DOM Refs ---------
@@ -77,7 +61,11 @@
     const q = normalize(filtro);
     const data = CLIENTES.filter(c =>
       [c.nombre, c.apellido, c.razonSocial, c.cuit, c.dni].some(v => normalize(v).includes(q))
-    );
+    ).sort((a, b) => {
+      const nombreA = (a.tipo === 'PERSONA' ? `${a.nombre} ${a.apellido}` : a.razonSocial) || '';
+      const nombreB = (b.tipo === 'PERSONA' ? `${b.nombre} ${b.apellido}` : b.razonSocial) || '';
+      return nombreA.localeCompare(nombreB, 'es', { sensitivity: 'base' });
+    });
     tbody.innerHTML = data.map(c => `
       <tr>
         <td>${c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial}</td>
@@ -116,7 +104,6 @@
 
   function clearForm() {
     f.id.value = '';
-    limpiarErrores();
     f.tipoRadios.forEach(r => r.checked = (r.value === 'persona'));
     toggleTipo('persona');
     form.querySelectorAll('.input').forEach(i => i.value = '');
@@ -125,7 +112,6 @@
 
   function fillForm(c) {
     f.id.value = c.idCliente;
-    limpiarErrores();
     const tipoNorm = c.tipo.toLowerCase();
     f.tipoRadios.forEach(r => r.checked = (r.value === tipoNorm));
     toggleTipo(tipoNorm);
@@ -152,14 +138,6 @@
       });
     });
 
-    form.addEventListener('input', (e) => {
-      if (e.target.classList.contains('is-invalid')) {
-        e.target.classList.remove('is-invalid');
-        const m = e.target.parentElement.querySelector('.error-message');
-        if (m) m.remove();
-      }
-    });
-
     f.tipoRadios.forEach(r => r.addEventListener('change', () => toggleTipo(r.value)));
     if (txtBuscar) txtBuscar.addEventListener('input', () => renderTabla(txtBuscar.value));
     btnNuevo.addEventListener('click', clearForm);
@@ -172,16 +150,17 @@
         const c = CLIENTES.find(x => x.idCliente === idEdit);
         if (c) fillForm(c);
       }
-      if (idDel && confirm('¿Eliminar cliente?')) {
-        await fetch(`${API_URL}/${idDel}`, { method: 'DELETE' });
-        CLIENTES = await loadClientes();
-        renderTabla();
+      if (idDel) {
+        if (await window.confirmAction('¿Eliminar cliente?', 'Esta acción no se puede deshacer.')) {
+          await fetch(`${API_URL}/${idDel}`, { method: 'DELETE' });
+          CLIENTES = await loadClientes();
+          renderTabla();
+        }
       }
     });
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      limpiarErrores();
       if (!validarFormulario()) return;
 
       const tipo = selectedTipo();
@@ -199,32 +178,45 @@
         contribuyente: f.contribuyente.value
       };
 
-      const res = await fetch(id ? `${API_URL}/${id}` : API_URL, {
-        method: id ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      try {
+        const res = await fetch(id ? `${API_URL}/${id}` : API_URL, {
+          method: id ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
 
-      if (res.status === 409) {
-        const data = await res.json();
-        if (confirm(data.mensaje)) {
-          await fetch(`${API_URL}/${data.idCliente}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
+        if (res.status === 409) {
+          const data = await res.json();
+          if (await window.confirmAction('Atención', data.mensaje)) {
+            await fetch(`${API_URL}/${data.idCliente}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            CLIENTES = await loadClientes();
+            renderTabla();
+            clearForm();
+          }
+        } else if (res.ok) {
           CLIENTES = await loadClientes();
           renderTabla();
           clearForm();
+          window.showAlert('Éxito', 'Guardado con éxito', 'success');
+        } else {
+          // Usamos .catch() por si el backend devuelve algo que no es JSON (ej: error 400 vacío)
+          const err = await res.json().catch(() => ({ error: res.statusText || "Error desconocido" }));
+          console.error("Error backend:", err); 
+          if (err.mensaje) {
+            window.showAlert('Error', err.mensaje, 'error');
+          } else if (err.error && String(err.error).includes('unique')) {
+            window.showAlert('Error', "El CUIT ya se encuentra registrado.", 'error');
+          } else {
+            window.showAlert('Error', err.error || "Error desconocido", 'error');
+          }
         }
-      } else if (res.ok) {
-        CLIENTES = await loadClientes();
-        renderTabla();
-        clearForm();
-        alert('Guardado con éxito');
-      } else {
-        const err = await res.json();
-        if (err.error.includes('unique')) mostrarError(f.cuit, "CUIT ya activo");
+      } catch (error) {
+        console.error("Error en petición:", error);
+        window.showAlert('Error', "Ocurrió un error inesperado: " + error.message, 'error');
       }
     });
   });

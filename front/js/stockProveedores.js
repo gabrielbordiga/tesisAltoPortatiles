@@ -64,7 +64,7 @@ document.getElementById("formProveedor").addEventListener("submit", e => {
     const direccion = document.getElementById("provDireccion").value.trim();
     const email = document.getElementById("provEmail").value.trim();
 
-    if (!nombre) return alert("El nombre es obligatorio.");
+    if (!nombre) return window.showAlert("Atención", "El nombre es obligatorio.", "warning");
 
     if (provEditId) {
         // Editar existente
@@ -91,7 +91,7 @@ document.getElementById("formProveedor").addEventListener("submit", e => {
 // ------------------------
 // Click en editar / eliminar
 // ------------------------
-document.getElementById("tbodyProveedores").addEventListener("click", e => {
+document.getElementById("tbodyProveedores").addEventListener("click", async e => {
     if (e.target.dataset.edit) {
         const id = Number(e.target.dataset.edit);
         cargarProveedorEnForm(id);
@@ -99,7 +99,7 @@ document.getElementById("tbodyProveedores").addEventListener("click", e => {
 
     if (e.target.dataset.del) {
         const id = Number(e.target.dataset.del);
-        eliminarProveedor(id);
+        await eliminarProveedor(id);
     }
 });
 
@@ -119,8 +119,8 @@ function cargarProveedorEnForm(id) {
 // ------------------------
 // Eliminar proveedor
 // ------------------------
-function eliminarProveedor(id) {
-    if (!confirm("¿Eliminar proveedor permanentemente?")) return;
+async function eliminarProveedor(id) {
+    if (!await window.confirmAction("¿Eliminar proveedor?", "Se borrará permanentemente.")) return;
     proveedores = proveedores.filter(p => p.id !== id);
     renderProveedores();
 }

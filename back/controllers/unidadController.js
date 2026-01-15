@@ -48,7 +48,7 @@ exports.getResumenStock = async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('Unidades')
-            .select('stock, esatdo, Tipo_Unidades(nombre)');
+            .select('stock, esatdo, precio, Tipo_Unidades(nombre, idTipo)');
         
         if (error) throw error;
         if (!Array.isArray(data)) return res.json([]);
@@ -56,11 +56,14 @@ exports.getResumenStock = async (req, res) => {
         const resumen = data.reduce((acc, curr) => {
             const nombre = curr.Tipo_Unidades?.nombre || 'Sin nombre';
             if (!acc[nombre]) {
-                acc[nombre] = { nombre, disponibles: 0, alquiladas: 0, servicio: 0 };
+                acc[nombre] = { nombre, idTipo: curr.Tipo_Unidades?.idTipo, disponibles: 0, alquiladas: 0, servicio: 0, precio: 0 };
             }
             if (curr.esatdo === 'Disponible') acc[nombre].disponibles += (curr.stock || 0);
             if (curr.esatdo === 'Alquilada') acc[nombre].alquiladas += (curr.stock || 0);
             if (curr.esatdo === 'En servicio') acc[nombre].servicio += (curr.stock || 0);
+            
+            if (curr.precio) acc[nombre].precio = curr.precio;
+            
             return acc;
         }, {});
 
@@ -72,8 +75,72 @@ exports.getResumenStock = async (req, res) => {
 
 exports.gestionarStock = async (req, res) => {
     try {
-        const { idTipo, stock, estado, precio } = req.body;
+        const { idTipo, stock, estado, precio, accion, origen, destino } = req.body;
         const cantidad = parseInt(stock);
+
+        if (isNaN(cantidad) || cantidad <= 0) return res.status(400).json({ error: "La cantidad debe ser mayor a 0" });
+
+        // --- NUEVA LÓGICA CON ACCIONES EXPLÍCITAS ---
+        if (accion) {
+            // 1. Actualizar Precio
+            if (accion === 'precio') {
+                const { error } = await supabase.from('Unidades')
+                    .update({ precio: parseFloat(precio) })
+                    .eq('idTipo', idTipo);
+                if (error) throw error;
+                return res.json({ mensaje: "Precio actualizado" });
+            }
+
+            // 2. Baja (Eliminar stock)
+            if (accion === 'baja') {
+                // Buscamos la fila del estado correspondiente (usando 'esatdo' como en tu BD)
+                const { data: row } = await supabase.from('Unidades')
+                    .select('*').eq('idTipo', idTipo).eq('esatdo', estado).maybeSingle();
+                
+                if (!row || row.stock < cantidad) {
+                    return res.status(400).json({ error: "Stock insuficiente en ese estado para dar de baja." });
+                }
+                
+                const nuevoStock = row.stock - cantidad;
+                let error;
+                if (nuevoStock === 0) {
+                    ({ error } = await supabase.from('Unidades').delete().eq('idUnidad', row.idUnidad));
+                } else {
+                    ({ error } = await supabase.from('Unidades').update({ stock: nuevoStock }).eq('idUnidad', row.idUnidad));
+                }
+
+                if (error) throw error;
+                return res.json({ mensaje: "Baja realizada correctamente" });
+            }
+
+            // 3. Mover (Cambiar estado)
+            if (accion === 'mover') {
+                if (!origen || !destino) return res.status(400).json({ error: "Faltan origen o destino" });
+                
+                // Restar de origen
+                const { data: rowOrigen } = await supabase.from('Unidades')
+                    .select('*').eq('idTipo', idTipo).eq('esatdo', origen).maybeSingle();
+                
+                if (!rowOrigen || rowOrigen.stock < cantidad) {
+                    return res.status(400).json({ error: `Stock insuficiente en ${origen}` });
+                }
+                await supabase.from('Unidades').update({ stock: rowOrigen.stock - cantidad }).eq('idUnidad', rowOrigen.idUnidad);
+
+                // Sumar a destino
+                const { data: rowDestino } = await supabase.from('Unidades')
+                    .select('*').eq('idTipo', idTipo).eq('esatdo', destino).maybeSingle();
+                
+                if (rowDestino) {
+                    await supabase.from('Unidades').update({ stock: rowDestino.stock + cantidad }).eq('idUnidad', rowDestino.idUnidad);
+                } else {
+                    // Crear fila destino (heredando precio)
+                    await supabase.from('Unidades').insert([{ idTipo, stock: cantidad, esatdo: destino, precio: rowOrigen.precio }]);
+                }
+                return res.json({ mensaje: "Movimiento realizado" });
+            }
+            
+            // 4. Agregar (Nuevo stock) - Reutiliza lógica legacy o simplificada
+        }
 
         // LÓGICA DE DESCUENTO: Si se alquila o va a servicio, resta de Disponibles
         if (estado === 'Alquilada' || estado === 'En servicio') {

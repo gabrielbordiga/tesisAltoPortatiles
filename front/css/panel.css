@@ -180,6 +180,8 @@ body.dashboard-body{
 }
 .action:hover{filter:brightness(.97);}
 .action.danger{background:#f7e7e7;border-color:#e2bcbc;}
+.action.info{background:#e3f2fd;border-color:#bbdefb;color:#0d47a1;}
+.action.info:hover{background:#bbdefb;}
 
 /* ====== TARJETAS / SECCIONES ====== */
 .card{

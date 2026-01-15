@@ -81,6 +81,75 @@
         </div>
     </div>
 
+    <!-- ========================================================= -->
+    <!-- MODAL ACCIONES UNIDAD (EDICIÓN / BAJA / MOVIMIENTO) -->
+    <!-- ========================================================= -->
+    <div class="modal-overlay hidden" id="modalAccionesUnidad">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>ACCIONES DE UNIDAD</h2>
+            </div>
+            <div class="modal-body">
+                <h3 id="lblNombreUnidad" style="text-align:center; margin-bottom:15px; color:var(--rojo);"></h3>
+                <input type="hidden" id="idTipoAccion" />
+
+                <!-- 1. Actualizar Precio -->
+                <div style="background:#f9f9f9; padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid #eee;">
+                    <label style="font-weight:600; font-size:13px;">Precio Base</label>
+                    <div class="input-with-plus" style="margin-top:5px;">
+                        <input id="editPrecio" type="number" step="0.01" class="input" placeholder="0.00" />
+                        <button type="button" id="btnGuardarPrecio" class="btn primary" style="width:auto; padding:0 15px;">Actualizar</button>
+                    </div>
+                </div>
+
+                <!-- 2. Gestionar Stock -->
+                <form id="formAccionesStock" class="form-vertical">
+                    <label>Acción de Stock
+                        <select id="accionStock" class="input">
+                            <option value="mover">Cambiar estado</option>
+                            <option value="baja">Eliminar</option>
+                        </select>
+                    </label>
+
+                    <div id="bloqueMover">
+                        <label>Desde (Origen)
+                            <select id="stockOrigen" class="input">
+                                <option>Disponible</option>
+                                <option>Alquilada</option>
+                                <option>En servicio</option>
+                            </select>
+                        </label>
+                        <label>Hasta (Destino)
+                            <select id="stockDestino" class="input">
+                                <option>Disponible</option>
+                                <option>Alquilada</option>
+                                <option>En servicio</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div id="bloqueEliminar" class="hidden">
+                        <label>Eliminar de (Estado)
+                            <select id="stockEliminar" class="input">
+                                <option>Disponible</option>
+                                <option>Alquilada</option>
+                                <option>En servicio</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <label>Cantidad
+                        <input id="stockCantidad" type="number" min="1" class="input" placeholder="Cantidad" />
+                    </label>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn primary">Aplicar Cambio</button>
+                        <button type="button" id="btnCerrarAcciones" class="btn outline">Cerrar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- ========================================================= -->
     <!-- PANEL -->
@@ -142,7 +211,6 @@
                         <option value="banios">Baños</option>
                         <option value="cabinas">Cabinas de seguridad</option>
                     </select>
-                    <span class="select-caret">▾</span>
                 </div>
 
                 <button class="btn primary" id="btnGestionUnidades">Gestionar unidades</button>
@@ -157,6 +225,8 @@
                             <th>Disponibles</th>
                             <th>Alquiladas</th>
                             <th>En servicio</th>
+                            <th>Precio</th>
+                            <th style="width:100px;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="tbodyUnidades"></tbody>
