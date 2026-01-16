@@ -142,7 +142,11 @@ body.dashboard-body{
 .input:focus,.select:focus{border-color:#c9c9c9;}
 
 .input-wrap.w-60{width:60%;}
-.tabla-wrap{overflow-x:auto;}
+.tabla-wrap{
+  overflow-x:auto;
+  max-height: 350px; /* Altura aproximada para 5-6 filas */
+  overflow-y: auto;
+}
 
 /* ====== BOTONES ====== */
 .btn{
@@ -217,6 +221,10 @@ body.dashboard-body{
 .tabla thead th{
   color:var(--rojo);
   font-weight:600;
+  position: sticky;
+  top: 0;
+  background: var(--gris-card); /* Fondo opaco para que no se transparente al scrollear */
+  z-index: 5;
 }
 
 .tabla tbody tr{

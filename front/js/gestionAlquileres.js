@@ -93,6 +93,7 @@
   let selUnidad, inpCantidad, tbodyLineas;
   let inpMontoPagado, selMetodoPago, btnAgregarPago, tbodyPagos;
   let modalInfo, btnCerrarInfo;
+  let inpClienteNombre; // Input de texto para búsqueda con datalist
 
   function injectModalInfo() {
     if (document.getElementById('modalInfoAlquiler')) return;
@@ -143,7 +144,45 @@
 
     if (!tbody || !form) return false;
 
-    selCliente    = document.getElementById('alqCliente');
+    // Transformar el SELECT de clientes en un INPUT + DATALIST
+    const originalSel = document.getElementById('alqCliente');
+    if (originalSel && originalSel.tagName === 'SELECT') {
+      const container = document.createElement('div');
+      
+      inpClienteNombre = document.createElement('input');
+      inpClienteNombre.id = 'alqClienteInput';
+      inpClienteNombre.type = 'text';
+      inpClienteNombre.className = 'input';
+      inpClienteNombre.setAttribute('list', 'dlClientes');
+      inpClienteNombre.placeholder = 'Buscar cliente...';
+      inpClienteNombre.autocomplete = 'off';
+
+      const dl = document.createElement('datalist');
+      dl.id = 'dlClientes';
+
+      const hid = document.createElement('input');
+      hid.type = 'hidden';
+      hid.id = 'alqCliente'; // Mismo ID para mantener compatibilidad
+
+      originalSel.parentNode.replaceChild(container, originalSel);
+      container.appendChild(inpClienteNombre);
+      container.appendChild(dl);
+      container.appendChild(hid);
+
+      selCliente = hid; // selCliente ahora apunta al hidden input (guarda el ID)
+
+      // Al escribir, buscamos el ID correspondiente en el cache
+      inpClienteNombre.addEventListener('input', () => {
+        const val = inpClienteNombre.value;
+        const found = CLIENTES_CACHE.find(c => getClienteLabel(c) === val);
+        selCliente.value = found ? found.idCliente : '';
+      });
+    } else {
+      // Fallback por si ya se transformó
+      selCliente = document.getElementById('alqCliente');
+      inpClienteNombre = document.getElementById('alqClienteInput');
+    }
+
     inpUbicacion  = document.getElementById('alqUbicacion');
     inpDesde      = document.getElementById('fechaDesde');
     inpHasta      = document.getElementById('fechaHasta');
@@ -351,10 +390,8 @@
   function clearFormAlquiler() {
     currentId = null;
 
-    // selects: dejamos siempre la primera opción (placeholder “Seleccionar…”)
-    if (selCliente && selCliente.options.length > 0) {
-      selCliente.selectedIndex = 0;
-    }
+    if (selCliente) selCliente.value = '';
+    if (inpClienteNombre) inpClienteNombre.value = '';
 
     inpUbicacion.value = '';
     inpDesde.value     = '';
@@ -379,8 +416,12 @@
   function fillFormAlquiler(a) {
     currentId = a.idAlquiler;
 
-    // cliente: buscamos por value (idCliente)
     selCliente.value = a.idCliente || '';
+    
+    if (inpClienteNombre) {
+      const c = CLIENTES_CACHE.find(x => String(x.idCliente) === String(a.idCliente));
+      inpClienteNombre.value = c ? getClienteLabel(c) : '';
+    }
 
     inpUbicacion.value = a.ubicacion || '';
     inpDesde.value     = a.fechaDesde || '';
@@ -402,18 +443,25 @@
     renderPagos();
   }
 
+  function getClienteLabel(c) {
+    const nombre = (c.tipo === 'PERSONA' || c.tipo === 'persona')
+      ? `${c.nombre} ${c.apellido}`.trim()
+      : (c.razonSocial || '');
+    const doc = c.cuit || c.dni || '';
+    return `${nombre} (${doc})`;
+  }
+
   // ------ Carga de combo clientes desde storage ------
   function fillClientesSelect() {
-    selCliente.innerHTML = '<option value="" disabled selected>Seleccionar cliente</option>';
+    const dl = document.getElementById('dlClientes');
+    if (!dl) return;
+    dl.innerHTML = '';
+
     CLIENTES_CACHE.forEach(c => {
-      const nombre = (c.tipo === 'PERSONA' || c.tipo === 'persona')
-        ? `${c.nombre} ${c.apellido}`.trim()
-        : (c.razonSocial || '');
-      if (!nombre) return;
+      const label = getClienteLabel(c);
       const opt = document.createElement('option');
-      opt.value = c.idCliente;
-      opt.textContent = nombre;
-      selCliente.appendChild(opt);
+      opt.value = label;
+      dl.appendChild(opt);
     });
   }
 

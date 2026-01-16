@@ -90,6 +90,20 @@
                 <form id="formUsuario" class="form-grid">
                     <input type="hidden" id="id" />
 
+                    <label>Nombre
+                        <input id="nombre" class="input" type="text" placeholder="Nombre" required />
+                    </label>
+
+                    <label>Apellido
+                        <input id="apellido" class="input" type="text" placeholder="Apellido" required />
+                    </label>
+
+                    <label>DNI
+                        <input id="dni" class="input" type="text" placeholder="DNI" pattern="[0-9]{8}" minlength="8" maxlength="8" title="Debe tener 8 dígitos numéricos" required />
+                    </label>
+
+                    <span></span>
+
                     <label>Usuario
                         <input id="usuario" class="input" type="text" placeholder="Nombre de usuario" required />
                     </label>
@@ -136,6 +150,31 @@
                     </div>
                 </form>
             </section>
+
+            <!-- MODAL INFO USUARIO -->
+            <div id="modalInfoUsuario" class="modal-overlay hidden">
+                <div class="modal">
+                    <div class="modal-header">
+                        <h3>Detalle del Usuario</h3>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-vertical" style="gap:10px;">
+                            <div><strong>Nombre:</strong> <span id="infoNombre"></span></div>
+                            <div><strong>Apellido:</strong> <span id="infoApellido"></span></div>
+                            <div><strong>DNI:</strong> <span id="infoDni"></span></div>
+                            <div><strong>Usuario:</strong> <span id="infoUsuario"></span></div>
+                            <div><strong>Correo:</strong> <span id="infoCorreo"></span></div>
+                            <div><strong>Permisos:</strong> <span id="infoRol"></span></div>
+                            <div><strong>Área:</strong> <span id="infoArea"></span></div>
+                            <div><strong>Estado:</strong> <span id="infoEstado"></span></div>
+                        </div>
+                        <div class="form-actions right" style="margin-top:20px;">
+                            <button type="button" class="btn outline" id="btnCerrarInfo">Cerrar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
 
