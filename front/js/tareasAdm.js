@@ -1,172 +1,286 @@
 (() => {
   'use strict';
 
-  const KEY_TAREAS     = 'ap_tareas';
-  const KEY_ALQUILERES = 'ap_alquileres';
-
-  // Empleados "fijos" para tabs
-  const EMPLEADOS = [
-    { id: 'noel',   corto: 'Noel',   nombre: 'Noel Castro',   zona: 'SUR'   },
-    { id: 'dario',  corto: 'Dario',  nombre: 'Dario Gómez',   zona: 'NORTE' },
-    { id: 'damian', corto: 'Damian', nombre: 'Damian Pérez',  zona: 'OESTE' }
-  ];
-
-  // ---------- Storage helpers ----------
-  function loadAlquileres() {
-    const raw = localStorage.getItem(KEY_ALQUILERES);
-    return raw ? JSON.parse(raw) : [];
-  }
-
-  function loadTareas() {
-    const raw = localStorage.getItem(KEY_TAREAS);
-    return raw ? JSON.parse(raw) : [];
-  }
-
-  function saveTareas(list) {
-    localStorage.setItem(KEY_TAREAS, JSON.stringify(list));
-  }
-
-  function seedIfEmptyTareas() {
-    if (!localStorage.getItem(KEY_TAREAS)) {
-      const hoyIso = new Date().toISOString().slice(0,10);
-      const seed = [
-        {
-          id: 1,
-          empleadoId: 'noel',
-          fecha: hoyIso,
-          zona: 'SUR',
-          pedido: '001',
-          ubicacion: 'Chacabuco 459, Nva. Cba',
-          datos: '2 baños estándar',
-          completo: true
-        },
-        {
-          id: 2,
-          empleadoId: 'noel',
-          fecha: hoyIso,
-          zona: 'SUR',
-          pedido: '002',
-          ubicacion: 'Capdevila, Ampl. America',
-          datos: '5 baños estándar',
-          completo: false
-        }
-      ];
-      saveTareas(seed);
-    }
-  }
+  const API_TAREAS = '/api/tareas';
+  const API_USUARIOS = '/api/usuarios';
+  const API_ALQUILERES = '/api/alquileres';
+  const API_CLIENTES = '/api/clientes';
 
   function formatFechaLarga(iso) {
-    if (!iso) {
-      const hoy = new Date();
-      return hoy.toLocaleDateString('es-AR', {
-        day: 'numeric', month: 'long', year: 'numeric'
-      });
-    }
-    const d = new Date(iso);
-    return d.toLocaleDateString('es-AR', {
+    if (!iso) return '-';
+    // Crear fecha asumiendo input YYYY-MM-DD local
+    const [y, m, d] = iso.split('-');
+    const fecha = new Date(y, m - 1, d);
+    return fecha.toLocaleDateString('es-AR', {
       day: 'numeric', month: 'long', year: 'numeric'
     });
   }
 
   // ---------- Estado ----------
   let tareas = [];
-  let empleadoActual = EMPLEADOS[0].id; // por defecto Noel
+  let empleados = [];
+  let alquileres = [];
+  let clientes = [];
+  let empleadoActualId = null;
+  // Usar fecha local para evitar errores de zona horaria (UTC vs Local)
+  const hoy = new Date();
+  const year = hoy.getFullYear();
+  const month = String(hoy.getMonth() + 1).padStart(2, '0');
+  const day = String(hoy.getDate()).padStart(2, '0');
+  let fechaFiltro = `${year}-${month}-${day}`;
 
   // ---------- DOM refs ----------
-  let tabsEmpleados, tbody, lblFecha, lblEmpleado, lblZona;
-  let modalOverlay, formTarea, selEmpleadoModal, inpPedido;
+  let containerTabs, tbody, lblFecha, lblEmpleado, lblZona, inpFiltroFecha;
+  let modalOverlay, formTarea, selEmpleadoModal, inpFechaTarea;
+  let inpBuscarPedido, tbodyPedidos, inpPedidoId, lblPedidoInfo;
   let btnAgregarTarea, btnGuardarTarea, btnCancelarTarea;
 
   function initDom() {
-    tabsEmpleados   = document.querySelectorAll('.tabs-empleados .tab');
+    containerTabs   = document.getElementById('containerTabs');
     tbody           = document.getElementById('tbodyTareas');
     lblFecha        = document.getElementById('tareasFecha');
     lblEmpleado     = document.getElementById('tareasEmpleado');
     lblZona         = document.getElementById('tareasZona');
+    inpFiltroFecha  = document.getElementById('filtroFecha');
 
     modalOverlay    = document.getElementById('modalTarea');
     formTarea       = document.getElementById('formTarea');
     selEmpleadoModal= document.getElementById('tareaEmpleado');
-    inpPedido       = document.getElementById('tareaPedido');
+    inpFechaTarea   = document.getElementById('tareaFecha');
+    
+    inpBuscarPedido = document.getElementById('buscarPedidoModal');
+    tbodyPedidos    = document.getElementById('tbodyPedidosModal');
+    inpPedidoId     = document.getElementById('tareaPedidoId');
+    lblPedidoInfo   = document.getElementById('pedidoSeleccionadoInfo');
 
     btnAgregarTarea = document.getElementById('btnAgregarTarea');
     btnGuardarTarea = document.getElementById('btnGuardarTarea');
     btnCancelarTarea= document.getElementById('btnCancelarTarea');
 
+    if (inpFiltroFecha) {
+        inpFiltroFecha.value = fechaFiltro;
+        inpFiltroFecha.addEventListener('change', () => {
+            fechaFiltro = inpFiltroFecha.value;
+            loadTareas();
+        });
+    }
+
+    if (inpBuscarPedido) {
+        inpBuscarPedido.addEventListener('input', () => renderPedidosModal(inpBuscarPedido.value));
+    }
+
     return !!tbody;
+  }
+
+  // ---------- API Calls ----------
+  async function fetchEmpleados() {
+    try {
+        const res = await fetch(API_USUARIOS);
+        if (!res.ok) return [];
+        const data = await res.json();
+        // Filtramos usuarios que sean 'Empleado' o tengan rol operativo
+        return data.filter(u => {
+            const rol = String(u.rol || u.permisos).toLowerCase();
+            return rol.includes('empleado') || rol.includes('chofer') || rol.includes('mantenimiento') || rol.includes('servicio');
+        }).map(u => ({
+            // Normalizar ID de usuario
+            idUsuarios: u.idUsuarios || u.idusuarios || u.id,
+            nombre: u.nombre,
+            apellido: u.apellido,
+            area: u.area || u.idArea,
+            zona: u.zona // Mapeamos la zona de trabajo (ubicación)
+        }));
+    } catch (e) { console.error(e); return []; }
+  }
+
+  async function fetchTareas(fecha) {
+    try {
+        const res = await fetch(`${API_TAREAS}/${fecha}`);
+        if (!res.ok) {
+            console.error("Error cargando tareas:", await res.text());
+            return [];
+        }
+        const data = await res.json();
+        // Normalizar tareas
+        return data.map(t => ({
+            ...t,
+            idTarea: t.idTarea || t.idtarea || t.id,
+            idUsuarios: t.idUsuarios || t.idusuarios || t.idUsuario,
+            idAlquiler: t.idAlquiler || t.idalquiler,
+            // Asegurar que alquiler tenga ID normalizado también
+            alquiler: t.alquiler ? { ...t.alquiler, idAlquiler: t.alquiler.idAlquiler || t.alquiler.idalquiler } : null
+        }));
+    } catch (e) { console.error(e); return []; }
+  }
+
+  async function fetchAlquileres() {
+    try {
+        const res = await fetch(API_ALQUILERES);
+        return res.ok ? await res.json() : [];
+    } catch (e) { return []; }
+  }
+
+  async function fetchClientes() {
+    try {
+        const res = await fetch(API_CLIENTES);
+        return res.ok ? await res.json() : [];
+    } catch (e) { return []; }
+  }
+
+  async function loadData() {
+    const [emps, alqs, clis] = await Promise.all([fetchEmpleados(), fetchAlquileres(), fetchClientes()]);
+    empleados = emps;
+    alquileres = alqs;
+    clientes = clis;
+
+    if (empleados.length > 0 && !empleadoActualId) {
+        empleadoActualId = empleados[0].idUsuarios; // Seleccionar el primero por defecto
+    }
+    renderTabs();
+    await loadTareas();
+  }
+
+  async function loadTareas() {
+    tareas = await fetchTareas(fechaFiltro);
+    renderHeader();
+    renderTabla();
   }
 
   // ---------- Render header (fecha + empleado + zona) ----------
   function renderHeader() {
-    const emp = EMPLEADOS.find(e => e.id === empleadoActual) || EMPLEADOS[0];
-    // Usamos la fecha de la primera tarea del empleado si existe, sino hoy
-    const tareasEmp = tareas.filter(t => t.empleadoId === emp.id);
-    const fechaIso = tareasEmp[0]?.fecha || new Date().toISOString().slice(0,10);
-
-    lblFecha.textContent    = formatFechaLarga(fechaIso);
-    lblEmpleado.textContent = emp.nombre;
-    lblZona.textContent     = emp.zona || '-';
+    const emp = empleados.find(e => String(e.idUsuarios) === String(empleadoActualId));
+    lblFecha.textContent    = formatFechaLarga(fechaFiltro);
+    lblEmpleado.textContent = emp ? `${emp.nombre} ${emp.apellido}` : 'Seleccione empleado';
+    lblZona.textContent     = (emp && emp.zona) ? emp.zona : '-';
   }
 
   // ---------- Render tabla ----------
   function renderTabla() {
-    const empId = empleadoActual;
-    const tareasEmp = tareas.filter(t => t.empleadoId === empId);
+    if (!empleadoActualId) return;
+    
+    // Filtrar tareas del empleado seleccionado
+    const tareasEmp = tareas.filter(t => String(t.idUsuarios) === String(empleadoActualId));
 
-    tbody.innerHTML = tareasEmp.map(t => `
+    tbody.innerHTML = tareasEmp.map(t => {
+      // Buscamos el alquiler completo en la lista cargada (que tiene los nombres de unidades)
+      const alq = alquileres.find(a => String(a.idAlquiler || a.idalquiler) === String(t.idAlquiler)) || t.alquiler;
+
+      // Resolver nombre del cliente
+      let clienteNombre = '-';
+      if (alq && alq.idCliente) {
+          const c = clientes.find(x => x.idCliente == alq.idCliente);
+          if (c) clienteNombre = c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial;
+      }
+      return `
       <tr>
-        <td>${t.ubicacion}</td>
-        <td>${t.datos}</td>
         <td>
-          <input type="checkbox" class="check-tarea" data-id="${t.id}" ${t.completo ? 'checked' : ''}>
-          <button class="btn-icon-delete" data-del="${t.id}">🗑</button>
+            <div style="font-weight:500;">${alq?.ubicacion || 'Sin ubicación'}</div>
+            <div style="font-size:12px; color:#333;">${clienteNombre}</div>
+            <div style="font-size:11px; color:#888;">
+                Pedido #${t.idAlquiler} 
+                <span style="color:${alq?.estado === 'PAGADO' ? 'green' : '#ec1f26'}; font-weight:500;">(${alq?.estado || '-'})</span>
+            </div>
+        </td>
+        <td>${formatDetalle(alq?.lineas)}</td>
+        <td>
+          <input type="checkbox" class="check-tarea" data-id="${t.idTarea}" ${t.completada ? 'checked' : ''}>
+          <button class="btn-icon-delete" data-del="${t.idTarea}" title="Eliminar tarea">🗑</button>
         </td>
       </tr>
-    `).join('');
+    `}).join('');
 
     if (!tareasEmp.length) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="3" style="text-align:center; font-size:13px; color:#777;">
-            No hay tareas asignadas para este empleado.
+          <td colspan="3" style="text-align:center; font-size:13px; color:#777; padding:20px;">
+            No hay tareas asignadas para este empleado en la fecha seleccionada.
           </td>
         </tr>
       `;
     }
   }
 
+  function formatDetalle(lineas) {
+    if (!lineas || !lineas.length) return 'Sin detalle';
+    return lineas.map(l => `${l.cantidad} ${l.unidad || 'unid.'}`).join(', ');
+  }
+
   // ---------- Tabs empleados ----------
-  function initTabs() {
-    tabsEmpleados.forEach(tab => {
-      tab.addEventListener('click', () => {
-        const empId = tab.dataset.emp;
-        if (!empId) return;
-
-        empleadoActual = empId;
-        tabsEmpleados.forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-
-        renderHeader();
-        renderTabla();
-      });
+  function renderTabs() {
+    containerTabs.innerHTML = '';
+    empleados.forEach(emp => {
+        const btn = document.createElement('button');
+        btn.className = `tab ${String(emp.idUsuarios) === String(empleadoActualId) ? 'active' : ''}`;
+        btn.textContent = emp.nombre; // O nombre corto
+        btn.onclick = () => {
+            empleadoActualId = emp.idUsuarios;
+            renderTabs(); // Re-render para actualizar clase active
+            renderHeader();
+            renderTabla();
+        };
+        containerTabs.appendChild(btn);
     });
   }
 
+  // ---------- Render Pedidos Modal ----------
+  function renderPedidosModal(filtro = '') {
+    const q = filtro.toLowerCase();
+    const selectedId = inpPedidoId.value;
+
+    // Filtrar alquileres activos o relevantes
+    const data = alquileres.filter(a => {
+        // Enriquecer con nombre cliente
+        const c = clientes.find(x => x.idCliente == a.idCliente);
+        a._nombreCliente = c ? (c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial) : 'Desconocido';
+        
+        const id = a.idAlquiler || a.idalquiler;
+        const texto = `${id} ${a._nombreCliente} ${a.ubicacion} ${a.estado}`.toLowerCase();
+        return texto.includes(q);
+    });
+
+    tbodyPedidos.innerHTML = data.map(a => {
+        const id = a.idAlquiler || a.idalquiler;
+        const isSelected = String(id) === String(selectedId);
+        return `
+            <tr style="cursor:pointer; background:${isSelected ? '#e3f2fd' : 'transparent'}" 
+                onclick="window.selectPedido('${id}', '${a._nombreCliente}', '${a.ubicacion}')">
+                <td>${id}</td>
+                <td>${a._nombreCliente}</td>
+                <td>${a.ubicacion}</td>
+                <td><span class="tag">${a.estado}</span></td>
+                <td>${isSelected ? '✔' : ''}</td>
+            </tr>
+        `;
+    }).join('');
+  }
+
+  // Exponer función global para el onclick del string template
+  window.selectPedido = function(id, cliente, ubicacion) {
+    inpPedidoId.value = id;
+    lblPedidoInfo.textContent = `Seleccionado: #${id} - ${cliente} (${ubicacion})`;
+    // Re-render para actualizar el highlight
+    renderPedidosModal(inpBuscarPedido.value);
+  };
+
   // ---------- Modal ----------
   function openModal() {
-    const emp = EMPLEADOS.find(e => e.id === empleadoActual) || EMPLEADOS[0];
-
     // llenar combo de empleados (si aún no)
     selEmpleadoModal.innerHTML = '';
-    EMPLEADOS.forEach(e => {
+    empleados.forEach(e => {
       const opt = document.createElement('option');
-      opt.value = e.id;
-      opt.textContent = e.nombre;
+      opt.value = e.idUsuarios;
+      opt.textContent = `${e.nombre} ${e.apellido}`;
       selEmpleadoModal.appendChild(opt);
     });
 
-    selEmpleadoModal.value = emp.id;
-    inpPedido.value = '';
+    if (empleadoActualId) selEmpleadoModal.value = empleadoActualId;
+    
+    inpPedidoId.value = '';
+    lblPedidoInfo.textContent = 'Ningún pedido seleccionado';
+    inpBuscarPedido.value = '';
+    renderPedidosModal();
+
+    inpFechaTarea.value = fechaFiltro; // Sugerir fecha actual del filtro
 
     modalOverlay.classList.remove('hidden');
   }
@@ -176,62 +290,48 @@
   }
 
   // ---------- Alta de tarea ----------
-  function handleGuardarTarea() {
-    const empleadoId = selEmpleadoModal.value;
-    const pedido     = inpPedido.value.trim();
+  async function handleGuardarTarea() {
+    const idUsuario = selEmpleadoModal.value;
+    const idAlquiler = inpPedidoId.value;
+    const fecha = inpFechaTarea.value;
 
-    if (!empleadoId) return window.showAlert('Atención', 'Seleccioná un empleado.', 'warning');
-    if (!pedido)     return window.showAlert('Atención', 'Ingresá el número de pedido.', 'warning');
+    if (!idUsuario) return window.showAlert('Atención', 'Seleccioná un empleado.', 'warning');
+    if (!idAlquiler) return window.showAlert('Atención', 'Seleccioná un pedido de la lista.', 'warning');
+    if (!fecha) return window.showAlert('Atención', 'Ingresá la fecha.', 'warning');
 
-    const alquileres = loadAlquileres();
-    const alq = alquileres.find(a => a.numero === pedido);
+    try {
+        const res = await fetch(API_TAREAS, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idUsuario, idAlquiler, fecha })
+        });
 
-    if (!alq) {
-      return window.showAlert('Error', 'No se encontró ese N° de pedido en los alquileres.', 'error');
-    }
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error(`Error del servidor (${res.status}). Verifica que la ruta de la API exista.`);
+        }
 
-    const ubicacion = alq.ubicacion || '-';
-    const datos = (alq.lineas || [])
-      .map(l => `${l.cantidad} ${l.unidad.toLowerCase()}`)
-      .join(', ') || 'Sin datos de unidades';
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al asignar tarea');
 
-    const hoyIso = new Date().toISOString().slice(0,10);
-    const emp    = EMPLEADOS.find(e => e.id === empleadoId) || EMPLEADOS[0];
+        window.showAlert('Éxito', 'Tarea asignada correctamente', 'success');
+        closeModal();
+        
+        // Si la fecha asignada es la que estamos viendo, recargar
+        if (fecha === fechaFiltro) {
+            await loadTareas();
+        }
 
-    const id = Math.max(0, ...tareas.map(t => t.id)) + 1;
-
-    const nueva = {
-      id,
-      empleadoId,
-      fecha: hoyIso,
-      zona: emp.zona,
-      pedido,
-      ubicacion,
-      datos,
-      completo: false
-    };
-
-    tareas.push(nueva);
-    saveTareas(tareas);
-    closeModal();
-
-    // si estoy viendo a ese empleado, refresco
-    if (empleadoActual === empleadoId) {
-      renderHeader();
-      renderTabla();
+    } catch (err) {
+        window.showAlert('Error', err.message, 'error');
     }
   }
 
   // ---------- Init ----------
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
     if (!initDom()) return;
 
-    seedIfEmptyTareas();
-    tareas = loadTareas();
-
-    initTabs();
-    renderHeader();
-    renderTabla();
+    await loadData();
 
     // Abrir modal
     btnAgregarTarea?.addEventListener('click', openModal);
@@ -250,25 +350,33 @@
 
     // Completar / eliminar desde la tabla
     tbody.addEventListener('click', async e => {
-      const chkId = e.target.getAttribute('data-id');
+      const chk = e.target.closest('.check-tarea');
       const delId = e.target.getAttribute('data-del');
 
-      if (chkId) {
-        const id = Number(chkId);
-        const t = tareas.find(x => x.id === id);
-        if (t) {
-          t.completo = !t.completo;
-          saveTareas(tareas);
+      if (chk) {
+        const id = chk.dataset.id;
+        const completada = chk.checked;
+        try {
+            await fetch(`${API_TAREAS}/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ completada })
+            });
+            // Actualizar estado local
+            const t = tareas.find(x => x.idTarea == id);
+            if (t) t.completada = completada;
+        } catch (err) {
+            console.error("Error actualizando estado", err);
+            chk.checked = !completada; // Revertir visualmente si falla
         }
       }
 
       if (delId) {
-        const id = Number(delId);
         if (await window.confirmAction('¿Eliminar tarea?', 'Se borrará de la lista.')) {
-          tareas = tareas.filter(t => t.id !== id);
-          saveTareas(tareas);
-          renderHeader();
-          renderTabla();
+            try {
+                await fetch(`${API_TAREAS}/${delId}`, { method: 'DELETE' });
+                await loadTareas();
+            } catch (err) { window.showAlert('Error', 'No se pudo eliminar', 'error'); }
         }
       }
     });

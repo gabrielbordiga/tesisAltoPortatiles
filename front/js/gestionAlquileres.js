@@ -86,6 +86,16 @@
   let currentId = null;   // null = nuevo
   let lineas = [];        // unidades del alquiler que se está editando
   let pagos  = [];        // pagos del alquiler que se está editando
+  let ubicacionValida = false; // Para verificar que la ubicación existe
+  let userLat = null, userLon = null;
+
+  // Obtener ubicación actual para ordenar sugerencias
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(p => {
+      userLat = p.coords.latitude;
+      userLon = p.coords.longitude;
+    }, err => console.warn("Ubicación no disponible:", err));
+  }
 
   // ------ DOM refs ------
   let tbody, txtBuscar, form, btnNuevoAlquiler;
@@ -94,6 +104,117 @@
   let inpMontoPagado, selMetodoPago, btnAgregarPago, tbodyPagos;
   let modalInfo, btnCerrarInfo;
   let inpClienteNombre; // Input de texto para búsqueda con datalist
+
+  // Helper distancia (Haversine)
+  function getDistancia(lat1, lon1, lat2, lon2) {
+    const R = 6371; // km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  // ------ Autocomplete Helper ------
+  function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+  }
+
+  function setupAutocomplete(input) {
+    if (!input || input.dataset.autocompleteInit) return;
+    input.dataset.autocompleteInit = 'true';
+
+    // Wrapper para posicionar la lista
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'relative';
+    wrapper.style.width = '100%';
+    
+    // Insertar wrapper y mover input dentro
+    input.parentNode.insertBefore(wrapper, input);
+    wrapper.appendChild(input);
+
+    // Crear lista UL
+    const ul = document.createElement('ul');
+    ul.className = 'suggestions-list hidden';
+    wrapper.appendChild(ul);
+
+    const fetchAddress = async (q) => {
+        try {
+            // Usamos Nominatim (OpenStreetMap)
+            // Pedimos 10 para tener margen de ordenamiento
+            let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&addressdetails=1&limit=10`;
+            
+            // Si tenemos ubicación, enviamos viewbox para ayudar a la API
+            if (userLat && userLon) {
+                const box = [userLon-0.5, userLat+0.5, userLon+0.5, userLat-0.5].join(',');
+                url += `&viewbox=${box}`;
+            }
+
+            const res = await fetch(url);
+            if (res.ok) {
+                let data = await res.json();
+                // Ordenar por cercanía si tenemos coordenadas
+                if (userLat && userLon) {
+                    data.sort((a, b) => getDistancia(userLat, userLon, a.lat, a.lon) - getDistancia(userLat, userLon, b.lat, b.lon));
+                }
+                renderSuggestions(data.slice(0, 5));
+            }
+        } catch (e) { console.error("Error autocompletado:", e); }
+    };
+
+    const renderSuggestions = (data) => {
+        ul.innerHTML = '';
+        if (!data || !data.length) {
+            ul.classList.add('hidden');
+            return;
+        }
+        data.forEach(item => {
+            const li = document.createElement('li');
+            
+            // Formatear dirección: Calle Nro, Barrio, Ciudad
+            const a = item.address || {};
+            const calle = a.road || a.pedestrian || '';
+            const nro = a.house_number || '';
+            const barrio = a.neighbourhood || a.suburb || a.residential || '';
+            const ciudad = a.city || a.town || a.village || a.municipality || '';
+
+            let texto = [calle + (nro ? ' ' + nro : ''), barrio, ciudad].filter(Boolean).join(', ');
+            if (!texto || !calle) texto = item.display_name; // Fallback si no hay datos suficientes
+
+            li.textContent = texto;
+            li.addEventListener('click', () => {
+                input.value = texto;
+                ubicacionValida = true; // Validado
+                ul.classList.add('hidden');
+                input.classList.remove('is-invalid');
+            });
+            ul.appendChild(li);
+        });
+        ul.classList.remove('hidden');
+    };
+
+    const onInput = debounce((e) => {
+        const val = e.target.value.trim();
+        ubicacionValida = false; // Al escribir se invalida hasta seleccionar
+        if (val.length < 3) {
+            ul.classList.add('hidden');
+            return;
+        }
+        fetchAddress(val);
+    }, 500);
+
+    input.addEventListener('input', onInput);
+
+    // Cerrar lista si click fuera
+    document.addEventListener('click', (e) => {
+        if (!wrapper.contains(e.target)) ul.classList.add('hidden');
+    });
+  }
 
   function injectModalInfo() {
     if (document.getElementById('modalInfoAlquiler')) return;
@@ -184,6 +305,7 @@
     }
 
     inpUbicacion  = document.getElementById('alqUbicacion');
+    setupAutocomplete(inpUbicacion); // Activar autocompletado
     inpDesde      = document.getElementById('fechaDesde');
     inpHasta      = document.getElementById('fechaHasta');
 
@@ -394,6 +516,7 @@
     if (inpClienteNombre) inpClienteNombre.value = '';
 
     inpUbicacion.value = '';
+    ubicacionValida = false; // Resetear validación
     inpDesde.value     = '';
     inpHasta.value     = '';
 
@@ -424,6 +547,7 @@
     }
 
     inpUbicacion.value = a.ubicacion || '';
+    ubicacionValida = true; // Asumimos válida si viene de la BD
     inpDesde.value     = a.fechaDesde || '';
     inpHasta.value     = a.fechaHasta || '';
 
@@ -619,6 +743,7 @@
       if (!idCliente)                return window.showAlert('Atención', 'Seleccioná un cliente.', 'warning');
       if (!ubicacion)                return window.showAlert('Atención', 'Ingresá la ubicación.', 'warning');
       if (!lineas.length)            return window.showAlert('Atención', 'Agregá al menos una unidad.', 'warning');
+      if (fechaDesde && fechaHasta && fechaDesde > fechaHasta) return window.showAlert('Atención', 'Fechas inválidas: "Desde" no puede ser mayor a "Hasta".', 'warning');
 
       const dias = diffDias(fechaDesde, fechaHasta);
       const { total, pagado, saldo } = calcTotales(lineas, pagos, dias);

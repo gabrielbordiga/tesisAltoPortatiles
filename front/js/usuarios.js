@@ -87,11 +87,15 @@
   function renderTabla(filtro = '') {
     const q = normalize(filtro);
     const data = USUARIOS.filter(u =>
-      [u.usuario, u.correo, u.rol, u.estado].some(val => normalize(val).includes(q))
+      [u.usuario, u.nombre, u.apellido, u.dni, u.correo, u.rol, u.estado].some(val => normalize(val).includes(q))
     ).sort((a, b) => String(a.usuario).localeCompare(String(b.usuario)));
 
     tbody.innerHTML = data.map((u) => `
       <tr>
+        <td>
+          <div style="font-weight:500;">${u.nombre || ''} ${u.apellido || ''}</div>
+          <div style="font-size:12px; color:#666;">${u.dni || ''}</div>
+        </td>
         <td>${u.usuario}</td>
         <td>${u.correo}</td>
         <td><span class="tag">${u.rol}</span></td>

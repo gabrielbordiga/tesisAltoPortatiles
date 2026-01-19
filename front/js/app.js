@@ -2,6 +2,7 @@
 // app.js – Sistema de sesión, roles, seguridad y contraseñas
 // ======================================================
 
+(() => {
 // 1. CONFIGURACIÓN INICIAL (Reemplaza con tus datos de Supabase)
 const SB_URL = 'https://xpxvbtdhzylmokkguljk.supabase.co'; 
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhweHZidGRoenlsbW9ra2d1bGprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAwMjc4ODYsImV4cCI6MjA3NTYwMzg4Nn0.fjPD6yMwENx_7JWFr5QqhTbsRmao2leuyjzwbFMZEDI';
@@ -241,3 +242,4 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     });
 });
+})();

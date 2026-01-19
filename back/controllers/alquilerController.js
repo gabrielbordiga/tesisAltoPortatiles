@@ -169,6 +169,9 @@ exports.crearAlquiler = async (req, res) => {
 
     if (error) {
         console.error("❌ Error Supabase:", error.message);
+        if (error.message && error.message.includes('alquileres_fechas_check')) {
+            return res.status(400).json({ error: "Fechas inválidas: La fecha 'Desde' debe ser anterior o igual a la fecha 'Hasta'." });
+        }
         return res.status(400).json({ error: error.message });
     }
 
@@ -211,7 +214,7 @@ exports.crearAlquiler = async (req, res) => {
             fechaPago: p.fecha, // Ajustado a nombre de columna en BD
             metodo: p.metodo,
             monto: p.monto, 
-            estado: 'pagado' // Campo requerido según esquema
+            estado: 'PAGADO' // Campo requerido según esquema
         }));
         
         const { error: errP } = await supabase.from('Pagos').insert(pagosInsert);
@@ -222,7 +225,7 @@ exports.crearAlquiler = async (req, res) => {
                 idAlquiler,
                 fechaPago: p.fecha,
                 metodo: `${p.metodo} | ${p.monto}`,
-                estado: 'pagado'
+                estado: 'PAGADO'
             }));
             const { error: errP2 } = await supabase.from('Pagos').insert(pagosCompat);
             if (errP2) {
@@ -258,7 +261,12 @@ exports.actualizarAlquiler = async (req, res) => {
         .eq('idAlquiler', id)
         .select();
 
-    if (error) return res.status(400).json({ error: error.message });
+    if (error) {
+        if (error.message && error.message.includes('alquileres_fechas_check')) {
+            return res.status(400).json({ error: "Fechas inválidas: La fecha 'Desde' debe ser anterior o igual a la fecha 'Hasta'." });
+        }
+        return res.status(400).json({ error: error.message });
+    }
 
     // --- ACTUALIZAR LÍNEAS (Borrar anteriores e insertar nuevas) ---
     if (lineas) {
@@ -307,7 +315,7 @@ exports.actualizarAlquiler = async (req, res) => {
                 fechaPago: p.fecha,
                 metodo: p.metodo,
                 monto: p.monto,
-                estado: 'pagado'
+                estado: 'PAGADO'
             }));
             
             const { error: errP } = await supabase.from('Pagos').insert(pagosInsert);
@@ -317,7 +325,7 @@ exports.actualizarAlquiler = async (req, res) => {
                     idAlquiler: id,
                     fechaPago: p.fecha,
                     metodo: `${p.metodo} | ${p.monto}`,
-                    estado: 'pagado'
+                    estado: 'PAGADO'
                 }));
                 const { error: errP2 } = await supabase.from('Pagos').insert(pagosCompat);
                 if (errP2) {

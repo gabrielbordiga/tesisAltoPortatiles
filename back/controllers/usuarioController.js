@@ -166,7 +166,7 @@ exports.login = async (req, res) => {
         // 1. Buscamos el perfil
         const { data: perfil, error: pError } = await supabase
             .from('Usuarios')
-            .select('idUsuarios, usuario, email, rol, activo, idArea') 
+            .select('idUsuarios, usuario, nombre, apellido, dni, email, rol, activo, idArea') 
             .or(`usuario.eq.${correo},email.eq.${correo}`)
             .maybeSingle();
 
