@@ -1,9 +1,6 @@
 const supabase = require('../config/supabase');
 const jwt = require('jsonwebtoken');
 
-// Helper para validar formato UUID
-const isUUID = (str) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
-
 // 1. Obtener todos los usuarios
 exports.obtenerUsuarios = async (req, res) => {
     const { data, error } = await supabase
@@ -26,42 +23,53 @@ exports.obtenerAreas = async (req, res) => {
     res.json(areas);
 };
 
-//Crear usuario
+// Crear usuario (CORREGIDO)
 exports.crearUsuario = async (req, res) => {
-    // Aceptamos 'usuario' O 'nombre', y 'rol' O 'permisos'
-    const { usuario, nombre, apellido, dni, correo, contrasena, rol, permisos, estado, id_area } = req.body;
+    // Desestructuración única para evitar errores de referencia
+    const { usuario, nombre, apellido, dni, email, correo, contrasena, rol, permisos, estado, id_area } = req.body;
+
+    console.log("DATOS RECIBIDOS EN EL BACKEND:", { usuario, email, correo, dni });
+
+    const emailFinal = email || correo; // Asegura capturar el email sin importar el nombre del campo
+    const rolFinal = rol || permisos;
+
+    if (!emailFinal) {
+        return res.status(400).json({ error: "No se puede crear un usuario sin email." });
+    }
 
     try {
-        // 1. Crear en Auth (Seguridad)
+        // 1. Crear en Auth de Supabase
         const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-            email: correo,
+            email: emailFinal,
             password: contrasena,
             email_confirm: true
         });
 
         if (authError) return res.status(400).json({ error: authError.message });
 
-        // 2. Insertar en Tabla con los nombres CORRECTOS de tu DB
+        // 2. Insertar en Tabla Usuarios de la base de datos
         const { error: dbError } = await supabase
             .from('Usuarios')
-            .insert([{ 
+            .upsert([{ 
                 usuario: usuario, 
                 nombre: nombre,
                 apellido: apellido,
                 dni: dni,
-                email: correo, 
-                rol: rol || permisos, 
+                email: emailFinal, 
+                rol: rolFinal, 
                 activo: estado === 'Activo', 
                 idArea: id_area || null,
                 auth_id: authUser.user.id 
-            }]);
+            }], { onConflict: 'email' });
         
         if (dbError) {
+            console.error("ERROR REAL DE BASE DE DATOS:", dbError);
+            // Si la base de datos falla, se elimina de Auth para mantener consistencia
             await supabase.auth.admin.deleteUser(authUser.user.id);
             throw dbError;
         }
 
-        res.status(201).json({ mensaje: "Usuario creado con éxito" });
+        res.status(201).json({ mensaje: "Usuario procesado con éxito" });
 
     } catch (error) {
         res.status(400).json({ error: error.message });
@@ -71,17 +79,16 @@ exports.crearUsuario = async (req, res) => {
 // 3. Editar un usuario 
 exports.editarUsuario = async (req, res) => {
     const { id } = req.params;
-    const { usuario, nombre, apellido, dni, correo, contrasena, rol, estado, id_area } = req.body;
+    const { usuario, nombre, apellido, dni, email, correo, contrasena, rol, estado, id_area } = req.body;
+    const emailFinal = email || correo;
 
     try {
-        // 1. Buscamos el auth_id del usuario para poder actualizar su seguridad si es necesario
         const { data: userExist } = await supabase
             .from('Usuarios')
             .select('auth_id, email')
             .eq('idUsuarios', id)
             .single();
 
-        // 2. Si hay una nueva contraseña, la actualizamos en el motor de Auth
         if (contrasena && contrasena.trim() !== "") {
             const { error: authErr } = await supabase.auth.admin.updateUserById(
                 userExist.auth_id,
@@ -90,20 +97,15 @@ exports.editarUsuario = async (req, res) => {
             if (authErr) throw authErr;
         }
 
-        // 3. Actualizamos la tabla Usuarios
-        // NOTA: Solo mandamos el correo si es distinto al que ya tiene, para evitar el error de "duplicado"
         const updateData = {
-            usuario: usuario, 
-            nombre: nombre,
-            apellido: apellido,
-            dni: dni,
-            rol: rol,
+            usuario, nombre, apellido, dni,
+            rol,
             activo: estado === 'Activo',
             idArea: id_area || null
         };
 
-        if (correo !== userExist.email) {
-            updateData.email = correo;
+        if (emailFinal && emailFinal !== userExist.email) {
+            updateData.email = emailFinal;
         }
 
         const { error: dbError } = await supabase
