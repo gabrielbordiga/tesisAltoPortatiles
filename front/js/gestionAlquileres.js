@@ -225,9 +225,23 @@
       <div class="modal">
         <div class="modal-header">Detalle del Alquiler</div>
         <div class="modal-body" style="font-size:14px;">
+          <input type="hidden" id="infoIdHidden">
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
              <div><strong>Pedido:</strong> <span id="infoId"></span></div>
-             <div><strong>Estado:</strong> <span id="infoEstado"></span></div>
+             <div style="display:flex; align-items:center; gap:6px;">
+                <strong>Estado:</strong> 
+                <select id="infoEstadoSelect" class="input" style="padding:2px 4px; height:28px; font-size:13px; width:auto;">
+                    <option value="PENDIENTE">PENDIENTE</option>
+                    <option value="CONFIRMADO">CONFIRMADO</option>
+                    <option value="ENTREGADO">ENTREGADO</option>
+                    <option value="SERVICIO_PENDIENTE">SERVICIO PENDIENTE</option>
+                    <option value="PARA_RETIRAR">PARA RETIRAR</option>
+                    <option value="RETIRADO">RETIRADO</option>
+                    <option value="PAGADO">PAGADO</option>
+                </select>
+                <button id="btnUpdateEstado" class="action" title="Guardar estado" style="padding:2px 6px; height:28px;">💾</button>
+             </div>
+             <div style="grid-column:1/-1"><strong>Estado Pago:</strong> <span id="infoEstadoPago"></span></div>
              <div style="grid-column:1/-1"><strong>Cliente:</strong> <span id="infoCliente"></span></div>
              <div style="grid-column:1/-1"><strong>Ubicación:</strong> <span id="infoUbicacion"></span></div>
              <div style="grid-column:1/-1"><strong>Fecha:</strong> <span id="infoFecha"></span></div>
@@ -254,6 +268,43 @@
       </div>
     `;
     document.body.appendChild(div);
+
+    // Evento para guardar el cambio de estado desde el modal
+    document.getElementById('btnUpdateEstado').addEventListener('click', async () => {
+        const id = document.getElementById('infoIdHidden').value;
+        const nuevoEstado = document.getElementById('infoEstadoSelect').value;
+        
+        // Buscamos el alquiler actual para preservar sus datos obligatorios
+        const alq = ALQUILERES.find(a => String(a.idAlquiler) === String(id));
+        if (!alq) return;
+
+        // Preparamos payload SOLO con datos de cabecera (sin lineas/pagos para no tocarlos)
+        const payload = {
+            idCliente: alq.idCliente,
+            ubicacion: alq.ubicacion,
+            fechaDesde: alq.fechaDesde,
+            fechaHasta: alq.fechaHasta,
+            precioTotal: alq.precioTotal,
+            estado: nuevoEstado
+            // Al no enviar 'lineas' ni 'pagos', el backend no los modifica
+        };
+
+        try {
+            const res = await fetch(`${API_URL}/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error('Error al actualizar estado');
+            
+            window.showAlert('Éxito', 'Estado actualizado', 'success');
+            // Recargamos datos de fondo
+            ALQUILERES = await loadAlquileres();
+            renderTablaAlquileres(txtBuscar ? txtBuscar.value : '');
+            
+            // Actualizamos visualmente el modal si sigue abierto (opcional, ya cambiamos el select)
+        } catch (e) { window.showAlert('Error', e.message, 'error'); }
+    });
   }
 
   function initDomAlquileres() {
@@ -471,13 +522,17 @@
     const total = a.precioTotal !== undefined ? Number(a.precioTotal) : (totalLineas * dias);
     const pagado = pagosNorm.reduce((acc, p) => acc + Number(p.monto || 0), 0);
     const saldo = total - pagado;
-    const estado = a.estado || estadoDesdeSaldo({ total, pagado, saldo });
+    
+    const estadoPago = estadoDesdeSaldo({ total, pagado, saldo });
+    const estadoAlquiler = a.estado || estadoPago;
 
     // Llenar DOM
+    document.getElementById('infoIdHidden').value = a.idAlquiler;
     document.getElementById('infoId').textContent = a.idAlquiler || '-';
     document.getElementById('infoCliente').textContent = nombreCliente;
     document.getElementById('infoUbicacion').textContent = a.ubicacion || '-';
-    document.getElementById('infoEstado').textContent = estado;
+    document.getElementById('infoEstadoSelect').value = estadoAlquiler; // Seteamos el select
+    document.getElementById('infoEstadoPago').textContent = estadoPago;
 
     const fDesde = a.fechaDesde ? formatFechaVisual(a.fechaDesde) : '';
     const fHasta = a.fechaHasta ? formatFechaVisual(a.fechaHasta) : '';
@@ -715,7 +770,9 @@
       const hoy = new Date();
       const fecha = hoy.toISOString().split('T')[0]; // YYYY-MM-DD para que la BD lo acepte
 
-      pagos.push({ fecha, monto, metodo });
+      // Normalizar: Mayúsculas y sin acentos (ej: "Crédito" -> "CREDITO")
+      const metodoNorm = metodo.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+      pagos.push({ fecha, monto, metodo: metodoNorm });
       renderPagos();
 
       inpMontoPagado.value = '';

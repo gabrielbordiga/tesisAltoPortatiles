@@ -1,139 +1,113 @@
+(() => {
+  'use strict';
 
-let proveedores = [
-    {
-        id: 1,
-        nombre: "Limpieza S.A",
-        telefono: "3516789865",
-        direccion: "Arturo Capdevila 2032",
-        email: "limpiezasa@gmail.com"
-    }
-];
+  const API_URL = '/api/stock/proveedores';
+  let PROVEEDORES = [];
 
-let provEditId = null;
+  // DOM
+  const tbody = document.getElementById('tbodyProveedores');
+  const form = document.getElementById('formProveedor');
+  const inpBuscar = document.getElementById('provBuscar');
+  const btnCancelar = document.getElementById('provCancelar');
 
-// ------------------------
-// Renderizar tabla
-// ------------------------
-function renderProveedores(lista = proveedores) {
-    const tbody = document.getElementById("tbodyProveedores");
-    tbody.innerHTML = "";
+  // Inputs Form
+  const inpId = document.getElementById('provId');
+  const inpNombre = document.getElementById('provNombre');
+  const inpTel = document.getElementById('provTelefono');
+  const inpDir = document.getElementById('provDireccion');
+  const inpEmail = document.getElementById('provEmail');
 
-    if (lista.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:14px;">Sin resultados</td></tr>`;
-        return;
-    }
+  async function loadProveedores() {
+    try {
+      const res = await fetch(API_URL);
+      PROVEEDORES = res.ok ? await res.json() : [];
+      render();
+    } catch (e) { console.error(e); }
+  }
 
-    lista.forEach(prov => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-            <td data-label="Nombre">${prov.nombre}</td>
-            <td data-label="Telefono">${prov.telefono || "-"}</td>
-            <td data-label="Direccion">${prov.direccion || "-"}</td>
-            <td data-label="Email">${prov.email || "-"}</td>
-            <td data-label="Acciones" class="acciones">
-                <button class="action" data-edit="${prov.id}">Editar</button>
-                <button class="action danger" data-del="${prov.id}">🗑</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-// ------------------------
-// Buscar proveedores
-// ------------------------
-document.getElementById("provBuscar").addEventListener("input", e => {
-    const q = e.target.value.toLowerCase();
-    const filtrados = proveedores.filter(p =>
-        p.nombre.toLowerCase().includes(q) ||
-        (p.telefono || "").toLowerCase().includes(q) ||
-        (p.direccion || "").toLowerCase().includes(q) ||
-        (p.email || "").toLowerCase().includes(q)
+  function render() {
+    const q = (inpBuscar.value || '').toLowerCase();
+    const filtrados = PROVEEDORES.filter(p => 
+      (p.nombre || '').toLowerCase().includes(q) ||
+      (p.tel || '').includes(q) ||
+      (p.direccion || '').toLowerCase().includes(q) ||
+      (p.email || '').toLowerCase().includes(q)
     );
-    renderProveedores(filtrados);
-});
 
-// ------------------------
-// Guardar proveedor
-// ------------------------
-document.getElementById("formProveedor").addEventListener("submit", e => {
+    tbody.innerHTML = filtrados.map(p => `
+      <tr>
+        <td data-label="Nombre">${p.nombre}</td>
+        <td data-label="Teléfono">${p.tel || '-'}</td>
+        <td data-label="Dirección">${p.direccion || '-'}</td>
+        <td data-label="Email">${p.email || '-'}</td>
+        <td class="acciones">
+          <button class="action" onclick="window.editProveedor('${p.idProveedor}')">Editar</button>
+          <button class="action danger" onclick="window.deleteProveedor('${p.idProveedor}')">🗑</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function clearForm() {
+    inpId.value = '';
+    inpNombre.value = '';
+    inpTel.value = '';
+    if(inpDir) inpDir.value = '';
+    if(inpEmail) inpEmail.value = '';
+  }
+
+  // Exponer funciones globales para onclick
+  window.editProveedor = (id) => {
+    const p = PROVEEDORES.find(x => x.idProveedor == id);
+    if (!p) return;
+    inpId.value = p.idProveedor;
+    inpNombre.value = p.nombre;
+    inpTel.value = p.tel || '';
+    if(inpDir) inpDir.value = p.direccion || '';
+    if(inpEmail) inpEmail.value = p.email || '';
+  };
+
+  window.deleteProveedor = async (id) => {
+    if (!await window.confirmAction('¿Eliminar proveedor?', 'Se dará de baja.')) return;
+    try {
+      const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        loadProveedores();
+        window.showAlert('Éxito', 'Proveedor eliminado', 'success');
+      }
+    } catch (e) { window.showAlert('Error', 'No se pudo eliminar', 'error'); }
+  };
+
+  // Eventos
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const id = inpId.value;
+    const payload = {
+      nombre: inpNombre.value,
+      tel: inpTel.value,
+      direccion: inpDir ? inpDir.value : '',
+      email: inpEmail ? inpEmail.value : ''
+    };
 
-    const nombre = document.getElementById("provNombre").value.trim();
-    const telefono = document.getElementById("provTelefono").value.trim();
-    const direccion = document.getElementById("provDireccion").value.trim();
-    const email = document.getElementById("provEmail").value.trim();
+    try {
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? `${API_URL}/${id}` : API_URL;
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error('Error al guardar');
+      
+      loadProveedores();
+      clearForm();
+      window.showAlert('Éxito', 'Proveedor guardado', 'success');
+    } catch (err) { window.showAlert('Error', err.message, 'error'); }
+  });
 
-    if (!nombre) return window.showAlert("Atención", "El nombre es obligatorio.", "warning");
+  btnCancelar.addEventListener('click', clearForm);
+  inpBuscar.addEventListener('input', render);
 
-    if (provEditId) {
-        // Editar existente
-        const prov = proveedores.find(p => p.id === provEditId);
-        prov.nombre = nombre;
-        prov.telefono = telefono;
-        prov.direccion = direccion;
-        prov.email = email;
-    } else {
-        // Agregar nuevo
-        proveedores.push({
-            id: Date.now(),
-            nombre,
-            telefono,
-            direccion,
-            email
-        });
-    }
-
-    limpiarFormularioProveedor();
-    renderProveedores();
-});
-
-// ------------------------
-// Click en editar / eliminar
-// ------------------------
-document.getElementById("tbodyProveedores").addEventListener("click", async e => {
-    if (e.target.dataset.edit) {
-        const id = Number(e.target.dataset.edit);
-        cargarProveedorEnForm(id);
-    }
-
-    if (e.target.dataset.del) {
-        const id = Number(e.target.dataset.del);
-        await eliminarProveedor(id);
-    }
-});
-
-// ------------------------
-// Cargar proveedor para edición
-// ------------------------
-function cargarProveedorEnForm(id) {
-    const p = proveedores.find(x => x.id === id);
-    provEditId = id;
-
-    document.getElementById("provNombre").value = p.nombre;
-    document.getElementById("provTelefono").value = p.telefono;
-    document.getElementById("provDireccion").value = p.direccion;
-    document.getElementById("provEmail").value = p.email;
-}
-
-// ------------------------
-// Eliminar proveedor
-// ------------------------
-async function eliminarProveedor(id) {
-    if (!await window.confirmAction("¿Eliminar proveedor?", "Se borrará permanentemente.")) return;
-    proveedores = proveedores.filter(p => p.id !== id);
-    renderProveedores();
-}
-
-// ------------------------
-// Cancelar
-// ------------------------
-document.getElementById("provCancelar").addEventListener("click", limpiarFormularioProveedor);
-
-function limpiarFormularioProveedor() {
-    provEditId = null;
-    document.getElementById("formProveedor").reset();
-}
-
-// Inicial
-renderProveedores();
+  // Init
+  loadProveedores();
+})();

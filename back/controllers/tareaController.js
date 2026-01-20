@@ -1,103 +1,74 @@
 const supabase = require('../config/supabase');
 
-// 0. Obtener TODAS las tareas (para calendario)
-exports.obtenerTodasLasTareas = async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('Tareas')
-            .select(`
-                *,
-                alquiler:Alquileres ( *, lineas:DetalleAlquiler(*) ),
-                usuario:Usuarios ( * )
-            `)
-            .order('fecha', { ascending: false });
-
-        if (error) throw error;
-        res.json(data);
-    } catch (err) {
-        res.status(400).json({ error: err.message });
-    }
-};
-
-// 1. Obtener tareas por fecha
+// Obtener tareas por fecha
 exports.obtenerTareasPorFecha = async (req, res) => {
     const { fecha } = req.params;
-
     try {
-        // Traemos la tarea y los datos relacionados (Alquiler y Usuario)
+        // Traemos la tarea y el alquiler asociado (para mostrar ubicación, cliente, etc.)
         const { data, error } = await supabase
             .from('Tareas')
-            .select(`
-                *,
-                alquiler:Alquileres ( *, lineas:DetalleAlquiler(*) ),
-                usuario:Usuarios ( * )
-            `)
-            .eq('fecha', fecha)
-            .order('id', { ascending: true });
+            .select('*, alquiler:Alquileres(*, lineas:DetalleAlquiler(*))')
+            .eq('fecha', fecha);
 
         if (error) throw error;
-        console.log(`[GET TAREAS] Fecha: ${fecha} - Encontradas: ${data.length}`);
         res.json(data);
     } catch (err) {
-        console.error("[GET TAREAS] Error:", err.message);
         res.status(400).json({ error: err.message });
     }
 };
 
-// 2. Crear nueva tarea
+// Crear nueva tarea
 exports.crearTarea = async (req, res) => {
-    const { idUsuario, idAlquiler, fecha } = req.body;
-
+    const { idUsuario, idAlquiler, fecha, detalle } = req.body;
     try {
-        // Validación: Verificar que el alquiler existe
-        const { data: alquiler, error: errAlq } = await supabase
-            .from('Alquileres')
-            .select('idAlquiler')
-            .eq('idAlquiler', idAlquiler)
-            .single();
-
-        if (errAlq || !alquiler) {
-            return res.status(404).json({ error: "El número de pedido (Alquiler) no existe." });
-        }
-
-        // Insertar tarea
         const { data, error } = await supabase
             .from('Tareas')
-            .insert([{
-                idUsuarios: idUsuario,
-                idAlquiler,
-                fecha,
-                completada: false
+            .insert([{ 
+                idUsuarios: idUsuario, 
+                idAlquiler, 
+                fecha, 
+                detalle, // Guardamos el detalle
+                completada: false 
             }])
             .select();
 
         if (error) throw error;
-        res.status(201).json({ mensaje: "Tarea asignada correctamente", data: data[0] });
-
+        res.status(201).json(data[0]);
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
 };
 
-// 3. Actualizar estado (Pendiente <-> Completada)
+// Actualizar estado (completada sí/no)
 exports.actualizarEstadoTarea = async (req, res) => {
     const { id } = req.params;
-    const { completada } = req.body; // Boolean
+    const { completada } = req.body;
+    try {
+        const { data, error } = await supabase
+            .from('Tareas')
+            .update({ completada })
+            .eq('idTarea', id)
+            .select();
 
-    const { error } = await supabase
-        .from('Tareas')
-        .update({ completada })
-        .eq('id', id);
-
-    if (error) return res.status(400).json({ error: error.message });
-    res.json({ mensaje: "Estado actualizado" });
+        if (error) throw error;
+        res.json(data[0]);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
 };
 
-// 4. Eliminar tarea
+// Eliminar tarea
 exports.eliminarTarea = async (req, res) => {
     const { id } = req.params;
-    const { error } = await supabase.from('Tareas').delete().eq('id', id);
+    try {
+        const { error } = await supabase
+            .from('Tareas')
+            .delete()
+            .eq('idTarea', id);
 
-    if (error) return res.status(400).json({ error: error.message });
-    res.json({ mensaje: "Tarea eliminada" });
+        if (error) throw error;
+        res.json({ mensaje: 'Tarea eliminada' });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
 };

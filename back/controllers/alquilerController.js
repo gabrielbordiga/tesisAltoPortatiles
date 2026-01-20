@@ -58,6 +58,12 @@ function parsearPagos(listaPagos) {
     });
 }
 
+// Helper para normalizar texto (Mayúsculas y sin acentos)
+const normalizeMetodo = (m) => {
+    if (!m) return null;
+    return String(m).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+};
+
 // Obtener todos los alquileres
 exports.obtenerAlquileres = async (req, res) => {
     // Intentamos traer todo con las relaciones
@@ -212,26 +218,15 @@ exports.crearAlquiler = async (req, res) => {
         const pagosInsert = pagos.map(p => ({
             idAlquiler,
             fechaPago: p.fecha, // Ajustado a nombre de columna en BD
-            metodo: p.metodo,
+            metodo: normalizeMetodo(p.metodo),
             monto: p.monto, 
             estado: 'PAGADO' // Campo requerido según esquema
         }));
         
         const { error: errP } = await supabase.from('Pagos').insert(pagosInsert);
         if (errP) {
-            console.warn("⚠️ Fallo insert Pagos con monto, intentando modo compatibilidad (guardar monto en metodo)...", errP.message);
-            // Modo compatibilidad: Guardar monto dentro de metodo "Metodo | Monto"
-            const pagosCompat = pagos.map(p => ({
-                idAlquiler,
-                fechaPago: p.fecha,
-                metodo: `${p.metodo} | ${p.monto}`,
-                estado: 'PAGADO'
-            }));
-            const { error: errP2 } = await supabase.from('Pagos').insert(pagosCompat);
-            if (errP2) {
-                console.error("❌ Fallo insert Pagos (compatibilidad):", errP2.message);
-                return res.status(400).json({ error: "Error guardando pagos: " + errP2.message });
-            }
+            console.error("❌ Error guardando pagos:", errP.message);
+            return res.status(400).json({ error: "Error guardando pagos: " + errP.message });
         }
     }
 
@@ -313,25 +308,15 @@ exports.actualizarAlquiler = async (req, res) => {
             const pagosInsert = pagos.map(p => ({
                 idAlquiler: id,
                 fechaPago: p.fecha,
-                metodo: p.metodo,
+                metodo: normalizeMetodo(p.metodo),
                 monto: p.monto,
                 estado: 'PAGADO'
             }));
             
             const { error: errP } = await supabase.from('Pagos').insert(pagosInsert);
             if (errP) {
-                console.warn("⚠️ Fallo insert Pagos (update), intentando modo compatibilidad...", errP.message);
-                const pagosCompat = pagos.map(p => ({
-                    idAlquiler: id,
-                    fechaPago: p.fecha,
-                    metodo: `${p.metodo} | ${p.monto}`,
-                    estado: 'PAGADO'
-                }));
-                const { error: errP2 } = await supabase.from('Pagos').insert(pagosCompat);
-                if (errP2) {
-                    console.error("❌ Fallo insert Pagos (compatibilidad):", errP2.message);
-                    return res.status(400).json({ error: "Error guardando pagos: " + errP2.message });
-                }
+                console.error("❌ Error guardando pagos (update):", errP.message);
+                return res.status(400).json({ error: "Error guardando pagos: " + errP.message });
             }
         }
     }
