@@ -32,7 +32,7 @@
   // ---------- DOM refs ----------
   let containerTabs, tbody, lblFecha, lblEmpleado, lblZona, inpFiltroFecha;
   let modalOverlay, formTarea, selEmpleadoModal, inpFechaTarea;
-  let inpBuscarPedido, tbodyPedidos, inpPedidoId, lblPedidoInfo;
+  let inpBuscarPedido, tbodyPedidos, inpPedidoId, lblPedidoInfo, inpTareaDetalle;
   let btnAgregarTarea, btnGuardarTarea, btnCancelarTarea;
 
   function initDom() {
@@ -47,6 +47,7 @@
     formTarea       = document.getElementById('formTarea');
     selEmpleadoModal= document.getElementById('tareaEmpleado');
     inpFechaTarea   = document.getElementById('tareaFecha');
+    inpTareaDetalle = document.getElementById('tareaDetalle');
     
     inpBuscarPedido = document.getElementById('buscarPedidoModal');
     tbodyPedidos    = document.getElementById('tbodyPedidosModal');
@@ -182,6 +183,7 @@
             </div>
         </td>
         <td>${formatDetalle(alq?.lineas)}</td>
+        <td>${t.detalle || '-'}</td>
         <td>
           <input type="checkbox" class="check-tarea" data-id="${t.idTarea}" ${t.completada ? 'checked' : ''}>
           <button class="btn-icon-delete" data-del="${t.idTarea}" title="Eliminar tarea">🗑</button>
@@ -281,6 +283,7 @@
     renderPedidosModal();
 
     inpFechaTarea.value = fechaFiltro; // Sugerir fecha actual del filtro
+    if (inpTareaDetalle) inpTareaDetalle.value = ''; // Limpiar detalle
 
     modalOverlay.classList.remove('hidden');
   }
@@ -294,6 +297,7 @@
     const idUsuario = selEmpleadoModal.value;
     const idAlquiler = inpPedidoId.value;
     const fecha = inpFechaTarea.value;
+    const detalle = inpTareaDetalle ? inpTareaDetalle.value : '';
 
     if (!idUsuario) return window.showAlert('Atención', 'Seleccioná un empleado.', 'warning');
     if (!idAlquiler) return window.showAlert('Atención', 'Seleccioná un pedido de la lista.', 'warning');
@@ -303,7 +307,7 @@
         const res = await fetch(API_TAREAS, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ idUsuario, idAlquiler, fecha })
+            body: JSON.stringify({ idUsuario, idAlquiler, fecha, detalle })
         });
 
         const contentType = res.headers.get("content-type");
