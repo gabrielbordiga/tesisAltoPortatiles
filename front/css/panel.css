@@ -142,7 +142,11 @@ body.dashboard-body{
 .input:focus,.select:focus{border-color:#c9c9c9;}
 
 .input-wrap.w-60{width:60%;}
-.tabla-wrap{overflow-x:auto;}
+.tabla-wrap{
+  overflow-x:auto;
+  max-height: 350px; /* Altura aproximada para 5-6 filas */
+  overflow-y: auto;
+}
 
 /* ====== BOTONES ====== */
 .btn{
@@ -217,6 +221,10 @@ body.dashboard-body{
 .tabla thead th{
   color:var(--rojo);
   font-weight:600;
+  position: sticky;
+  top: 0;
+  background: var(--gris-card); /* Fondo opaco para que no se transparente al scrollear */
+  z-index: 5;
 }
 
 .tabla tbody tr{
@@ -877,3 +885,30 @@ body.dashboard-body{
     75% { margin-left: -0.5rem; }
     100% { margin-left: 0rem; }
 }
+
+/* =========================================================
+   AUTOCOMPLETE UBICACIÓN
+   ========================================================= */
+.suggestions-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid var(--gris-linea);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  list-style: none;
+  box-shadow: var(--sombra);
+}
+.suggestions-list.hidden { display: none; }
+.suggestions-list li {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 13px;
+  color: var(--texto-oscuro);
+}
+.suggestions-list li:hover { background: #f9f9f9; }

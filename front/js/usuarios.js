@@ -21,7 +21,10 @@
 
       return data.map(u => ({
         id: u.idUsuarios ?? u.id ?? u.auth_id,
-        usuario: u.usuario || u.nombre,
+        usuario: u.usuario,
+        nombre: u.nombre,
+        apellido: u.apellido,
+        dni: u.dni,
         correo: u.email || u.correo,
         rol: u.rol || u.permisos,
         estado: (u.activo === true || u.activo === 'Activo') ? 'Activo' : 'Inactivo',
@@ -58,6 +61,9 @@
 
   const f = {
     id: document.getElementById('id'),
+    nombre: document.getElementById('nombre'),
+    apellido: document.getElementById('apellido'),
+    dni: document.getElementById('dni'),
     usuario: document.getElementById('usuario'),
     correo: document.getElementById('correo'),
     pass: document.getElementById('pass'),
@@ -71,22 +77,31 @@
     cancelar: document.getElementById('btnCancelar')
   };
 
+  // Referencias Modal Info
+  const modalInfo = document.getElementById('modalInfoUsuario');
+  const btnCerrarInfo = document.getElementById('btnCerrarInfo');
+
   function emailValido(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
   function normalize(s) { return String(s || '').trim().toLowerCase(); }
 
   function renderTabla(filtro = '') {
     const q = normalize(filtro);
     const data = USUARIOS.filter(u =>
-      [u.usuario, u.correo, u.rol, u.estado].some(val => normalize(val).includes(q))
+      [u.usuario, u.nombre, u.apellido, u.dni, u.correo, u.rol, u.estado].some(val => normalize(val).includes(q))
     ).sort((a, b) => String(a.usuario).localeCompare(String(b.usuario)));
 
     tbody.innerHTML = data.map((u) => `
       <tr>
+        <td>
+          <div style="font-weight:500;">${u.nombre || ''} ${u.apellido || ''}</div>
+          <div style="font-size:12px; color:#666;">${u.dni || ''}</div>
+        </td>
         <td>${u.usuario}</td>
         <td>${u.correo}</td>
         <td><span class="tag">${u.rol}</span></td>
         <td><span class="tag">${u.estado}</span></td>
         <td>
+          <button class="action info" data-info="${u.id}" title="Ver detalles">ℹ</button>
           <button class="action" data-edit="${u.id}">Editar</button>
           <button class="action danger" data-del="${u.id}">🗑</button>
         </td>
@@ -105,6 +120,9 @@
 
   function fillForm(user) {
     f.id.value = user.id;
+    if(f.nombre) f.nombre.value = user.nombre || '';
+    if(f.apellido) f.apellido.value = user.apellido || '';
+    if(f.dni) f.dni.value = user.dni || '';
     f.usuario.value = user.usuario;
     f.correo.value = user.correo;
     f.pass.value = ''; f.pass2.value = '';
@@ -117,6 +135,25 @@
     if (f.lblPass) f.lblPass.classList.remove('hidden');
   }
 
+  function showInfo(u) {
+    if (!modalInfo) return;
+    document.getElementById('infoNombre').textContent = u.nombre || '-';
+    document.getElementById('infoApellido').textContent = u.apellido || '-';
+    document.getElementById('infoDni').textContent = u.dni || '-';
+    document.getElementById('infoUsuario').textContent = u.usuario || '-';
+    document.getElementById('infoCorreo').textContent = u.correo || '-';
+    document.getElementById('infoRol').textContent = u.rol || '-';
+    
+    // Intentar buscar nombre del área en el select, sino mostrar ID
+    let areaNombre = u.area;
+    const areaOpt = document.querySelector(`#area option[value="${u.area}"]`);
+    if(areaOpt) areaNombre = areaOpt.textContent;
+    
+    document.getElementById('infoArea').textContent = areaNombre || 'Sin área';
+    document.getElementById('infoEstado').textContent = u.estado;
+    modalInfo.classList.remove('hidden');
+  }
+
   document.addEventListener('DOMContentLoaded', async () => {
     await loadAreas();
     USUARIOS = await loadUsuarios();
@@ -124,6 +161,10 @@
 
     txtBuscar.addEventListener('input', () => renderTabla(txtBuscar.value));
     btnNuevo.addEventListener('click', clearForm);
+
+    if (btnCerrarInfo) {
+      btnCerrarInfo.addEventListener('click', () => modalInfo.classList.add('hidden'));
+    }
 
     if (f.chkPass) {
       f.chkPass.addEventListener('change', () => {
@@ -134,8 +175,13 @@
     }
 
     tbody.addEventListener('click', async (e) => {
+      const bInfo = e.target.closest('[data-info]');
       const bE = e.target.closest('[data-edit]');
       const bD = e.target.closest('[data-del]');
+      if (bInfo) {
+        const u = USUARIOS.find(x => String(x.id) === bInfo.dataset.info);
+        if (u) showInfo(u);
+      }
       if (bE) {
         const u = USUARIOS.find(x => String(x.id) === bE.dataset.edit);
         if (u) fillForm(u);
@@ -169,6 +215,9 @@
       }
 
       const payload = {
+        nombre: f.nombre ? f.nombre.value.trim() : null,
+        apellido: f.apellido ? f.apellido.value.trim() : null,
+        dni: f.dni ? f.dni.value.trim() : null,
         usuario: f.usuario.value.trim(),
         correo: f.correo.value.trim(),
         rol: f.rol.value,

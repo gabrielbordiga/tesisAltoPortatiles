@@ -29,10 +29,7 @@ exports.obtenerAreas = async (req, res) => {
 //Crear usuario
 exports.crearUsuario = async (req, res) => {
     // Aceptamos 'usuario' O 'nombre', y 'rol' O 'permisos'
-    const { usuario, nombre, correo, contrasena, rol, permisos, estado, id_area } = req.body;
-
-    const nombreFinal = usuario || nombre; // Usa el que venga con datos
-    const rolFinal = rol || permisos;     // Usa el que venga con datos
+    const { usuario, nombre, apellido, dni, correo, contrasena, rol, permisos, estado, id_area } = req.body;
 
     try {
         // 1. Crear en Auth (Seguridad)
@@ -48,9 +45,12 @@ exports.crearUsuario = async (req, res) => {
         const { error: dbError } = await supabase
             .from('Usuarios')
             .insert([{ 
-                usuario: nombreFinal, 
+                usuario: usuario, 
+                nombre: nombre,
+                apellido: apellido,
+                dni: dni,
                 email: correo, 
-                rol: rolFinal, 
+                rol: rol || permisos, 
                 activo: estado === 'Activo', 
                 idArea: id_area || null,
                 auth_id: authUser.user.id 
@@ -71,7 +71,7 @@ exports.crearUsuario = async (req, res) => {
 // 3. Editar un usuario 
 exports.editarUsuario = async (req, res) => {
     const { id } = req.params;
-    const { usuario, correo, contrasena, rol, estado, id_area } = req.body;
+    const { usuario, nombre, apellido, dni, correo, contrasena, rol, estado, id_area } = req.body;
 
     try {
         // 1. Buscamos el auth_id del usuario para poder actualizar su seguridad si es necesario
@@ -94,6 +94,9 @@ exports.editarUsuario = async (req, res) => {
         // NOTA: Solo mandamos el correo si es distinto al que ya tiene, para evitar el error de "duplicado"
         const updateData = {
             usuario: usuario, 
+            nombre: nombre,
+            apellido: apellido,
+            dni: dni,
             rol: rol,
             activo: estado === 'Activo',
             idArea: id_area || null
@@ -163,7 +166,7 @@ exports.login = async (req, res) => {
         // 1. Buscamos el perfil
         const { data: perfil, error: pError } = await supabase
             .from('Usuarios')
-            .select('idUsuarios, usuario, email, rol, activo, idArea') 
+            .select('idUsuarios, usuario, nombre, apellido, dni, email, rol, activo, idArea') 
             .or(`usuario.eq.${correo},email.eq.${correo}`)
             .maybeSingle();
 
