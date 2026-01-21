@@ -3,35 +3,126 @@
 
   const API_TAREAS = '/api/tareas';
   const API_ALQUILERES = '/api/alquileres';
+  const API_RECORDATORIOS = '/api/recordatorios';
   const API_CLIENTES = '/api/clientes';
   const API_UNIDADES = '/api/unidades';
-  const LS_REMINDERS = 'ap_recordatorios';
 
   let calendarInstance = null;
   let clientesCache = [];
   let unidadesCache = [];
 
+  function getHeaders() {
+    const token = localStorage.getItem('ap_token');
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    };
+  }
+
   document.addEventListener('DOMContentLoaded', async () => {
-    // Cargar clientes para enriquecer datos si es necesario
     try {
-      const res = await fetch(API_CLIENTES);
-      if (res.ok) clientesCache = await res.json();
-    } catch (e) {}
+      const h = getHeaders();
+      const [resC] = await Promise.all([
+        fetch(API_CLIENTES, { headers: h })
+      ]);
+      if (resC.ok) clientesCache = await resC.json();
+      console.log("Datos iniciales cargados");
 
-    initCalendarLogic();
-    
-    // Cargar unidades y lógica de gestión
-    await loadUnidades();
-    initUnidadesLogic();
+      // AGREGAMOS ESTO: Carga los tipos en ambos combobox
+      await loadTiposUnidad(); 
 
-    const filtro = document.getElementById('filtroTipo');
-    if (filtro) filtro.addEventListener('change', renderUnidades);
+      await renderRemindersList(); 
+      
+      initCalendarLogic();
+      await loadUnidades();
+      initUnidadesLogic();
 
-    // Inicializar Recordatorios
-    renderRemindersList();
-    initRemindersLogic();
-  });
+      const filtro = document.getElementById('filtroTipo');
+      if (filtro) filtro.addEventListener('change', renderUnidades);
 
+      initRemindersLogic();
+    } catch (e) { console.error("Error en inicio:", e); }
+});
+
+  // =========================================================
+  // AGENDA UNIFICADA (LADO DERECHO)
+  // =========================================================
+  async function renderRemindersList() {
+    const ul = document.getElementById('listaRecordatorios');
+    if (!ul) return;
+
+    try {
+      const h = getHeaders();
+      const [resA, resR] = await Promise.all([
+        fetch(`${API_ALQUILERES}?t=${Date.now()}`, { headers: h }),
+        fetch(`${API_RECORDATORIOS}?t=${Date.now()}`, { headers: h })
+      ]);
+
+      const alquileres = resA.ok ? await resA.json() : [];
+      const recordatorios = resR.ok ? await resR.json() : [];
+
+      console.log("DEBUG - Alquileres recibidos:", alquileres);
+
+      const ahora = new Date();
+      const hoyNum = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate()).getTime();
+
+      let agendaTotal = [
+        ...recordatorios.map(r => ({
+          id: r.id, 
+          fecha: r.fecha,
+          texto: r.descripcion,
+          tipo: 'REC'
+        })),
+        ...alquileres.map(a => {
+          const c = clientesCache.find(x => String(x.idCliente) === String(a.idCliente));
+          const nom = c ? (c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial) : 'Cliente';
+          return {
+            id: a.idAlquiler,
+            fecha: a.fechaDesde, 
+            texto: `Alquiler: ${nom}`,
+            tipo: 'ALQ'
+          };
+        })
+      ];
+
+      // Filtrar por fecha (hoy o futuro) y ordenar
+      const agendaFiltrada = agendaTotal.filter(e => {
+        if (!e.fecha) return false;
+        const p = e.fecha.split('-');
+        const fechaEventoNum = new Date(p[0], p[1] - 1, p[2]).getTime();
+        return fechaEventoNum >= hoyNum;
+      }).sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+      const agendaFinal = agendaFiltrada.slice(0, 4);
+
+      if (agendaFinal.length === 0) {
+        ul.innerHTML = '<li style="text-align:center; padding:20px; color:#999;">No hay eventos próximos.</li>';
+        return;
+      }
+
+      ul.innerHTML = agendaFinal.map(e => {
+        const p = e.fecha.split('-');
+        const diaMes = `${p[2]}/${p[1]}`;
+        const esRec = e.tipo === 'REC';
+        const color = esRec ? '#ff9f89' : '#3788d8';
+
+        return `
+          <li style="border-left: 5px solid ${color}; padding: 10px; margin-bottom: 8px; background: #fff; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); list-style:none;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <span style="font-weight:bold; color:${color}; font-size: 0.8em;">${diaMes} ${esRec ? '📌' : '🗓️'}</span>
+                <div style="font-size: 0.9em; color: #333;">${e.texto}</div>
+              </div>
+              ${esRec ? `<button class="btn-icon-delete" onclick="window.borrarRecordatorio('${e.id}')" style="background:none; border:none; color:#ddd; cursor:pointer;">🗑</button>` : ''}
+            </div>
+          </li>`;
+      }).join('');
+    } catch (e) { console.error("Error Agenda:", e); }
+  }
+
+  // =========================================================
+  // LÓGICA DEL CALENDARIO
+  // =========================================================
   function initCalendarLogic() {
     const btnAbrir = document.getElementById('btnCalendario');
     const modal = document.getElementById('modalCalendarioGrande');
@@ -40,143 +131,133 @@
 
     if (!btnAbrir || !modal || !calendarEl) return;
 
-    // Abrir Modal
     btnAbrir.addEventListener('click', () => {
       modal.classList.remove('hidden');
-      
       if (!calendarInstance) {
-        // Inicializar FullCalendar
         calendarInstance = new FullCalendar.Calendar(calendarEl, {
           initialView: 'dayGridMonth',
           locale: 'es',
-          buttonText: {
-            today: 'Hoy',
-            month: 'Mes',
-            week: 'Semana',
-            day: 'Día',
-            list: 'Agenda'
-          },
-          allDayText: 'Todo el día',
-          noEventsText: 'No hay eventos para mostrar',
-          headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,listWeek'
-          },
-          height: '100%',
-          events: fetchEvents, // Función para cargar datos
-          eventClick: handleEventClick,
-          eventTimeFormat: { // Formato hora
-            hour: '2-digit',
-            minute: '2-digit',
-            meridiem: false
-          }
+          selectable: true,
+          headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listWeek' },
+          events: fetchAllEvents,
+          dateClick: (info) => openModalRecordatorio(info.dateStr),
+          eventClick: handleEventClick
         });
         calendarInstance.render();
       } else {
-        // Si ya existe, forzar render para ajustar tamaño al modal
         setTimeout(() => {
-          calendarInstance.render();
-          calendarInstance.refetchEvents(); // Recargar datos por si hubo cambios
+          calendarInstance.updateSize();
+          calendarInstance.refetchEvents();
         }, 100);
       }
     });
-
-    // Cerrar Modal
-    const cerrar = () => modal.classList.add('hidden');
-    if (btnCerrar) btnCerrar.addEventListener('click', cerrar);
+    if (btnCerrar) btnCerrar.addEventListener('click', () => modal.classList.add('hidden'));
   }
 
-  // Función que FullCalendar llama para obtener eventos
-  async function fetchEvents(info, successCallback, failureCallback) {
+  async function fetchAllEvents(info, successCallback, failureCallback) {
     try {
-      // Cargar Tareas y Alquileres en paralelo
-      const [resTareas, resAlquileres] = await Promise.all([
-        fetch(API_TAREAS),
-        fetch(API_ALQUILERES)
+      const h = getHeaders();
+      const [resA, resR] = await Promise.all([
+        fetch(API_ALQUILERES, { headers: h }),
+        fetch(API_RECORDATORIOS, { headers: h })
       ]);
-
-      const tareas = resTareas.ok ? await resTareas.json() : [];
-      const alquileres = resAlquileres.ok ? await resAlquileres.json() : [];
-
-      const eventos = [];
-
-      // 0. Mapear RECORDATORIOS (LocalStorage)
-      const reminders = loadReminders();
-      reminders.forEach(r => {
-          eventos.push({
-              id: r.id,
-              title: r.title,
-              start: r.start,
-              allDay: true,
-              backgroundColor: '#ff9f89', // Color salmón distintivo
-              borderColor: '#ff9f89',
-              extendedProps: { tipo: 'RECORDATORIO', detalle: r.title }
-          });
-      });
-
-      // 1. Mapear TAREAS (Puntos en el tiempo)
-      tareas.forEach(t => {
-        const empNombre = t.usuario ? `${t.usuario.nombre} ${t.usuario.apellido}` : 'Sin asignar';
-        const ubicacion = t.alquiler ? t.alquiler.ubicacion : '';
-        const color = t.completada ? '#28a745' : '#ec1f26'; // Verde o Rojo
-        
-        eventos.push({
-          id: `tarea-${t.idTarea || t.id}`,
-          title: `Tarea: ${empNombre}`,
-          start: t.fecha,
-          allDay: true,
-          backgroundColor: color,
-          borderColor: color,
-          extendedProps: {
-            tipo: 'TAREA',
-            detalle: `Ubicación: ${ubicacion}\nEstado: ${t.completada ? 'Completada' : 'Pendiente'}`
-          }
-        });
-      });
-
-      // 2. Mapear ALQUILERES (Rangos de fecha)
-      alquileres.forEach(a => {
-        // Buscar nombre cliente
-        const c = clientesCache.find(x => x.idCliente == a.idCliente);
-        const clienteNombre = c ? (c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial) : 'Cliente';
-        
-        if (a.fechaDesde && a.fechaHasta) {
-          // Ajustar fecha fin (FullCalendar es exclusivo en end date, sumamos 1 día visualmente si es allDay)
-          const fechaFin = new Date(a.fechaHasta);
-          fechaFin.setDate(fechaFin.getDate() + 1);
-
-          eventos.push({
-            id: `alq-${a.idAlquiler}`,
-            title: `Alquiler: ${clienteNombre}`,
+      const alquileres = resA.ok ? await resA.json() : [];
+      const recordatoriosBD = resR.ok ? await resR.json() : [];
+      
+      const eventos = [
+        ...alquileres.map(a => {
+          const c = clientesCache.find(x => String(x.idCliente) === String(a.idCliente));
+          const nom = c ? (c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial) : 'Cliente';
+          return {
+            title: `Alquiler: ${nom}`,
             start: a.fechaDesde,
-            end: fechaFin.toISOString().split('T')[0],
-            allDay: true,
-            backgroundColor: '#3788d8', // Azul
-            borderColor: '#3788d8',
-            extendedProps: {
-              tipo: 'ALQUILER',
-              detalle: `Ubicación: ${a.ubicacion}\nEstado: ${a.estado}`
-            }
-          });
-        }
-      });
-
+            end: a.fechaHasta,
+            backgroundColor: '#3788d8',
+            extendedProps: { tipo: 'ALQUILER', detalle: a.ubicacion }
+          };
+        }),
+        ...recordatoriosBD.map(r => ({
+          id: r.id,
+          title: `📌 ${r.descripcion}`,
+          start: r.fecha,
+          allDay: true,
+          backgroundColor: '#ff9f89',
+          borderColor: '#ff9f89',
+          extendedProps: { tipo: 'RECORDATORIO' }
+        }))
+      ];
       successCallback(eventos);
-    } catch (e) {
-      console.error("Error cargando calendario", e);
-      failureCallback(e);
+    } catch (e) { failureCallback(e); }
+  }
+
+  // =========================================================
+  // GESTIÓN DE RECORDATORIOS
+  // =========================================================
+  function initRemindersLogic() {
+    const form = document.getElementById('formRecordatorio');
+    const btnNuevo = document.getElementById('btnNuevoRecordatorio');
+
+    if (btnNuevo) {
+      btnNuevo.addEventListener('click', () => {
+        const now = new Date().toISOString().split('T')[0];
+        openModalRecordatorio(now);
+      });
+    }
+
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const userSession = JSON.parse(localStorage.getItem('ap_current') || '{}');
+        const payload = {
+          fecha: document.getElementById('fechaRecordatorio').value,
+          descripcion: document.getElementById('textoRecordatorio').value,
+          idUsuarios: userSession.id || userSession.idUsuarios 
+        };
+
+        try {
+          const res = await fetch(API_RECORDATORIOS, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify(payload)
+          });
+          if (res.ok) {
+            window.showAlert('Éxito', 'Guardado correctamente', 'success');
+            document.getElementById('modalRecordatorio').classList.add('hidden');
+            form.reset();
+            await renderRemindersList(); 
+            if (calendarInstance) calendarInstance.refetchEvents(); 
+          }
+        } catch (e) { console.error(e); }
+      });
     }
   }
+
+  window.borrarRecordatorio = async (id) => {
+    if (await window.confirmAction('¿Eliminar?', 'Se borrará de la base de datos.')) {
+      const res = await fetch(`${API_RECORDATORIOS}/${id}`, { method: 'DELETE', headers: getHeaders() });
+      if (res.ok) {
+        await renderRemindersList();
+        if (calendarInstance) calendarInstance.refetchEvents();
+      }
+    }
+  };
 
   async function handleEventClick(info) {
     const props = info.event.extendedProps;
     if (props.tipo === 'RECORDATORIO') {
-        if (await window.confirmAction('¿Eliminar recordatorio?', 'Se borrará de la lista.')) {
-            deleteReminder(info.event.id);
-        }
+      window.borrarRecordatorio(info.event.id);
     } else {
-        window.showAlert(info.event.title, props.detalle, 'info');
+      window.showAlert(info.event.title, props.detalle, 'info');
+    }
+  }
+
+  function openModalRecordatorio(dateStr) {
+    const modal = document.getElementById('modalRecordatorio');
+    const inpFecha = document.getElementById('fechaRecordatorio');
+    if (modal && inpFecha) {
+      inpFecha.value = dateStr.split('T')[0];
+      modal.classList.remove('hidden');
+      modal.style.zIndex = "2000"; 
     }
   }
 
@@ -186,7 +267,7 @@
 
   async function loadUnidades() {
     try {
-      const res = await fetch(`${API_UNIDADES}/resumen`);
+      const res = await fetch(`${API_UNIDADES}/resumen`, { headers: getHeaders() });
       if (res.ok) {
         unidadesCache = await res.json();
         renderUnidades();
@@ -200,10 +281,14 @@
     if (!tbody) return;
 
     let data = unidadesCache;
-    if (filtro) {
-        const val = filtro.value;
-        if (val === 'banios') data = data.filter(u => u.nombre.toLowerCase().includes('baño'));
-        if (val === 'cabinas') data = data.filter(u => u.nombre.toLowerCase().includes('cabina'));
+
+    if (filtro && filtro.value !== 'todos') {
+        data = data.filter(u => String(u.idTipo) === String(filtro.value));
+    }
+
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No hay unidades registradas</td></tr>';
+        return;
     }
 
     tbody.innerHTML = data.map(u => `
@@ -221,16 +306,23 @@
   }
 
   async function loadTiposUnidad() {
-      try {
-          const res = await fetch(`${API_UNIDADES}/tipos`);
-          if (res.ok) {
-              const tipos = await res.json();
-              const sel = document.getElementById('tipoUnidad');
-              if (sel) {
-                  sel.innerHTML = tipos.map(t => `<option value="${t.idTipo}">${t.nombre}</option>`).join('');
-              }
-          }
-      } catch (e) { console.error(e); }
+    try {
+        const res = await fetch(`${API_UNIDADES}/tipos`, { headers: getHeaders() });
+        if (res.ok) {
+            const tipos = await res.json();
+            
+            const selModal = document.getElementById('tipoUnidad');
+            if (selModal) {
+                selModal.innerHTML = tipos.map(t => `<option value="${t.idTipo}">${t.nombre}</option>`).join('');
+            }
+
+            const selFiltro = document.getElementById('filtroTipo');
+            if (selFiltro) {
+                selFiltro.innerHTML = `<option value="todos">Todos</option>` + 
+                    tipos.map(t => `<option value="${t.idTipo}">${t.nombre}</option>`).join('');
+            }
+        }
+    } catch (e) { console.error("Error cargando tipos:", e); }
   }
 
   function initUnidadesLogic() {
@@ -295,9 +387,9 @@
 
         try {
             const res = await fetch(`${API_UNIDADES}/gestion`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ idTipo, stock: cantidad, estado, precio })
+              method: 'POST',
+              headers: getHeaders(),
+              body: JSON.stringify(payload)
             });
             if (res.ok) {
                 window.showAlert('Éxito', 'Stock actualizado', 'success');
@@ -379,98 +471,142 @@
   // LÓGICA DE RECORDATORIOS
   // =========================================================
 
-  function loadReminders() {
+  async function renderRemindersList() {
+    const ul = document.getElementById('listaRecordatorios');
+    if (!ul) return;
+
     try {
-      return JSON.parse(localStorage.getItem(LS_REMINDERS) || '[]');
-    } catch { return []; }
-  }
+        const h = getHeaders();
+        // 1. Buscamos Alquileres y Recordatorios en paralelo
+        const [resA, resR] = await Promise.all([
+            fetch(`${API_ALQUILERES}?t=${Date.now()}`, { headers: h }),
+            fetch(`${API_RECORDATORIOS}?t=${Date.now()}`, { headers: h })
+        ]);
 
-  function saveReminders(list) {
-    localStorage.setItem(LS_REMINDERS, JSON.stringify(list));
-    renderRemindersList();
-    if (calendarInstance) calendarInstance.refetchEvents();
-  }
+        const alquileres = resA.ok ? await resA.json() : [];
+        const recordatorios = resR.ok ? await resR.json() : [];
 
-  function deleteReminder(id) {
-      let list = loadReminders();
-      list = list.filter(r => r.id !== id);
-      saveReminders(list);
-  }
+        // 2. Normalizar "Hoy" para comparar fechas sin horas
+        const ahora = new Date();
+        const hoyNum = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate()).getTime();
 
-  function renderRemindersList() {
-      const list = loadReminders();
-      // Ordenar por fecha
-      list.sort((a,b) => new Date(a.start) - new Date(b.start));
-      
-      const ul = document.getElementById('listaRecordatorios');
-      if(!ul) return;
-      
-      if(list.length === 0) {
-          ul.innerHTML = '<li style="text-align:center; color:#777; padding:10px;">No hay recordatorios pendientes.</li>';
-          return;
-      }
+        // 3. Unificar ambos tipos en una sola "Agenda"
+        let agendaTotal = [
+            ...recordatorios.map(r => ({
+                id: r.id, 
+                fecha: r.fecha, // 'YYYY-MM-DD'
+                texto: r.descripcion,
+                tipo: 'REC'
+            })),
+            ...alquileres.map(a => {
+                const c = clientesCache.find(x => String(x.idCliente) === String(a.idCliente));
+                const nom = c ? (c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial) : 'Cliente';
+                return {
+                    id: a.idAlquiler,
+                    fecha: a.fechaDesde, 
+                    texto: `Alquiler: ${nom}`,
+                    tipo: 'ALQ'
+                };
+            })
+        ];
 
-      ul.innerHTML = list.map(r => {
-          const [y,m,d] = r.start.split('-');
-          const fechaFmt = `${d}/${m}`;
-          return `
-          <li>
-              <span style="font-weight:600; color:var(--rojo); min-width:45px;">${fechaFmt}</span>
-              <span style="flex:1;">${r.title}</span>
-              <button class="btn-icon-delete" data-del-rec="${r.id}" title="Eliminar">🗑</button>
-          </li>
-      `}).join('');
+        // 4. Filtrar (solo hoy o futuro), ordenar por fecha y tomar los mejores 4
+        const agendaFinal = agendaTotal
+            .filter(e => {
+                if (!e.fecha) return false;
+                const p = e.fecha.split('-');
+                const fechaEventoNum = new Date(p[0], p[1] - 1, p[2]).getTime();
+                return fechaEventoNum >= hoyNum;
+            })
+            .sort((a, b) => new Date(a.fecha) - new Date(b.fecha))
+            .slice(0, 4);
+
+        if (agendaFinal.length === 0) {
+            ul.innerHTML = '<li style="text-align:center; padding:20px; color:#999; font-size:0.9em;">No hay eventos próximos.</li>';
+            return;
+        }
+
+        // 5. Renderizar HTML unificado
+        ul.innerHTML = agendaFinal.map(e => {
+            const p = e.fecha.split('-');
+            const diaMes = `${p[2]}/${p[1]}`;
+            const esRec = e.tipo === 'REC';
+            const color = esRec ? '#ff9f89' : '#3788d8'; // Salmón o Azul
+
+            return `
+                <li style="border-left: 5px solid ${color}; padding: 10px; margin-bottom: 8px; background: #fff; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); list-style:none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="overflow:hidden;">
+                            <span style="font-weight:bold; color:${color}; font-size: 0.8em;">${diaMes} ${esRec ? '📌' : '🗓️'}</span>
+                            <div style="font-size: 0.9em; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${e.texto}</div>
+                        </div>
+                        ${esRec ? `<button class="btn-icon-delete" onclick="window.borrarRecordatorio('${e.id}')" style="background:none; border:none; color:#ddd; cursor:pointer; padding:5px;">🗑</button>` : ''}
+                    </div>
+                </li>`;
+        }).join('');
+
+    } catch (e) {
+        console.error("Error cargando agenda unificada:", e);
+    }
   }
 
   function initRemindersLogic() {
       const modal = document.getElementById('modalRecordatorio');
       const form = document.getElementById('formRecordatorio');
       const btnCerrar = document.getElementById('btnCerrarRecordatorio');
-      const ul = document.getElementById('listaRecordatorios');
       const btnNuevo = document.getElementById('btnNuevoRecordatorio');
 
       if(btnCerrar) btnCerrar.addEventListener('click', () => modal.classList.add('hidden'));
       
       if(btnNuevo) btnNuevo.addEventListener('click', () => {
-          const now = new Date();
-          const y = now.getFullYear();
-          const m = String(now.getMonth() + 1).padStart(2, '0');
-          const d = String(now.getDate()).padStart(2, '0');
-          openModalRecordatorio(`${y}-${m}-${d}`);
+          const now = new Date().toISOString().split('T')[0];
+          openModalRecordatorio(now);
       });
       
-      if(form) form.addEventListener('submit', e => {
-          e.preventDefault();
-          const txt = document.getElementById('textoRecordatorio').value;
-          const fecha = document.getElementById('fechaRecordatorio').value;
-          if(txt && fecha) {
-              const list = loadReminders();
-              list.push({ id: 'rec-'+Date.now(), title: txt, start: fecha });
-              saveReminders(list);
-              modal.classList.add('hidden');
-              document.getElementById('textoRecordatorio').value = '';
-          }
-      });
+      if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userSession = JSON.parse(localStorage.getItem('ap_current') || '{}');
 
-      if(ul) ul.addEventListener('click', async e => {
-          const btn = e.target.closest('.btn-icon-delete');
-          if(btn) {
-              const id = btn.dataset.delRec;
-              if(await window.confirmAction('¿Eliminar?', '')) {
-                  deleteReminder(id);
-              }
-          }
-      });
+            const payload = {
+                fecha: document.getElementById('fechaRecordatorio').value,
+                descripcion: document.getElementById('textoRecordatorio').value,
+                idUsuarios: userSession.id || userSession.idUsuarios 
+            };
+
+            try {
+                const res = await fetch('/api/recordatorios', {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    window.showAlert('Éxito', 'Guardado en base de datos', 'success');
+                    modal.classList.add('hidden');
+                    form.reset();
+                    // Refrescamos la lista y el calendario
+                    renderRemindersList(); 
+                    if (calendarInstance) calendarInstance.refetchEvents(); 
+                } else {
+                    const err = await res.json();
+                    window.showAlert('Error', err.error, 'error');
+                }
+            } catch (e) { 
+                console.error("Error al guardar:", e); 
+            }
+        });
+      }
   }
 
   function openModalRecordatorio(dateStr) {
-      const modal = document.getElementById('modalRecordatorio');
-      const inpFecha = document.getElementById('fechaRecordatorio');
-      
-      if(modal && inpFecha) {
-          inpFecha.value = dateStr;
-          modal.classList.remove('hidden');
-      }
+    const modal = document.getElementById('modalRecordatorio');
+    const inpFecha = document.getElementById('fechaRecordatorio');
+    if (modal && inpFecha) {
+        inpFecha.value = dateStr.split('T')[0]; 
+        modal.classList.remove('hidden');
+        modal.style.zIndex = "2000"; 
+    }
   }
 
 })();

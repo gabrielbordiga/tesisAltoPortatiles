@@ -9,12 +9,11 @@ const unidadRoutes = require('./routes/unidadRoutes');
 const alquilerRoutes = require('./routes/alquilerRoutes');
 const tareaRoutes = require('./routes/tareaRoutes');
 const stockRoutes = require('./routes/stockRoutes');
+const recordatorioRoutes = require('./routes/recordatorioRoutes');
 
 // --- MIDDLEWARES ---
-app.use(cors()); // 2. Habilitas CORS para que el frontend pueda conectarse
+app.use(cors()); 
 app.use(express.json()); 
-app.use('/api/clientes', clienteRoutes);
-app.use('/api/unidades', unidadRoutes);
 
 // --- FRONTEND ---
 // Servir los archivos de la carpeta 'front' como estáticos
@@ -26,11 +25,15 @@ app.get('/', (req, res) => {
 });
 
 // --- RUTAS ---
+app.use('/api/clientes', clienteRoutes);
+app.use('/api/unidades', unidadRoutes);
 app.use('/api/usuarios', usuarioRoutes);
 app.use('/api/clientes', clienteRoutes);
 app.use('/api/alquileres', alquilerRoutes);
 app.use('/api/tareas', tareaRoutes);
 app.use('/api/stock', stockRoutes);
+app.use('/api/recordatorios', recordatorioRoutes);
+
 
 // --- INICIO DEL SERVIDOR ---
 const PORT = process.env.PORT || 3000;
