@@ -21,11 +21,11 @@
       <div id="whoami" class="whoami" style="text-align:center; padding:6px 0; opacity:.8;"></div>
 
       <nav class="side-nav">
-        <a class="item" href="./inicio.html" data-roles="Administrador,Empleado">
+        <a class="item" href="./inicio.html" data-roles="Administrador">
           <img src="../recursos/iconos/inicio.svg" class="icon-svg" alt=""><span>Inicio</span>
         </a>
 
-        <a class="item" href="./gestion.html" data-roles="Administrador,Empleado">
+        <a class="item" href="./gestion.html" data-roles="Administrador">
           <img src="../recursos/iconos/gestion.svg" class="icon-svg" alt=""><span>Gestión</span>
         </a>
 
@@ -33,7 +33,7 @@
           <img src="../recursos/iconos/logistica.svg" class="icon-svg" alt=""><span>Logística</span>
         </a>
 
-        <a class="item active" href="./tareasAdm.html" data-roles="Administrador">
+        <a class="item active" href="./tareasAdm.html" data-roles="Administrador,Empleado">
           <img src="../recursos/iconos/tareas.svg" class="icon-svg" alt=""><span>Tareas</span>
         </a>
 
@@ -66,11 +66,10 @@
             <label style="font-weight:500;">Fecha:</label>
             <input type="date" id="filtroFecha" class="input" style="width:auto;" />
         </div>
-        <div class="tabs tabs-empleados" id="containerTabs">
-          <!-- Se generan dinámicamente -->
-        </div>
+        
+        <div class="tabs tabs-empleados" id="containerTabs"></div>
 
-        <button id="btnAgregarTarea" class="btn primary">Agregar tarea</button>
+        <button id="btnAgregarTarea" class="btn primary admin-only">Agregar tarea</button>
       </section>
 
       <!-- INFO DEL DÍA -->

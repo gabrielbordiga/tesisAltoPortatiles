@@ -6,6 +6,10 @@
   const API_ALQUILERES = '/api/alquileres';
   const API_CLIENTES = '/api/clientes';
 
+  // 1. Al inicio del archivo, detectamos el usuario logueado
+  const userSession = JSON.parse(localStorage.getItem('ap_current') || '{}');
+  const esAdmin = String(userSession.rol).toLowerCase() === 'administrador';
+
   function formatFechaLarga(iso) {
     if (!iso) return '-';
     // Crear fecha asumiendo input YYYY-MM-DD local
@@ -129,22 +133,51 @@
   }
 
   async function loadData() {
-    const [emps, alqs, clis] = await Promise.all([fetchEmpleados(), fetchAlquileres(), fetchClientes()]);
-    empleados = emps;
-    alquileres = alqs;
-    clientes = clis;
+    try {
+        const [emps, alqs, clis] = await Promise.all([
+            fetchEmpleados(), 
+            fetchAlquileres(), 
+            fetchClientes()
+        ]);
+        
+        empleados = emps;
+        alquileres = alqs;
+        clientes = clis;
 
-    if (empleados.length > 0 && !empleadoActualId) {
-        empleadoActualId = empleados[0].idUsuarios; // Seleccionar el primero por defecto
-    }
-    renderTabs();
-    await loadTareas();
+        if (!esAdmin) {
+            empleadoActualId = userSession.idUsuarios || userSession.id;
+        } else {
+            // Recuperar el último empleado visto antes del F5
+            const lastViewed = localStorage.getItem('ap_last_emp_view');
+            if (lastViewed && empleados.some(e => String(e.idUsuarios) === lastViewed)) {
+                empleadoActualId = lastViewed;
+            } else if (empleados.length > 0) {
+                empleadoActualId = empleados[0].idUsuarios;
+            }
+        }
+
+        renderTabs();
+        renderHeader();
+        
+        if (empleadoActualId) {
+            await loadTareas();
+        }
+    } catch (e) { console.error("Error en carga inicial:", e); }
   }
 
   async function loadTareas() {
-    tareas = await fetchTareas(fechaFiltro);
-    renderHeader();
-    renderTabla();
+      if (!fechaFiltro || !empleadoActualId) return;
+
+      try {
+          const res = await fetch(`${API_TAREAS}/${fechaFiltro}?idUsuario=${empleadoActualId}`);
+          if (res.ok) {
+              tareas = await res.json();
+          }
+          renderHeader();
+          renderTabla();
+      } catch (e) {
+          console.error("Error cargando tareas:", e);
+      }
   }
 
   // ---------- Render header (fecha + empleado + zona) ----------
@@ -157,48 +190,43 @@
 
   // ---------- Render tabla ----------
   function renderTabla() {
-    if (!empleadoActualId) return;
-    
-    // Filtrar tareas del empleado seleccionado
-    const tareasEmp = tareas.filter(t => String(t.idUsuarios) === String(empleadoActualId));
+    const idActivo = esAdmin ? empleadoActualId : (userSession.idUsuarios || userSession.id);
+    const tareasEmp = tareas.filter(t => String(t.idUsuarios) === String(idActivo));
 
     tbody.innerHTML = tareasEmp.map(t => {
-      // Buscamos el alquiler completo en la lista cargada (que tiene los nombres de unidades)
-      const alq = alquileres.find(a => String(a.idAlquiler || a.idalquiler) === String(t.idAlquiler)) || t.alquiler;
-
-      // Resolver nombre del cliente
-      let clienteNombre = '-';
-      if (alq && alq.idCliente) {
-          const c = clientes.find(x => x.idCliente == alq.idCliente);
-          if (c) clienteNombre = c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial;
-      }
-      return `
-      <tr>
-        <td>
-            <div style="font-weight:500;">${alq?.ubicacion || 'Sin ubicación'}</div>
-            <div style="font-size:12px; color:#333;">${clienteNombre}</div>
-            <div style="font-size:11px; color:#888;">
-                Pedido #${t.idAlquiler} 
-                <span style="color:${alq?.estado === 'PAGADO' ? 'green' : '#ec1f26'}; font-weight:500;">(${alq?.estado || '-'})</span>
+        const alq = alquileres.find(a => String(a.idAlquiler) === String(t.idAlquiler)) || t.alquiler;
+        
+        let clienteNombre = 'Cliente desconocido';
+        if (alq && alq.idCliente) {
+            const c = clientes.find(x => String(x.idCliente) === String(alq.idCliente));
+            if (c) clienteNombre = c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial;
+        }
+        
+        return `
+        <tr>
+          <td>
+              <div style="font-weight:600; color:var(--rojo); font-size: 14px;">${alq?.ubicacion || 'Sin ubicación'}</div>
+              <div style="font-size:12px; color:#555; font-weight:500;">👤 ${clienteNombre}</div>
+              <div style="font-size:11px; color:#888; margin-top:2px;">Pedido #${t.idAlquiler}</div>
+          </td>
+          <td>${formatDetalle(alq?.lineas)}</td>
+          <td>${t.detalle || '-'}</td>
+          <td>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <input type="checkbox" class="check-tarea" data-id="${t.idTarea || t.id}" ${t.completada ? 'checked' : ''} 
+                       style="width:18px; height:18px; cursor:pointer;">
+                <label style="font-size:12px; font-weight:600; color:${t.completada ? 'green' : '#999'};">
+                    ${t.completada ? 'TERMINADO' : 'PENDIENTE'}
+                </label>
+                
+                ${esAdmin ? `<button class="btn-icon-delete" data-del="${t.id}" title="Eliminar tarea" style="margin-left:auto; background:none; border:none; cursor:pointer; font-size:1.1em;">🗑</button>` : ''}
             </div>
-        </td>
-        <td>${formatDetalle(alq?.lineas)}</td>
-        <td>${t.detalle || '-'}</td>
-        <td>
-          <input type="checkbox" class="check-tarea" data-id="${t.idTarea}" ${t.completada ? 'checked' : ''}>
-          <button class="btn-icon-delete" data-del="${t.idTarea}" title="Eliminar tarea">🗑</button>
-        </td>
-      </tr>
-    `}).join('');
+          </td>
+        </tr>`;
+    }).join('');
 
     if (!tareasEmp.length) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="3" style="text-align:center; font-size:13px; color:#777; padding:20px;">
-            No hay tareas asignadas para este empleado en la fecha seleccionada.
-          </td>
-        </tr>
-      `;
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:40px; color:#999;">No hay tareas asignadas para esta fecha.</td></tr>`;
     }
   }
 
@@ -213,16 +241,17 @@
     empleados.forEach(emp => {
         const btn = document.createElement('button');
         btn.className = `tab ${String(emp.idUsuarios) === String(empleadoActualId) ? 'active' : ''}`;
-        btn.textContent = emp.nombre; // O nombre corto
+        btn.textContent = emp.nombre;
         btn.onclick = () => {
             empleadoActualId = emp.idUsuarios;
-            renderTabs(); // Re-render para actualizar clase active
+            localStorage.setItem('ap_last_emp_view', empleadoActualId); 
+            renderTabs();
             renderHeader();
-            renderTabla();
+            loadTareas(); 
         };
         containerTabs.appendChild(btn);
     });
-  }
+}
 
   // ---------- Render Pedidos Modal ----------
   function renderPedidosModal(filtro = '') {
@@ -299,33 +328,35 @@
     const fecha = inpFechaTarea.value;
     const detalle = inpTareaDetalle ? inpTareaDetalle.value : '';
 
-    if (!idUsuario) return window.showAlert('Atención', 'Seleccioná un empleado.', 'warning');
-    if (!idAlquiler) return window.showAlert('Atención', 'Seleccioná un pedido de la lista.', 'warning');
-    if (!fecha) return window.showAlert('Atención', 'Ingresá la fecha.', 'warning');
+    if (!idUsuario || !idAlquiler || !fecha) {
+        return window.showAlert('Atención', 'Completa todos los campos.', 'warning');
+    }
 
     try {
+        const resCheck = await fetch(`${API_TAREAS}/${fecha}`);
+        if (resCheck.ok) {
+            const todasLasTareasDia = await resCheck.json();
+            const yaAsignado = todasLasTareasDia.some(t => String(t.idAlquiler) === String(idAlquiler));
+            
+            if (yaAsignado) {
+                return window.showAlert('Pedido ya asignado', 'Este pedido ya fue asignado a un empleado para el día de hoy.', 'error');
+            }
+        }
+
         const res = await fetch(API_TAREAS, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ idUsuario, idAlquiler, fecha, detalle })
         });
 
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-            throw new Error(`Error del servidor (${res.status}). Verifica que la ruta de la API exista.`);
+        if (res.ok) {
+            window.showAlert('Éxito', 'Tarea asignada correctamente', 'success');
+            closeModal();
+            await loadTareas(); 
+        } else {
+            const data = await res.json();
+            throw new Error(data.error || 'Error al asignar');
         }
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Error al asignar tarea');
-
-        window.showAlert('Éxito', 'Tarea asignada correctamente', 'success');
-        closeModal();
-        
-        // Si la fecha asignada es la que estamos viendo, recargar
-        if (fecha === fechaFiltro) {
-            await loadTareas();
-        }
-
     } catch (err) {
         window.showAlert('Error', err.message, 'error');
     }
@@ -334,6 +365,20 @@
   // ---------- Init ----------
   document.addEventListener('DOMContentLoaded', async () => {
     if (!initDom()) return;
+
+    // --- AJUSTE DE UI SEGÚN ROL ---
+    if (!esAdmin) {
+        // Ocultar elementos de jefe
+        if (containerTabs) containerTabs.style.display = 'none';
+        if (btnAgregarTarea) btnAgregarTarea.style.display = 'none';
+        
+        // Cambiar el título visual
+        const cardInfo = document.querySelector('.card-tareas-info');
+        if (cardInfo) {
+            cardInfo.style.marginTop = '10px';
+            document.querySelector('.tareas-fecha').innerHTML = `Mi Hoja de Ruta: <span id="tareasFecha" class="link-text"></span>`;
+        }
+    }
 
     await loadData();
 
@@ -355,7 +400,7 @@
     // Completar / eliminar desde la tabla
     tbody.addEventListener('click', async e => {
       const chk = e.target.closest('.check-tarea');
-      const delId = e.target.getAttribute('data-del');
+      const btnDel = e.target.closest('.btn-icon-delete'); 
 
       if (chk) {
         const id = chk.dataset.id;
@@ -366,21 +411,39 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ completada })
             });
-            // Actualizar estado local
-            const t = tareas.find(x => x.idTarea == id);
+            // Buscamos por .id para actualizar el estado local
+            const t = tareas.find(x => String(x.id) === String(id));
             if (t) t.completada = completada;
-        } catch (err) {
-            console.error("Error actualizando estado", err);
-            chk.checked = !completada; // Revertir visualmente si falla
-        }
+            renderTabla(); 
+        } catch (err) { chk.checked = !completada; }
       }
 
-      if (delId) {
-        if (await window.confirmAction('¿Eliminar tarea?', 'Se borrará de la lista.')) {
+      if (btnDel) {
+        // Obtenemos el ID directamente del atributo que acabamos de corregir
+        const delId = btnDel.getAttribute('data-del');
+        
+        if (!delId || delId === "undefined") {
+            return window.showAlert('Error', 'No se pudo identificar la tarea.', 'error');
+        }
+
+        const confirmar = await window.confirmAction('¿Eliminar tarea?', 'Esta acción es permanente.');
+        if (confirmar) {
             try {
-                await fetch(`${API_TAREAS}/${delId}`, { method: 'DELETE' });
-                await loadTareas();
-            } catch (err) { window.showAlert('Error', 'No se pudo eliminar', 'error'); }
+                // Enviamos el DELETE al ID correcto
+                const res = await fetch(`${API_TAREAS}/${delId}`, { 
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('ap_token')}` }
+                });
+
+                if (res.ok) {
+                    window.showAlert('Éxito', 'Tarea eliminada', 'success');
+                    await loadTareas(); // Refresca la lista inmediatamente
+                } else {
+                    const errData = await res.json();
+                    // Esto te mostrará en pantalla por qué Supabase rechaza el borrado
+                    throw new Error(errData.error || "Error al eliminar");
+                }
+            } catch (err) { window.showAlert('Error', err.message, 'error'); }
         }
       }
     });

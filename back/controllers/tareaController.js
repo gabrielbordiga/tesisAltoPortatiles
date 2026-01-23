@@ -3,13 +3,20 @@ const supabase = require('../config/supabase');
 // Obtener tareas por fecha
 exports.obtenerTareasPorFecha = async (req, res) => {
     const { fecha } = req.params;
+    const { idUsuario } = req.query; // Capturar el id de la URL
+
     try {
-        // Traemos la tarea y el alquiler asociado (para mostrar ubicación, cliente, etc.)
-        const { data, error } = await supabase
+        let query = supabase
             .from('Tareas')
             .select('*, alquiler:Alquileres(*, lineas:DetalleAlquiler(*))')
             .eq('fecha', fecha);
 
+        // Si viene el ID por la URL, filtramos
+        if (idUsuario && idUsuario !== "null" && idUsuario !== "undefined") {
+            query = query.eq('idUsuarios', idUsuario);
+        }
+
+        const { data, error } = await query;
         if (error) throw error;
         res.json(data);
     } catch (err) {
@@ -47,7 +54,7 @@ exports.actualizarEstadoTarea = async (req, res) => {
         const { data, error } = await supabase
             .from('Tareas')
             .update({ completada })
-            .eq('idTarea', id)
+            .eq('id', id) 
             .select();
 
         if (error) throw error;
@@ -64,7 +71,7 @@ exports.eliminarTarea = async (req, res) => {
         const { error } = await supabase
             .from('Tareas')
             .delete()
-            .eq('idTarea', id);
+            .eq('id', id); 
 
         if (error) throw error;
         res.json({ mensaje: 'Tarea eliminada' });
