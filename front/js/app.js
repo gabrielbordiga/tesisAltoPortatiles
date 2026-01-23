@@ -222,24 +222,50 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const user = requireAuth(); 
     if (!user) return;
+    const userRol = normalizeRole(user.rol);
 
-    if (!localStorage.getItem(KEY_TOKEN) && user.token) {
-        localStorage.setItem(KEY_TOKEN, user.token);
+    // --- LIMPIEZA FÍSICA DEL MENÚ PARA EMPLEADOS ---
+    if (userRol === 'empleado') {
+        const paginasProhibidas = ['inicio.html', 'gestion.html', 'reportes.html', 'stock.html', 'usuarios.html'];
+        const currentFile = window.location.pathname.split('/').pop() || 'inicio.html';
+
+        if (paginasProhibidas.includes(currentFile)) {
+            location.href = "./tareasAdm.html";
+            return;
+        }
+
+        // ELIMINAR botones del menú lateral físicamente del HTML
+        document.querySelectorAll('.side-nav .item').forEach(item => {
+            // No borrar el botón de logout ni los permitidos para empleado
+            if (item.classList.contains('logout-item')) return;
+            
+            const rolesPermitidos = (item.getAttribute('data-roles') || '').toLowerCase();
+            if (!rolesPermitidos.includes('empleado')) {
+                item.remove(); // Esto elimina el elemento del DOM por completo
+            }
+        });
+    } else {
+        applyRoleVisibility(userRol);
     }
 
-    applyRoleVisibility(user.rol);
-
+    // --- RENDERIZADO DE DATOS DE USUARIO (whoami) ---
     const whoami = document.getElementById("whoami");
     if (whoami) {
-        const name = user.usuario || user.email || "";
-        whoami.innerHTML = `<a href="./mis-datos.html" style="color: inherit; text-decoration: none; border-bottom: 1px dotted rgba(255,255,255,0.5); cursor: pointer;">${name} · ${roleLabel(user.rol)}</a>`;
+        const name = user.usuario || user.email || "Usuario";
+        whoami.innerHTML = `
+            <a href="./mis-datos.html" style="color: white; text-decoration: none; font-size: 0.85em; border-bottom: 1px dotted rgba(255,255,255,0.5); cursor: pointer;">
+                ${name} · ${roleLabel(user.rol)}
+            </a>`;
     }
 
-    document.querySelectorAll(".logout, .btn-logout, .logout-item, .logout .item").forEach((btn) => {
-        btn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            await logout();
-        });
+    document.addEventListener('click', async (e) => {
+        if (e.target.closest('.logout-item') || e.target.closest('.logout')) {
+            const confirmar = await window.confirmAction('¿Cerrar sesión?');
+            if (confirmar) {
+                localStorage.clear();
+                location.href = "./login.html";
+            }
+        }
     });
 });
 })();
