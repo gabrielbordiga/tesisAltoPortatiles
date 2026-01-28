@@ -10,6 +10,7 @@ const alquilerRoutes = require('./routes/alquilerRoutes');
 const tareaRoutes = require('./routes/tareaRoutes');
 const stockRoutes = require('./routes/stockRoutes');
 const recordatorioRoutes = require('./routes/recordatorioRoutes');
+const reporteRoutes = require('./routes/reporteRoutes');
 
 // --- MIDDLEWARES ---
 app.use(cors()); 
@@ -33,6 +34,7 @@ app.use('/api/alquileres', alquilerRoutes);
 app.use('/api/tareas', tareaRoutes);
 app.use('/api/stock', stockRoutes);
 app.use('/api/recordatorios', recordatorioRoutes);
+app.use('/api/reportes', reporteRoutes);
 
 
 // --- INICIO DEL SERVIDOR ---

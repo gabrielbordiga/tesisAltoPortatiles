@@ -1,239 +1,274 @@
-// front/js/reportes.js
 document.addEventListener('DOMContentLoaded', () => {
-  const tbody = document.getElementById('tbodyReportes');
-  const inpDesde = document.getElementById('repDesde');
-  const inpHasta = document.getElementById('repHasta');
-  const selCategoria = document.getElementById('repCategoria');
-  const btnGenerar = document.getElementById('btnGenerarReporte');
+    const tbody = document.getElementById('tbodyReportes');
+    const inpDesde = document.getElementById('repDesde');
+    const inpHasta = document.getElementById('repHasta');
+    const selCategoria = document.getElementById('repCategoria');
+    const btnGenerar = document.getElementById('btnGenerarReporte');
+    const pieCanvas = document.getElementById('chartPie');
+    const barCanvas = document.getElementById('chartBar');
 
-  const pieCanvas = document.getElementById('chartPie');
-  const barCanvas = document.getElementById('chartBar');
+    let pieChart = null;
+    let barChart = null;
 
-  let pieChart = null;
-  let barChart = null;
-
-  // --------- Datos de ejemplo ---------
-  // fecha en formato YYYY-MM-DD
-  const REPORTES = [
-    {
-      fecha: '2025-09-01',
-      categoria: 'Gastos',
-      tercero: 'Limpieza S.A.',
-      producto: 'Papel higiénico',
-      cantidad: 50,
-      precio: 150000,
-      metodo: 'Transferencia'
-    },
-    {
-      fecha: '2025-09-05',
-      categoria: 'Gastos',
-      tercero: 'Proveedor Químicos SRL',
-      producto: 'Desinfectante baños químicos',
-      cantidad: 20,
-      precio: 80000,
-      metodo: 'Efectivo'
-    },
-    {
-      fecha: '2025-09-08',
-      categoria: 'Ingresos',
-      tercero: 'Constructora Norte',
-      producto: 'Alquiler baños estándar',
-      cantidad: 10,
-      precio: 250000,
-      metodo: 'Transferencia'
-    },
-    {
-      fecha: '2025-09-15',
-      categoria: 'Mantenimiento',
-      tercero: 'ServiTruck',
-      producto: 'Reparación camión cisterna',
-      cantidad: 1,
-      precio: 120000,
-      metodo: 'Transferencia'
-    },
-    {
-      fecha: '2025-09-20',
-      categoria: 'Ingresos',
-      tercero: 'Evento Social SA',
-      producto: 'Alquiler baños VIP',
-      cantidad: 6,
-      precio: 180000,
-      metodo: 'Tarjeta'
-    },
-    {
-      fecha: '2025-09-28',
-      categoria: 'Gastos',
-      tercero: 'Estación YPF',
-      producto: 'Combustible flota',
-      cantidad: 1,
-      precio: 95000,
-      metodo: 'Tarjeta'
-    }
-  ];
-
-  // Setear fechas iniciales (mes actual) solo para que quede lindo
-  (() => {
-    const hoy = new Date();
-    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-    const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
-
-    inpDesde.value = inicioMes.toISOString().slice(0, 10);
-    inpHasta.value = finMes.toISOString().slice(0, 10);
-  })();
-
-  // --------- Helpers ---------
-  function parseDate(str) {
-    if (!str) return null;
-    const d = new Date(str + 'T00:00:00');
-    return isNaN(d) ? null : d;
-  }
-
-  function formatDateForTable(str) {
-    const d = parseDate(str);
-    if (!d) return str;
-    return d.toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: '2-digit'
-    });
-  }
-
-  function formatMoney(num) {
-    return num.toLocaleString('es-AR', {
-      style: 'currency',
-      currency: 'ARS',
-      minimumFractionDigits: 0
-    });
-  }
-
-  // --------- Filtro principal ---------
-  function filtrarReportes() {
-    const desde = parseDate(inpDesde.value);
-    const hasta = parseDate(inpHasta.value);
-    const cat = selCategoria.value;
-
-    return REPORTES.filter(r => {
-      const fecha = parseDate(r.fecha);
-      if (desde && fecha < desde) return false;
-      if (hasta && fecha > hasta) return false;
-      if (cat !== 'todos' && r.categoria !== cat) return false;
-      return true;
-    });
-  }
-
-  // --------- Render tabla ---------
-  function renderTabla(data) {
-    if (!data.length) {
-      tbody.innerHTML =
-        '<tr><td colspan="7" style="text-align:center; opacity:.7;">No hay registros para los filtros seleccionados.</td></tr>';
-      return;
+    function formatMoney(n) { 
+        return new Intl.NumberFormat('es-AR', { 
+            style: 'currency', currency: 'ARS', minimumFractionDigits: 0, maximumFractionDigits: 0 
+        }).format(Math.round(n || 0)); 
     }
 
-    tbody.innerHTML = data.map(r => `
-      <tr>
-        <td>${formatDateForTable(r.fecha)}</td>
-        <td>${r.categoria}</td>
-        <td>${r.tercero}</td>
-        <td>${r.producto}</td>
-        <td>${r.cantidad}</td>
-        <td>${formatMoney(r.precio)}</td>
-        <td>${r.metodo}</td>
-      </tr>
-    `).join('');
-  }
+    function formatDate(s) { return s ? new Date(s).toLocaleDateString('es-AR') : '-'; }
 
-  // --------- Render charts ---------
-  function renderCharts(data) {
-    // limpiar si ya existían
-    if (pieChart) {
-      pieChart.destroy();
-      pieChart = null;
-    }
-    if (barChart) {
-      barChart.destroy();
-      barChart = null;
-    }
+    (() => {
+        const hoy = new Date();
+        inpDesde.value = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
+        inpHasta.value = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).toISOString().split('T')[0];
+    })();
 
-    if (!data.length) return;
+    async function generarReporte() {
+        const desde = inpDesde.value;
+        const hasta = inpHasta.value;
+        const catFiltro = selCategoria.value;
 
-    // Agrupamos por categoría
-    const totales = {};
-    data.forEach(r => {
-      totales[r.categoria] = (totales[r.categoria] || 0) + r.precio;
-    });
+        try {
+            const res = await fetch(`/api/reportes?desde=${desde}&hasta=${hasta}`);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Error al obtener datos');
 
-    const labels = Object.keys(totales);
-    const values = Object.values(totales);
+            // PROCESAMIENTO CON VALIDACIÓN DE ARREGLOS
+            const ingresos = (data.ingresos || []).map(i => ({
+                fecha: i.fechaDesde,
+                monto: Number(i.precioTotal) || 0,
+                tercero: i.cliente ? (i.cliente.razonSocial || `${i.cliente.nombre} ${i.cliente.apellido}`) : 'Sin Cliente',
+                metodo: i.pagos?.length ? [...new Set(i.pagos.map(p => p.metodo))].join(', ') : 'S/D',
+                producto: i.lineas?.map(l => `${l.cantidad} ${l.unidades?.tipo?.nombre}`).join(', ') || 'Alquiler',
+                cantidad: i.lineas?.reduce((acc, l) => acc + (Number(l.cantidad) || 0), 0) || 0,
+                lineasRaw: i.lineas || []
+            }));
 
-    // Colores diferentes
-    const colors = [
-      '#E53935', // rojo
-      '#FB8C00', // naranja
-      '#8E24AA', // violeta
-      '#1E88E5', // azul
-      '#43A047', // verde
-      '#FDD835'  // amarillo
-    ].slice(0, labels.length);
+            const gastos = (data.gastos || []).map(g => ({
+                fecha: g.fecha,
+                monto: Number(g.precio) || 0,
+                tercero: g.proveedor?.nombre || 'S/D',
+                producto: g.productoRef?.nombre || g.producto || 'Insumo',
+                cantidad: g.cantidad || 0,
+                metodo: g.metodoPago || 'S/D'
+            }));
 
-    // Pie
-    pieChart = new Chart(pieCanvas, {
-      type: 'pie',
-      data: {
-        labels,
-        datasets: [{
-          data: values,
-          backgroundColor: colors,
-          borderColor: '#ffffff',
-          borderWidth: 1
-        }]
-      },
-      options: {
-        plugins: {
-          legend: {
-            position: 'bottom'
-          }
-        }
-      }
-    });
-
-    // Bar
-    barChart = new Chart(barCanvas, {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Monto',
-          data: values,
-          backgroundColor: colors,
-          borderRadius: 6
-        }]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: val => formatMoney(val)
+            // LÓGICA DINÁMICA ASEGURANDO ARREGLOS
+            if (catFiltro === 'todos') {
+                updateKPITodos(ingresos, gastos);
+                renderChartsTodos(ingresos, gastos);
+                renderTabla([...ingresos.map(i => ({...i, tipo: 'Ingreso'})), ...gastos.map(g => ({...g, tipo: 'Gasto'}))]);
+            } else if (catFiltro === 'Ingresos') {
+                updateKPIIngresos(ingresos);
+                renderChartsIngresos(ingresos);
+                renderTabla(ingresos.map(i => ({...i, tipo: 'Ingreso'})));
+            } else {
+                updateKPIGastos(gastos, ingresos); 
+                renderChartsGastos(gastos);
+                renderTabla(gastos.map(g => ({...g, tipo: 'Gasto'})));
             }
-          }
-        },
-        plugins: {
-          legend: { display: false }
+
+        } catch (error) {
+            window.showAlert('Error', error.message, 'error');
         }
-      }
-    });
-  }
+    }
 
-  // --------- Acción principal ---------
-  function generar() {
-    const filtrados = filtrarReportes();
-    renderTabla(filtrados);
-    renderCharts(filtrados);
-  }
+    // --- FUNCIONES DE KPIs CON BLINDAJE ---
+    function updateKPITodos(ing = [], gas = []) {
+        // Aseguramos que sean arreglos antes de usar reduce
+        const arrIng = Array.isArray(ing) ? ing : [];
+        const arrGas = Array.isArray(gas) ? gas : [];
 
-  btnGenerar.addEventListener('click', generar);
+        const tIng = arrIng.reduce((a, b) => a + (b.monto || 0), 0);
+        const tGas = arrGas.reduce((a, b) => a + (b.monto || 0), 0);
+        
+        document.getElementById('lab1').innerText = "Unidad más alquilada";
+        document.getElementById('val1').innerText = getTopUnidad(arrIng);
+        document.getElementById('lab2').innerText = "Mayor gasto en";
+        document.getElementById('val2').innerText = arrGas.length ? arrGas.sort((a,b) => (b.monto || 0) - (a.monto || 0))[0].producto : '-';
+        document.getElementById('val3').innerText = formatMoney(tIng);
+        if(document.getElementById('val4')) document.getElementById('val4').innerText = formatMoney(tGas);
+        if(document.getElementById('valBalance')) document.getElementById('valBalance').innerText = formatMoney(tIng - tGas);
+    }
 
-  // Ejecutar una vez al cargar
-  generar();
+    function updateKPIIngresos(ing = []) {
+        const arrIng = Array.isArray(ing) ? ing : [];
+        const tIng = arrIng.reduce((a, b) => a + (b.monto || 0), 0);
+
+        document.getElementById('lab1').innerText = "Unidad más alquilada";
+        document.getElementById('val1').innerText = getTopUnidad(arrIng);
+        document.getElementById('lab2').innerText = "Total Alquileres";
+        document.getElementById('val2').innerText = arrIng.length;
+        document.getElementById('val3').innerText = formatMoney(tIng);
+    }
+
+    function updateKPIGastos(gas = [], ing = []) { 
+        const arrGas = Array.isArray(gas) ? gas : [];
+        const arrIng = Array.isArray(ing) ? ing : [];
+
+        const provs = {};
+        arrGas.forEach(g => provs[g.tercero] = (provs[g.tercero] || 0) + 1);
+        const topProv = Object.entries(provs).sort((a,b) => b[1]-a[1])[0];
+
+        document.getElementById('lab1').innerText = "Producto más comprado";
+        document.getElementById('val1').innerText = arrGas.length ? arrGas.sort((a,b) => (b.monto || 0) - (a.monto || 0))[0].producto : '-';
+        document.getElementById('lab2').innerText = "Proveedor recurrente";
+        document.getElementById('val2').innerText = topProv ? topProv[0] : '-';
+
+        const tIng = arrIng.reduce((acc, curr) => acc + (curr.monto || 0), 0);
+        const tGas = arrGas.reduce((acc, curr) => acc + (curr.monto || 0), 0);
+
+        document.getElementById('val3').innerText = formatMoney(tIng); 
+        document.getElementById('val4').innerText = formatMoney(tGas);
+        if(document.getElementById('valBalance')) document.getElementById('valBalance').innerText = formatMoney(tIng - tGas);
+    }
+
+    // --- GRÁFICOS CON BLINDAJE ---
+    function renderChartsTodos(ing = [], gas = []) {
+        if (pieChart) pieChart.destroy();
+        if (barChart) barChart.destroy();
+
+        const tIng = (Array.isArray(ing) ? ing : []).reduce((a, b) => a + (b.monto || 0), 0);
+        const tGas = (Array.isArray(gas) ? gas : []).reduce((a, b) => a + (b.monto || 0), 0);
+
+        pieChart = new Chart(pieCanvas, {
+            type: 'doughnut',
+            data: {
+                labels: ['Ingresos', 'Gastos'],
+                datasets: [{ data: [tIng, tGas], backgroundColor: ['#43A047', '#E53935'] }]
+            }
+        });
+
+        barChart = new Chart(barCanvas, {
+            type: 'bar',
+            data: {
+                labels: ['Balance Financiero'],
+                datasets: [
+                    { label: 'Ingresos', data: [tIng], backgroundColor: '#43A047' },
+                    { label: 'Gastos', data: [tGas], backgroundColor: '#E53935' }
+                ]
+            }
+        });
+    }
+
+    function renderChartsIngresos(ing = []) {
+        if (pieChart) pieChart.destroy();
+        if (barChart) barChart.destroy();
+        const arrIng = Array.isArray(ing) ? ing : [];
+
+        // --- CONFIGURACIÓN VISUAL AQUÍ ---
+        const pieOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%', 
+            plugins: {
+                legend: {
+                    position: 'right', // Leyenda a la derecha para no pisar el gráfico
+                    labels: { boxWidth: 12, font: { size: 11, family: 'Poppins' } }
+                }
+            }
+        };
+
+        const barOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { display: false } },
+                y: { beginAtZero: true, ticks: { font: { size: 10 } } }
+            }
+        };
+
+        // --- CREACIÓN DE GRÁFICOS USANDO LAS OPTIONS ---
+        const unidades = {};
+        arrIng.forEach(i => (i.lineasRaw || []).forEach(l => {
+            const n = l.unidades?.tipo?.nombre || 'Unidad';
+            unidades[n] = (unidades[n] || 0) + l.cantidad;
+        }));
+
+        pieChart = new Chart(pieCanvas, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(unidades),
+                datasets: [{ 
+                    data: Object.values(unidades), 
+                    backgroundColor: ['#cf142b', '#333333', '#666666', '#999999'] 
+                }]
+            },
+            options: pieOptions // <--- Aplicamos las opciones aquí
+        });
+
+        const fechas = {};
+        arrIng.forEach(i => fechas[i.fecha] = (fechas[i.fecha] || 0) + i.monto);
+
+        barChart = new Chart(barCanvas, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(fechas).map(f => formatDate(f)),
+                datasets: [{ 
+                    label: 'Ingresos', 
+                    data: Object.values(fechas), 
+                    backgroundColor: '#2e7d32',
+                    borderRadius: 5
+                }]
+            },
+            options: barOptions // <--- Aplicamos las opciones aquí
+        });
+    }
+
+    function renderChartsGastos(gas = []) {
+        if (pieChart) pieChart.destroy();
+        if (barChart) barChart.destroy();
+        const arrGas = Array.isArray(gas) ? gas : [];
+
+        const prods = {};
+        arrGas.forEach(g => prods[g.producto] = (prods[g.producto] || 0) + g.monto);
+
+        pieChart = new Chart(pieCanvas, {
+            type: 'pie',
+            data: {
+                labels: Object.keys(prods),
+                datasets: [{ data: Object.values(prods), backgroundColor: ['#f44336', '#ff9800', '#9c27b0'] }]
+            }
+        });
+
+        const fechas = {};
+        arrGas.forEach(g => fechas[g.fecha] = (fechas[g.fecha] || 0) + 1);
+
+        barChart = new Chart(barCanvas, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(fechas).map(f => formatDate(f)),
+                datasets: [{ label: 'Frecuencia de compras', data: Object.values(fechas), backgroundColor: '#f44336' }]
+            }
+        });
+    }
+
+    function getTopUnidad(ing = []) {
+        const unidadesMap = {};
+        (Array.isArray(ing) ? ing : []).forEach(i => (i.lineasRaw || []).forEach(l => {
+            const nombre = l.unidades?.tipo?.nombre || 'Unidad';
+            unidadesMap[nombre] = (unidadesMap[nombre] || 0) + (l.cantidad || 0);
+        }));
+        const top = Object.entries(unidadesMap).sort((a,b) => b[1] - a[1])[0];
+        return top ? `${top[0]} (${top[1]})` : '-';
+    }
+
+    function renderTabla(data = []) {
+        const arr = Array.isArray(data) ? data : [];
+        tbody.innerHTML = arr.sort((a,b) => new Date(b.fecha) - new Date(a.fecha)).map(r => `
+            <tr>
+                <td>${formatDate(r.fecha)}</td>
+                <td><span class="tag ${r.tipo === 'Ingreso' ? 'success' : 'danger'}">${r.tipo}</span></td>
+                <td>${r.tercero}</td>
+                <td>${r.producto}</td>
+                <td>${r.cantidad || '-'}</td>
+                <td>${formatMoney(r.monto)}</td>
+                <td>${r.metodo}</td>
+            </tr>`).join('');
+    }
+
+    btnGenerar.addEventListener('click', generarReporte);
+    generarReporte();
 });
