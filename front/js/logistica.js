@@ -101,7 +101,11 @@
         : 'Cliente desconocido';
 
     const unidades = (alq.lineas || []).map(l => `<li>${l.cantidad} x ${l.unidad}</li>`).join('');
-    const estadoClass = alq.estado === 'PAGADO' ? 'color:green' : 'color:#ec1f26';
+    
+    // Calcular saldo para color (Verde si saldo <= 0)
+    const pagado = (alq.pagos || []).reduce((acc, p) => acc + (Number(p.monto)||0), 0);
+    const saldo = (Number(alq.precioTotal)||0) - pagado;
+    const estadoClass = saldo <= 0 ? 'color:green' : 'color:#ec1f26';
     
     const popupContent = `
       <div style="min-width:200px;">

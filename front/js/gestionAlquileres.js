@@ -61,9 +61,8 @@
   }
 
   function estadoDesdeSaldo({ total, pagado, saldo }) {
-    // Ajuste: Probamos con mayúsculas (PENDIENTE / PAGADO) para cumplir con el check constraint
-    if (saldo <= 0 && total > 0) return 'PAGADO';
-    return 'PENDIENTE';
+    if (saldo <= 0 && total > 0) return 'COMPLETO';
+    return 'PARCIAL';
   }
 
   // Helper para mostrar fecha amigable (DD/MM/YYYY) aunque se guarde como YYYY-MM-DD
@@ -88,6 +87,7 @@
   let pagos  = [];        // pagos del alquiler que se está editando
   let ubicacionValida = false; // Para verificar que la ubicación existe
   let userLat = null, userLon = null;
+  let sortState = { col: null, asc: true }; // Estado de ordenamiento
 
   // Obtener ubicación actual para ordenar sugerencias
   if (navigator.geolocation) {
@@ -143,6 +143,16 @@
     ul.className = 'suggestions-list hidden';
     wrapper.appendChild(ul);
 
+    // Crear mensaje de error (NUEVO)
+    const errorMsg = document.createElement('div');
+    errorMsg.style.color = 'var(--rojo)';
+    errorMsg.style.fontSize = '12px';
+    errorMsg.style.marginTop = '4px';
+    errorMsg.style.display = 'none';
+    errorMsg.textContent = 'La ubicación cargada se puede visualizar de manera incorrecta o no visualizarse';
+    wrapper.appendChild(errorMsg);
+    input._errorMsgElement = errorMsg;
+
     const fetchAddress = async (q) => {
         try {
             // Usamos Nominatim (OpenStreetMap)
@@ -165,6 +175,14 @@
                 renderSuggestions(data.slice(0, 5));
             }
         } catch (e) { console.error("Error autocompletado:", e); }
+    };
+
+    const updateValidationUI = () => {
+        if (ubicacionValida || input.value.trim() === '') {
+            errorMsg.style.display = 'none';
+        } else {
+            errorMsg.style.display = 'block';
+        }
     };
 
     const renderSuggestions = (data) => {
@@ -190,6 +208,7 @@
             li.addEventListener('click', () => {
                 input.value = texto;
                 ubicacionValida = true; // Validado
+                updateValidationUI();
                 ul.classList.add('hidden');
                 input.classList.remove('is-invalid');
             });
@@ -208,11 +227,51 @@
         fetchAddress(val);
     }, 500);
 
-    input.addEventListener('input', onInput);
+    input.addEventListener('input', (e) => {
+        ubicacionValida = false;
+        updateValidationUI();
+        onInput(e);
+    });
 
     // Cerrar lista si click fuera
     document.addEventListener('click', (e) => {
         if (!wrapper.contains(e.target)) ul.classList.add('hidden');
+    });
+  }
+
+  function injectModalRegistro() {
+    if (document.getElementById('modalRegistroAlquiler')) return;
+    const div = document.createElement('div');
+    div.id = 'modalRegistroAlquiler';
+    div.className = 'modal-overlay hidden';
+    div.style.zIndex = '1001'; // Por encima del modal de info
+    div.innerHTML = `
+      <div class="modal">
+        <div class="modal-header">Registro de Cambios</div>
+        <div class="modal-body">
+          <h3 id="regTitulo" style="text-align:center; margin-bottom:15px; font-size:16px; color:var(--rojo);"></h3>
+          <div class="tabla-wrap" style="max-height:300px; overflow-y:auto;">
+            <table class="tabla-mini">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Detalle</th>
+                  <th>Empleado</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyRegistro"></tbody>
+            </table>
+          </div>
+          <div class="form-actions right" style="margin-top:15px;">
+            <button type="button" class="btn outline" id="btnCerrarRegistro">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(div);
+
+    document.getElementById('btnCerrarRegistro').addEventListener('click', () => {
+        div.classList.add('hidden');
     });
   }
 
@@ -232,12 +291,11 @@
                 <strong>Estado:</strong> 
                 <select id="infoEstadoSelect" class="input" style="padding:2px 4px; height:28px; font-size:13px; width:auto;">
                     <option value="PENDIENTE">PENDIENTE</option>
-                    <option value="CONFIRMADO">CONFIRMADO</option>
                     <option value="ENTREGADO">ENTREGADO</option>
-                    <option value="SERVICIO_PENDIENTE">SERVICIO PENDIENTE</option>
-                    <option value="PARA_RETIRAR">PARA RETIRAR</option>
+                    <option value="PARA RETIRAR">PARA RETIRAR</option>
                     <option value="RETIRADO">RETIRADO</option>
-                    <option value="PAGADO">PAGADO</option>
+                    <option value="SERVICIO PENDIENTE">SERVICIO PENDIENTE</option>
+                    <option value="FINALIZADO">FINALIZADO</option>
                 </select>
                 <button id="btnUpdateEstado" class="action" title="Guardar estado" style="padding:2px 6px; height:28px;">💾</button>
              </div>
@@ -262,6 +320,7 @@
           </table>
 
           <div class="form-actions right" style="margin-top:20px;">
+            <button type="button" class="btn" id="btnVerRegistro" style="background:#666; color:#fff; margin-right:auto;">Ver Registro</button>
             <button type="button" class="btn outline" id="btnCerrarInfo">Cerrar</button>
           </div>
         </div>
@@ -275,16 +334,16 @@
         const nuevoEstado = document.getElementById('infoEstadoSelect').value;
         
         // Buscamos el alquiler actual para preservar sus datos obligatorios
-        const alq = ALQUILERES.find(a => String(a.idAlquiler) === String(id));
+        const alq = ALQUILERES.find(a => String(a.idAlquiler || a.idalquiler) === String(id));
         if (!alq) return;
 
         // Preparamos payload SOLO con datos de cabecera (sin lineas/pagos para no tocarlos)
         const payload = {
-            idCliente: alq.idCliente,
+            idCliente: alq.idCliente || alq.idcliente,
             ubicacion: alq.ubicacion,
-            fechaDesde: alq.fechaDesde,
-            fechaHasta: alq.fechaHasta,
-            precioTotal: alq.precioTotal,
+            fechaDesde: alq.fechaDesde || alq.fechadesde,
+            fechaHasta: alq.fechaHasta || alq.fechahasta,
+            precioTotal: alq.precioTotal !== undefined ? alq.precioTotal : alq.preciototal,
             estado: nuevoEstado
             // Al no enviar 'lineas' ni 'pagos', el backend no los modifica
         };
@@ -295,7 +354,10 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            if (!res.ok) throw new Error('Error al actualizar estado');
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || 'Error al actualizar estado');
+            }
             
             window.showAlert('Éxito', 'Estado actualizado', 'success');
             // Recargamos datos de fondo
@@ -305,10 +367,52 @@
             // Actualizamos visualmente el modal si sigue abierto (opcional, ya cambiamos el select)
         } catch (e) { window.showAlert('Error', e.message, 'error'); }
     });
+
+    // Evento para ver registro
+    document.getElementById('btnVerRegistro').addEventListener('click', () => {
+        const id = document.getElementById('infoIdHidden').value;
+        if (id) showRegistro(id);
+    });
+  }
+
+  async function showRegistro(id) {
+      const modal = document.getElementById('modalRegistroAlquiler');
+      const tbody = document.getElementById('tbodyRegistro');
+      const titulo = document.getElementById('regTitulo');
+      
+      titulo.textContent = `Historial del Alquiler #${id}`;
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">Cargando historial...</td></tr>';
+      modal.classList.remove('hidden');
+
+      try {
+          if (!id || id === 'undefined') throw new Error("ID de alquiler no válido.");
+          const res = await fetch(`${API_URL}/${id}/historial`);
+          if (!res.ok) {
+              const errData = await res.json().catch(() => ({}));
+              throw new Error(errData.error || 'No se pudo cargar el historial.');
+          }
+          const data = await res.json();
+          
+          if (!data || !data.length) {
+              tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">Sin movimientos registrados.</td></tr>';
+              return;
+          }
+
+          tbody.innerHTML = data.map(r => `
+            <tr>
+                <td>${formatFechaVisual(r.fecha)}</td>
+                <td>${r.detalle || r.accion || '-'}</td>
+                <td>${r.usuario ? (r.usuario.nombre + ' ' + r.usuario.apellido) : (r.empleado || '-')}</td>
+            </tr>
+          `).join('');
+      } catch (e) {
+          tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:red; padding:20px;">${e.message}</td></tr>`;
+      }
   }
 
   function initDomAlquileres() {
     injectModalInfo();
+    injectModalRegistro();
     tbody         = document.getElementById('tbodyAlquileres');
     txtBuscar     = document.getElementById('buscarAlquiler');
     form          = document.getElementById('formAlquiler');
@@ -380,9 +484,33 @@
 
     // Cambiar nombre de columna Saldo a Pendiente dinámicamente
     const headers = document.querySelectorAll('th');
-    headers.forEach(th => {
-        if (th.textContent.trim() === 'Saldo') th.textContent = 'Pendiente';
-    });
+    const table = tbody.closest('table');
+    if (table) {
+        const ths = table.querySelectorAll('thead th');
+        // Mapeo de índices a claves de ordenamiento
+        // 1: Cliente, 3: Fecha, 5: Estado, 6: Pendiente
+        const mapSort = {
+            1: 'nombreCliente',
+            3: 'fechaDesde',
+            5: 'estado',
+            6: 'saldo'
+        };
+
+        ths.forEach((th, idx) => {
+            if (th.textContent.trim() === 'Saldo') th.textContent = 'Pendiente';
+            
+            if (mapSort[idx]) {
+                th.style.cursor = 'pointer';
+                th.title = 'Ordenar';
+                th.addEventListener('click', () => {
+                    const key = mapSort[idx];
+                    sortState.asc = (sortState.col === key) ? !sortState.asc : true;
+                    sortState.col = key;
+                    renderTablaAlquileres(txtBuscar.value);
+                });
+            }
+        });
+    }
 
     return true;
   }
@@ -391,23 +519,16 @@
   function renderTablaAlquileres(filtro = '') {
     const q = String(filtro || '').trim().toLowerCase();
 
-    tbody.innerHTML = ALQUILERES
-      .map(a => {
+    // 1. Pre-procesar datos (Enriquecer)
+    let data = ALQUILERES.map(a => {
         // Mapear idCliente a Nombre usando la caché
         const c = CLIENTES_CACHE.find(x => String(x.idCliente) === String(a.idCliente));
         const nombreCliente = c 
           ? (c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial) 
           : 'Cliente desconocido';
-        return { ...a, nombreCliente };
-      })
-      .filter(a =>
-        [String(a.idAlquiler), a.nombreCliente, a.ubicacion].some(v =>
-          String(v || '').toLowerCase().includes(q)
-        )
-      )
-      .map(a => {
+        
         // Normalizar ID por si viene en minúsculas desde el backend
-        a.idAlquiler = a.idAlquiler || a.idalquiler;
+        const idAlquiler = a.idAlquiler || a.idalquiler;
 
         const dias = diffDias(a.fechaDesde, a.fechaHasta);
         // Usar precioTotal de la BD si existe, sino calcularlo de las líneas
@@ -416,13 +537,43 @@
         const pagado = (a.pagos || []).reduce((acc, p) => acc + Number(p.monto || 0), 0);
         const saldo = total - pagado;
 
+        return { ...a, idAlquiler, nombreCliente, saldo, total, pagado, dias };
+    });
+
+    // 2. Filtrar
+    data = data.filter(a =>
+        [String(a.idAlquiler), a.nombreCliente, a.ubicacion].some(v =>
+          String(v || '').toLowerCase().includes(q)
+        )
+    );
+
+    // 3. Ordenar
+    if (sortState.col) {
+        data.sort((a, b) => {
+            let valA = a[sortState.col];
+            let valB = b[sortState.col];
+
+            // Manejo de strings case-insensitive y nulos
+            if (typeof valA === 'string') valA = valA.toLowerCase();
+            if (typeof valB === 'string') valB = valB.toLowerCase();
+            if (valA == null) valA = '';
+            if (valB == null) valB = '';
+
+            if (valA < valB) return sortState.asc ? -1 : 1;
+            if (valA > valB) return sortState.asc ? 1 : -1;
+            return 0;
+        });
+    }
+
+    // 4. Renderizar HTML
+    tbody.innerHTML = data.map(a => {
         const unidadesTexto = (a.lineas || [])
           .map(l => `${l.cantidad} ${(l.unidad || '').toLowerCase()}`)
           .join(', ') || '-';
 
         const fDesde = a.fechaDesde ? formatFechaVisual(a.fechaDesde) : '';
         const fHasta = a.fechaHasta ? formatFechaVisual(a.fechaHasta) : '';
-        const fechaRango = (fDesde && fHasta) ? `${fDesde} - ${fHasta} (${dias} días)` : (fDesde || fHasta || '-');
+        const fechaRango = (fDesde && fHasta) ? `${fDesde} - ${fHasta} (${a.dias} días)` : (fDesde || fHasta || '-');
 
         // Acortar visualmente el ID si es muy largo (ej. UUID)
         const idRaw = String(a.idAlquiler);
@@ -435,8 +586,8 @@
           <td>${a.ubicacion}</td>
           <td>${fechaRango}</td>
           <td>${unidadesTexto}</td>
-          <td>${a.estado || estadoDesdeSaldo({ total, pagado, saldo })}</td>
-          <td>${formatMoneda(saldo)}</td>
+          <td>${a.estado || 'PENDIENTE'}</td>
+          <td>${formatMoneda(a.saldo)}</td>
           <td>
             <button class="action info" data-info="${a.idAlquiler}" title="Ver detalles">ℹ</button>
             <button class="action" data-edit="${a.idAlquiler}">Editar</button>
@@ -445,6 +596,26 @@
         </tr>`;
       })
       .join('');
+
+    updateSortIcons();
+  }
+
+  function updateSortIcons() {
+      const table = tbody.closest('table');
+      if (!table) return;
+      const ths = table.querySelectorAll('thead th');
+      const mapSort = { 1: 'nombreCliente', 3: 'fechaDesde', 5: 'estado', 6: 'saldo' };
+
+      ths.forEach((th, idx) => {
+          if (mapSort[idx]) {
+              // Limpiar iconos previos
+              let text = th.textContent.replace(/ [▲▼]$/, '');
+              if (sortState.col === mapSort[idx]) {
+                  text += sortState.asc ? ' ▲' : ' ▼';
+              }
+              th.textContent = text;
+          }
+      });
   }
 
   // ------ Render mini tabla de unidades ------
@@ -502,6 +673,7 @@
   function showModalInfo(a) {
     if (!modalInfo) return;
     
+    const idReal = a.idAlquiler || a.idalquiler;
     // Calcular datos
     // Cliente
     const c = CLIENTES_CACHE.find(x => String(x.idCliente) === String(a.idCliente));
@@ -524,11 +696,11 @@
     const saldo = total - pagado;
     
     const estadoPago = estadoDesdeSaldo({ total, pagado, saldo });
-    const estadoAlquiler = a.estado || estadoPago;
+    const estadoAlquiler = a.estado || 'PENDIENTE';
 
     // Llenar DOM
-    document.getElementById('infoIdHidden').value = a.idAlquiler;
-    document.getElementById('infoId').textContent = a.idAlquiler || '-';
+    document.getElementById('infoIdHidden').value = idReal;
+    document.getElementById('infoId').textContent = idReal || '-';
     document.getElementById('infoCliente').textContent = nombreCliente;
     document.getElementById('infoUbicacion').textContent = a.ubicacion || '-';
     document.getElementById('infoEstadoSelect').value = estadoAlquiler; // Seteamos el select
@@ -572,6 +744,7 @@
 
     inpUbicacion.value = '';
     ubicacionValida = false; // Resetear validación
+    if (inpUbicacion._errorMsgElement) inpUbicacion._errorMsgElement.style.display = 'none';
     inpDesde.value     = '';
     inpHasta.value     = '';
 
@@ -592,7 +765,7 @@
   }
 
   function fillFormAlquiler(a) {
-    currentId = a.idAlquiler;
+    currentId = a.idAlquiler || a.idalquiler;
 
     selCliente.value = a.idCliente || '';
     
@@ -603,6 +776,7 @@
 
     inpUbicacion.value = a.ubicacion || '';
     ubicacionValida = true; // Asumimos válida si viene de la BD
+    if (inpUbicacion._errorMsgElement) inpUbicacion._errorMsgElement.style.display = 'none';
     inpDesde.value     = a.fechaDesde || '';
     inpHasta.value     = a.fechaHasta || '';
 
@@ -704,13 +878,13 @@
 
       if (btnInfo) {
         const id = btnInfo;
-        const alq = ALQUILERES.find(a => String(a.idAlquiler) === String(id));
+        const alq = ALQUILERES.find(a => String(a.idAlquiler || a.idalquiler) === String(id));
         if (alq) showModalInfo(alq);
       }
 
       if (btnEdit) {
         const id = btnEdit; // ID como string (por si es UUID)
-        const alq = ALQUILERES.find(a => String(a.idAlquiler) === String(id));
+        const alq = ALQUILERES.find(a => String(a.idAlquiler || a.idalquiler) === String(id));
         if (alq) fillFormAlquiler(alq);
       }
 
@@ -802,9 +976,20 @@
       if (!lineas.length)            return window.showAlert('Atención', 'Agregá al menos una unidad.', 'warning');
       if (fechaDesde && fechaHasta && fechaDesde > fechaHasta) return window.showAlert('Atención', 'Fechas inválidas: "Desde" no puede ser mayor a "Hasta".', 'warning');
 
+      if (!ubicacionValida) {
+          const confirm = await window.confirmAction('Atención', 'La ubicación cargada se puede visualizar de manera incorrecta o no visualizarse. ¿Desea cargar el alquiler de todas formas?');
+          if (!confirm) return;
+      }
+
       const dias = diffDias(fechaDesde, fechaHasta);
       const { total, pagado, saldo } = calcTotales(lineas, pagos, dias);
-      const estadoCalculado = estadoDesdeSaldo({ total, pagado, saldo });
+      
+      // Preservar estado si es edición, sino PENDIENTE. Evitar 'PAGADO'.
+      let estadoFinal = 'PENDIENTE';
+      if (currentId) {
+          const actual = ALQUILERES.find(a => String(a.idAlquiler || a.idalquiler) === String(currentId));
+          if (actual && actual.estado && actual.estado !== 'PAGADO') estadoFinal = actual.estado;
+      }
 
       const payload = {
         idCliente: idCliente,
@@ -812,7 +997,7 @@
         fechaDesde,
         fechaHasta,
         precioTotal: total,
-        estado: estadoCalculado,
+        estado: estadoFinal,
         lineas, // Se envían para que el backend las procese si tiene la lógica
         pagos
       };

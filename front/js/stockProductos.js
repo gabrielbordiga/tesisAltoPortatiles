@@ -11,7 +11,10 @@
 
   // DOM
   const tbody = document.getElementById('tbodyMovimientos');
+  const tbodyStock = document.getElementById('tbodyStock'); // Nueva tabla Stock
   const inpBuscar = document.getElementById('movBuscar');
+  const inpStkBuscar = document.getElementById('stkBuscar'); // Buscador Stock
+  const inpStkFiltroCant = document.getElementById('stkFiltroCant'); // Filtro Cantidad Stock
   const formMov = document.getElementById('formMovimiento');
   const btnCancelar = document.getElementById('movCancelar');
 
@@ -30,6 +33,18 @@
   const btnCerrarModal = document.getElementById('btnCerrarNuevoProducto');
   const inpProdNombre = document.getElementById('prodNombre');
   const inpProdUnidad = document.getElementById('prodUnidad');
+
+  // Modal Editar Stock
+  const modalEditStock = document.getElementById('modalEditarStock');
+  const formEditStock = document.getElementById('formEditarStock');
+  const inpStkId = document.getElementById('stkIdProducto');
+  const lblStkNombre = document.getElementById('stkNombreProducto');
+  const inpStkActual = document.getElementById('stkCantidadActual');
+  const inpStkNuevo = document.getElementById('stkNuevaCantidad');
+  const btnCancelStock = document.getElementById('btnCancelarStock');
+
+  // Estado de ordenamiento Stock
+  let stkSort = { col: 'nombre', asc: true };
 
   // --- INYECCIÓN DE BOTÓN "EDITAR PRODUCTOS" ---
   (function injectGestionBtn() {
@@ -196,6 +211,7 @@
 
       fillSelects();
       renderTabla();
+      renderStockTable(); // Renderizar la nueva grilla de stock
     } catch (e) { console.error(e); }
   }
 
@@ -295,6 +311,124 @@
     `).join('');
   }
 
+  // --- RENDER TABLA STOCK (AGREGADO) ---
+  function renderStockTable() {
+    if (!tbodyStock) return;
+
+    const q = (inpStkBuscar ? inpStkBuscar.value : '').toLowerCase().trim();
+    const maxCant = inpStkFiltroCant ? parseFloat(inpStkFiltroCant.value) : NaN;
+    
+    // Calcular stock por producto sumando movimientos
+    const stockMap = {};
+    PRODUCTOS.forEach(p => stockMap[p.idProducto] = 0);
+    
+    MOVIMIENTOS.forEach(m => {
+      if (stockMap[m.idProducto] !== undefined) {
+        stockMap[m.idProducto] += Number(m.cantidad || 0);
+      }
+    });
+
+    // Crear lista enriquecida
+    let lista = PRODUCTOS.map(p => ({
+      ...p,
+      total: stockMap[p.idProducto] || 0
+    }));
+
+    // Filtrar
+    lista = lista.filter(item => {
+      const matchText = item.nombre.toLowerCase().includes(q);
+      const matchCant = isNaN(maxCant) || item.total <= maxCant;
+      return matchText && matchCant;
+    });
+
+    // Ordenar
+    lista.sort((a, b) => {
+      let valA = stkSort.col === 'cantidad' ? a.total : a.nombre.toLowerCase();
+      let valB = stkSort.col === 'cantidad' ? b.total : b.nombre.toLowerCase();
+      
+      if (valA < valB) return stkSort.asc ? -1 : 1;
+      if (valA > valB) return stkSort.asc ? 1 : -1;
+      return 0;
+    });
+
+    // Renderizar
+    tbodyStock.innerHTML = lista.map(p => {
+        return `
+            <tr>
+                <td data-label="Producto">${p.nombre}</td>
+                <td data-label="Unidad">${p.unidadMedida || '-'}</td>
+                <td data-label="Cantidad Total" style="font-weight:bold; font-size:1.1em;">${p.total}</td>
+                <td class="acciones">
+                    <button class="action" onclick="window.openEditStock('${p.idProducto}', ${p.total}, '${p.nombre}')">✎ Editar</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    // Actualizar iconos de ordenamiento
+    updateSortIcons();
+  }
+
+  function updateSortIcons() {
+    const iconNombre = document.getElementById('sortIconNombre');
+    const iconCant = document.getElementById('sortIconCantidad');
+    if (iconNombre) iconNombre.textContent = stkSort.col === 'nombre' ? (stkSort.asc ? '▲' : '▼') : '↕';
+    if (iconCant) iconCant.textContent = stkSort.col === 'cantidad' ? (stkSort.asc ? '▲' : '▼') : '↕';
+  }
+
+  // --- ABRIR MODAL AJUSTE STOCK ---
+  window.openEditStock = (id, current, nombre) => {
+      inpStkId.value = id;
+      lblStkNombre.textContent = nombre;
+      inpStkActual.value = current;
+      inpStkNuevo.value = current;
+      if (modalEditStock) modalEditStock.classList.remove('hidden');
+  };
+
+  // --- GUARDAR AJUSTE STOCK ---
+  if (formEditStock) {
+      formEditStock.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const idProd = inpStkId.value;
+          const current = Number(inpStkActual.value);
+          const target = Number(inpStkNuevo.value);
+          
+          if (current === target) {
+              modalEditStock.classList.add('hidden');
+              return;
+          }
+
+          const diff = target - current;
+          
+          // Creamos un movimiento de ajuste
+          const payload = {
+              idProducto: idProd,
+              cantidad: diff,
+              fecha: new Date().toISOString().split('T')[0],
+              precio: 0,
+              metodoPago: 'AJUSTE_STOCK',
+              idProveedor: null // Ajuste interno
+          };
+          
+          try {
+               const res = await fetch(API_COMPRAS, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error('Error al ajustar stock');
+                
+                window.showAlert('Éxito', 'Stock ajustado', 'success');
+                modalEditStock.classList.add('hidden');
+                loadData();
+          } catch (err) {
+              window.showAlert('Error', err.message, 'error');
+          }
+      });
+  }
+  
+  if (btnCancelStock) btnCancelStock.addEventListener('click', () => modalEditStock.classList.add('hidden'));
+
   // Guardar Compra
   formMov.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -350,6 +484,23 @@
 
   inpBuscar.addEventListener('input', renderTabla);
   btnCancelar.addEventListener('click', () => formMov.reset());
+
+  // Listeners Stock (Búsqueda y Ordenamiento)
+  if (inpStkBuscar) inpStkBuscar.addEventListener('input', renderStockTable);
+  if (inpStkFiltroCant) inpStkFiltroCant.addEventListener('input', renderStockTable);
+
+  document.querySelectorAll('.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.sort;
+      if (stkSort.col === col) {
+        stkSort.asc = !stkSort.asc;
+      } else {
+        stkSort.col = col;
+        stkSort.asc = true;
+      }
+      renderStockTable();
+    });
+  });
 
   // Init
   loadData();
