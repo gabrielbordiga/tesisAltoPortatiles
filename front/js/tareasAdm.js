@@ -36,7 +36,7 @@
   // ---------- DOM refs ----------
   let containerTabs, tbody, lblFecha, lblEmpleado, lblZona, inpFiltroFecha;
   let modalOverlay, formTarea, selEmpleadoModal, inpFechaTarea;
-  let inpBuscarPedido, tbodyPedidos, inpPedidoId, lblPedidoInfo, inpTareaDetalle;
+  let inpBuscarPedido, tbodyPedidos, inpPedidoId, lblPedidoInfo, inpTareaDetalle, selTareaTipo;
   let btnAgregarTarea, btnGuardarTarea, btnCancelarTarea;
 
   function initDom() {
@@ -52,6 +52,25 @@
     selEmpleadoModal= document.getElementById('tareaEmpleado');
     inpFechaTarea   = document.getElementById('tareaFecha');
     inpTareaDetalle = document.getElementById('tareaDetalle');
+
+    // Inyectar select de tareas predefinidas si no existe
+    if (inpTareaDetalle && !document.getElementById('selTareaTipo')) {
+        const div = document.createElement('div');
+        div.style.marginBottom = '15px';
+        div.innerHTML = `
+            <label style="display:block; margin-bottom:5px; font-weight:500;">Acción</label>
+            <select id="selTareaTipo" class="input">
+                <option value="">-- Seleccionar acción --</option>
+                <option value="Entregar unidad">Entregar unidad</option>
+                <option value="Realizar Servicio">Realizar Servicio</option>
+                <option value="Retirar unidad">Retirar unidad</option>
+                <option value="Otro">Otro / Nota</option>
+            </select>
+        `;
+        const target = inpTareaDetalle.closest('label') || inpTareaDetalle;
+        target.parentNode.insertBefore(div, target);
+    }
+    selTareaTipo = document.getElementById('selTareaTipo');
     
     inpBuscarPedido = document.getElementById('buscarPedidoModal');
     tbodyPedidos    = document.getElementById('tbodyPedidosModal');
@@ -238,10 +257,21 @@
   // ---------- Tabs empleados ----------
   function renderTabs() {
     containerTabs.innerHTML = '';
+
+    // Contar ocurrencias de nombres para detectar duplicados
+    const conteoNombres = {};
+    empleados.forEach(e => {
+        const n = (e.nombre || '').trim().toLowerCase();
+        conteoNombres[n] = (conteoNombres[n] || 0) + 1;
+    });
+
     empleados.forEach(emp => {
         const btn = document.createElement('button');
         btn.className = `tab ${String(emp.idUsuarios) === String(empleadoActualId) ? 'active' : ''}`;
-        btn.textContent = emp.nombre;
+        
+        const n = (emp.nombre || '').trim().toLowerCase();
+        btn.textContent = (conteoNombres[n] > 1) ? `${emp.nombre} ${emp.apellido || ''}` : emp.nombre;
+
         btn.onclick = () => {
             empleadoActualId = emp.idUsuarios;
             localStorage.setItem('ap_last_emp_view', empleadoActualId); 
@@ -313,6 +343,7 @@
 
     inpFechaTarea.value = fechaFiltro; // Sugerir fecha actual del filtro
     if (inpTareaDetalle) inpTareaDetalle.value = ''; // Limpiar detalle
+    if (selTareaTipo) selTareaTipo.value = ''; // Limpiar tipo
 
     modalOverlay.classList.remove('hidden');
   }
@@ -326,7 +357,13 @@
     const idUsuario = selEmpleadoModal.value;
     const idAlquiler = inpPedidoId.value;
     const fecha = inpFechaTarea.value;
-    const detalle = inpTareaDetalle ? inpTareaDetalle.value : '';
+    
+    const tipo = selTareaTipo ? selTareaTipo.value : '';
+    const texto = inpTareaDetalle ? inpTareaDetalle.value.trim() : '';
+    let detalle = texto;
+    if (tipo && !tipo.startsWith('Otro')) {
+        detalle = texto ? `${tipo} - ${texto}` : tipo;
+    }
 
     if (!idUsuario || !idAlquiler || !fecha) {
         return window.showAlert('Atención', 'Completa todos los campos.', 'warning');

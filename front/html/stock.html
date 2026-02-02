@@ -62,13 +62,42 @@
       <!-- PESTAÑAS -->
       <section class="card" style="margin-bottom:14px;">
         <div class="tabs-toggle">
-          <button class="tabs-btn active" data-tab="proveedores">Proveedores</button>
-          <button class="tabs-btn" data-tab="productos">Productos</button>
+          <button class="tabs-btn active" data-tab="stock">Stock</button>
+          <button class="tabs-btn" data-tab="proveedores">Proveedores</button>
+          <button class="tabs-btn" data-tab="productos">Movimientos</button>
         </div>
       </section>
 
+      <!-- ================== TAB STOCK (NUEVA) ================== -->
+      <section id="tabStock" class="tab-panel">
+        <section class="card">
+          <div class="toolbar" style="justify-content: space-between;">
+            <div class="input-wrap" style="flex: 1; max-width: 300px;">
+              <input id="stkBuscar" type="text" class="input" placeholder="Buscar producto..." />
+            </div>
+            <div class="input-wrap" style="flex: 1; max-width: 200px;">
+              <input id="stkFiltroCant" type="number" class="input" placeholder="Cantidad menor a..." />
+            </div>
+          </div>
+
+          <div class="tabla-wrap">
+            <table class="tabla tabla-stack">
+              <thead>
+                <tr>
+                  <th class="sortable" data-sort="nombre" style="cursor:pointer;">Producto <span id="sortIconNombre">↕</span></th>
+                  <th>Unidad</th>
+                  <th class="sortable" data-sort="cantidad" style="cursor:pointer;">Cantidad Total <span id="sortIconCantidad">↕</span></th>
+                  <th style="width:100px;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyStock"><!-- JS --></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
       <!-- ================== TAB PROVEEDORES ================== -->
-      <section id="tabProveedores" class="tab-panel">
+      <section id="tabProveedores" class="tab-panel hidden">
 
         <!-- BUSCADOR + TABLA PROVEEDORES -->
         <section class="card">
@@ -233,6 +262,34 @@
     </div>
   </div>
 
+  <!-- MODAL: EDITAR STOCK (AJUSTE) -->
+  <div class="modal-overlay hidden" id="modalEditarStock">
+    <div class="modal modal-small">
+      <div class="modal-header">
+        <h2>AJUSTAR STOCK</h2>
+      </div>
+      <div class="modal-body">
+        <form id="formEditarStock" class="form-vertical">
+          <input type="hidden" id="stkIdProducto">
+          <h3 id="stkNombreProducto" style="text-align:center; margin-bottom:10px; color:var(--rojo);"></h3>
+          
+          <label>Stock Actual
+            <input id="stkCantidadActual" type="number" class="input" disabled style="background:#eee;" />
+          </label>
+
+          <label>Nueva Cantidad Real
+            <input id="stkNuevaCantidad" type="number" class="input" required />
+          </label>
+
+          <div class="form-actions">
+            <button type="submit" class="btn primary">Guardar Ajuste</button>
+            <button type="button" id="btnCancelarStock" class="btn outline">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- ================== SCRIPTS ================== -->
 
   <!-- app.js debe ser module porque usa import -->
@@ -248,21 +305,24 @@
       const btns = document.querySelectorAll('.tabs-btn');
       const tabProv = document.getElementById('tabProveedores');
       const tabProd = document.getElementById('tabProductos');
+      const tabStock = document.getElementById('tabStock');
+      
+      const tabs = {
+        stock: tabStock,
+        proveedores: tabProv,
+        productos: tabProd
+      };
 
       btns.forEach(btn => {
         btn.addEventListener('click', () => {
-          const tab = btn.dataset.tab;
-
+          const target = btn.dataset.tab;
           btns.forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
-
-          if (tab === 'proveedores') {
-            tabProv.classList.remove('hidden');
-            tabProd.classList.add('hidden');
-          } else {
-            tabProd.classList.remove('hidden');
-            tabProv.classList.add('hidden');
-          }
+          
+          Object.keys(tabs).forEach(k => {
+             if (k === target) tabs[k].classList.remove('hidden');
+             else tabs[k].classList.add('hidden');
+          });
         });
       });
     });
