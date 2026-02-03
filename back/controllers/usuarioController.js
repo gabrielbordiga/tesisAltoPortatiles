@@ -165,7 +165,6 @@ exports.login = async (req, res) => {
     const { correo, contrasena } = req.body; 
 
     try {
-        // 1. Buscamos el perfil
         const { data: perfil, error: pError } = await supabase
             .from('Usuarios')
             .select('idUsuarios, usuario, nombre, apellido, dni, email, rol, activo, idArea') 
@@ -176,7 +175,6 @@ exports.login = async (req, res) => {
             return res.status(401).json({ error: "Credenciales inválidas o usuario inactivo" });
         }
 
-        // 2. Autenticamos en el motor de seguridad
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
             email: perfil.email,
             password: contrasena
@@ -184,9 +182,9 @@ exports.login = async (req, res) => {
 
         if (authError) return res.status(401).json({ error: "Contraseña incorrecta" });
 
-        // 3. Generamos el Token
         const secreto = process.env.JWT_SECRET || 'secreto_super_seguro_temporal';
-        const token = jwt.sign({ id: perfil.idUsuarios, rol: perfil.rol }, secreto, { expiresIn: '8h' });
+        // Incluimos el ROL real en el token
+        const token = jwt.sign({ id: perfil.idUsuarios, rol: perfil.rol.toLowerCase() }, secreto, { expiresIn: '8h' });
         
         res.json({ token, usuario: perfil });
     } catch (err) {

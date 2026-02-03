@@ -121,12 +121,36 @@
                         <input id="pass2" class="input" type="password" placeholder="••••••" required />
                     </label>
 
-                    <label>Permisos
+                    <label style="position: relative;">
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 5px;">
+                            Permisos 
+                            <button type="button" id="btnInfoRoles" class="action info" style="width: 20px; height: 20px; padding: 0; font-size: 11px; border-radius: 50%;" title="Ver detalle de permisos">i</button>
+                        </div>
                         <select id="rol" class="select">
+                            <option>Owner</option>
                             <option>Administrador</option>
                             <option>Empleado</option>
                         </select>
                     </label>
+
+                    <div id="modalRolesInfo" class="modal-overlay hidden" style="z-index: 2000;">
+                        <div class="modal" style="max-width: 400px;">
+                            <div class="modal-header">
+                                <h3>Descripción de Permisos</h3>
+                            </div>
+                            <div class="modal-body" style="font-size: 14px; line-height: 1.5;">
+                                <p><strong>Owner:</strong> Acceso total a todos los módulos del sistema, incluyendo reportes financieros y gestión de usuarios.</p>
+                                <hr style="margin: 10px 0; opacity: 0.2;">
+                                <p><strong>Administrador:</strong> Acceso a gestión, logística, tareas y stock. No puede ver reportes ni administrar otros usuarios.</p>
+                                <hr style="margin: 10px 0; opacity: 0.2;">
+                                <p><strong>Empleado:</strong> Acceso restringido únicamente a los módulos de Logística y Tareas (Hoja de ruta diaria).</p>
+                                
+                                <div class="form-actions right" style="margin-top: 20px;">
+                                    <button type="button" class="btn outline" id="btnCerrarRolesInfo">Cerrar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <label>Estado
                         <select id="estado" class="select">

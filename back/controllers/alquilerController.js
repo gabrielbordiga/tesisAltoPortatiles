@@ -64,50 +64,67 @@ const normalizeMetodo = (m) => {
     return String(m).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
 };
 
-// Obtener todos los alquileres
-exports.obtenerAlquileres = async (req, res) => {
-    // Intentamos traer todo con las relaciones
-    let { data, error } = await supabase
-        .from('Alquileres')
-        .select('*, lineas:DetalleAlquiler(*), pagos:Pagos(*)') // Nombres exactos según tu esquema
-        .order('created_at', { ascending: false });
 
-    if (error) {
-        console.error("❌ Error al obtener alquileres con detalles:", error.message);
-        console.warn("⚠️ Intentando carga manual de relaciones (Manual Join)...");
-        
-        // 1. Cargar Cabeceras
-        const { data: alqs, error: errAlq } = await supabase
+exports.obtenerAlquileres = async (req, res) => {
+    try {
+        // 1. AUTOMATIZACIÓN: Marcar como 'PARA RETIRAR' los que ya vencieron
+        // Solo actualizamos aquellos que estén 'ENTREGADO' y cuya fechaHasta sea menor a hoy
+        const hoy = new Date().toISOString().split('T')[0];
+    
+        await supabase
             .from('Alquileres')
-            .select('*')
+            .update({ estado: 'PARA RETIRAR' })
+            .in('estado', ['ENTREGADO', 'PENDIENTE']) 
+            .lte('fechaHasta', hoy);
+
+        // 2. CARGA DE DATOS: Intentamos traer todo con las relaciones
+        let { data, error } = await supabase
+            .from('Alquileres')
+            .select('*, lineas:DetalleAlquiler(*), pagos:Pagos(*)')
             .order('created_at', { ascending: false });
 
-        if (errAlq) return res.status(400).json({ error: errAlq.message });
+        // 3. FALLBACK: Si la relación falla (Manual Join)
+        if (error) {
+            console.error("❌ Error al obtener alquileres con detalles:", error.message);
+            console.warn("⚠️ Ejecutando carga manual de relaciones...");
 
-        // 2. Cargar Detalles y Pagos por separado
-        let detalles = [], pagosList = [];
-        
-        // Cargar DetalleAlquiler
-        let resD = await supabase.from('DetalleAlquiler').select('*');
-        if (resD.data) detalles = resD.data;
+            // Cargar Cabeceras
+            const { data: alqs, error: errAlq } = await supabase
+                .from('Alquileres')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-        // Cargar Pagos
-        let resP = await supabase.from('Pagos').select('*');
-        if (resP.data) pagosList = resP.data;
+            if (errAlq) return res.status(400).json({ error: errAlq.message });
 
-        // 3. Unificar en memoria
-        const pagosParseados = parsearPagos(pagosList);
-        data = alqs.map(a => {
-            const id = a.idAlquiler || a.idalquiler; // Normalizamos ID
-            return {
-                ...a,
-                lineas: detalles.filter(d => (d.idAlquiler || d.idalquiler) == id),
-                pagos: pagosParseados.filter(p => (p.idAlquiler || p.idalquiler) == id)
-            };
-        });
+            // Cargar Detalles y Pagos por separado
+            let detalles = [], pagosList = [];
+            
+            const resD = await supabase.from('DetalleAlquiler').select('*');
+            if (resD.data) detalles = resD.data;
+
+            const resP = await supabase.from('Pagos').select('*');
+            if (resP.data) pagosList = resP.data;
+
+            // Unificar en memoria
+            const pagosParseados = parsearPagos(pagosList);
+            data = alqs.map(a => {
+                const id = a.idAlquiler || a.idalquiler;
+                return {
+                    ...a,
+                    lineas: detalles.filter(d => (d.idAlquiler || d.idalquiler) == id),
+                    pagos: pagosParseados.filter(p => (p.idAlquiler || p.idalquiler) == id)
+                };
+            });
+        }
+
+        // 4. PROCESAMIENTO FINAL: Enriquecer nombres y enviar respuesta
+        await enriquecerConNombres(data);
+        res.json(data);
+
+    } catch (err) {
+        console.error("Error crítico en obtenerAlquileres:", err.message);
+        res.status(500).json({ error: "Error interno del servidor" });
     }
-    await enriquecerConNombres(data);
-    res.json(data);
 };
 
 // Obtener un alquiler por ID
@@ -153,14 +170,23 @@ exports.obtenerAlquilerPorId = async (req, res) => {
 // Crear nuevo alquiler
 exports.crearAlquiler = async (req, res) => {
     const { idCliente, ubicacion, fechaDesde, fechaHasta, precioTotal, estado, lineas, pagos } = req.body;
+    
+    // Obtenemos la fecha de hoy en formato YYYY-MM-DD para comparar
+    const hoy = new Date().toISOString().split('T')[0];
 
     console.log("📝 Intentando crear alquiler:", req.body);
 
-    // Validar fechas vacías para evitar error de formato 'date' en PostgreSQL
-    // Si llega un string vacío "", lo convertimos a null
+    // 1. VALIDACIÓN Y NORMALIZACIÓN DE DATOS
     const fDesde = (fechaDesde && String(fechaDesde).trim() !== '') ? fechaDesde : null;
     const fHasta = (fechaHasta && String(fechaHasta).trim() !== '') ? fechaHasta : null;
 
+    // LÓGICA DE ESTADO DINÁMICO:
+    let estadoInicial = estado || 'PENDIENTE';
+    if (fHasta && fHasta <= hoy) {
+        estadoInicial = 'PARA RETIRAR';
+    }
+
+    // 2. INSERCIÓN DE CABECERA
     const { data, error } = await supabase
         .from('Alquileres')
         .insert([{
@@ -169,7 +195,7 @@ exports.crearAlquiler = async (req, res) => {
             fechaDesde: fDesde,
             fechaHasta: fHasta,
             precioTotal,
-            estado
+            estado: estadoInicial
         }])
         .select();
 
@@ -184,9 +210,8 @@ exports.crearAlquiler = async (req, res) => {
     const nuevoAlquiler = data[0];
     const idAlquiler = nuevoAlquiler.idAlquiler;
 
-    // 2. Insertar Líneas (Detalle)
+    // 3. INSERTAR LÍNEAS (Detalle)
     if (lineas && lineas.length > 0) {
-        // Resolver idUnidad real desde Unidades usando idTipo
         const tiposIds = [...new Set(lineas.map(l => l.idTipo).filter(Boolean))];
         let mapaUnidades = {};
         
@@ -209,18 +234,18 @@ exports.crearAlquiler = async (req, res) => {
             cantidad: l.cantidad,
             precioUnitario: l.precioUnit
         }));
-        // Insertar en DetalleAlquiler
+
         await supabase.from('DetalleAlquiler').insert(lineasInsert);
     }
 
-    // 3. Insertar Pagos
+    // 4. INSERTAR PAGOS
     if (pagos && pagos.length > 0) {
         const pagosInsert = pagos.map(p => ({
             idAlquiler,
-            fechaPago: p.fecha, // Ajustado a nombre de columna en BD
+            fechaPago: p.fecha,
             metodo: normalizeMetodo(p.metodo),
             monto: p.monto, 
-            estado: 'PAGADO' // Campo requerido según esquema
+            estado: 'PAGADO' 
         }));
         
         const { error: errP } = await supabase.from('Pagos').insert(pagosInsert);
@@ -250,7 +275,7 @@ exports.actualizarAlquiler = async (req, res) => {
             fechaDesde: fDesde,
             fechaHasta: fHasta,
             precioTotal,
-            estado,
+            estado: estado ? String(estado).trim().toUpperCase() : 'PENDIENTE',
             updated_at: new Date()
         })
         .eq('idAlquiler', id)
