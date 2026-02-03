@@ -579,6 +579,10 @@
         const idRaw = String(a.idAlquiler);
         const idDisplay = idRaw.length > 8 ? idRaw.slice(0, 8) + '...' : idRaw.padStart(3, '0');
 
+        // --- LÓGICA DE ESTADOS RESALTADOS ---
+        const estadoRaw = a.estado || 'PENDIENTE';
+        const estadoClase = estadoRaw.toLowerCase().replace(/ /g, '-');
+
         return `
         <tr>
           <td title="${idRaw}">${idDisplay}</td>
@@ -586,7 +590,7 @@
           <td>${a.ubicacion}</td>
           <td>${fechaRango}</td>
           <td>${unidadesTexto}</td>
-          <td>${a.estado || 'PENDIENTE'}</td>
+          <td><span class="status-badge ${estadoClase}">${estadoRaw}</span></td>
           <td>${formatMoneda(a.saldo)}</td>
           <td>
             <button class="action info" data-info="${a.idAlquiler}" title="Ver detalles">ℹ</button>

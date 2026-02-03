@@ -101,7 +101,6 @@
         <td><span class="tag">${u.rol}</span></td>
         <td><span class="tag">${u.estado}</span></td>
         <td>
-          <button class="action info" data-info="${u.id}" title="Ver detalles">ℹ</button>
           <button class="action" data-edit="${u.id}">Editar</button>
           <button class="action danger" data-del="${u.id}">🗑</button>
         </td>
@@ -155,9 +154,32 @@
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
+
     await loadAreas();
     USUARIOS = await loadUsuarios();
     renderTabla();
+    
+    const btnInfoRoles = document.getElementById('btnInfoRoles');
+    const modalRoles = document.getElementById('modalRolesInfo');
+    const btnCerrarRoles = document.getElementById('btnCerrarRolesInfo');
+
+    if (btnInfoRoles) {
+        btnInfoRoles.addEventListener('click', (e) => {
+            e.preventDefault(); 
+            modalRoles.classList.remove('hidden');
+        });
+    }
+
+    if (btnCerrarRoles) {
+        btnCerrarRoles.addEventListener('click', () => {
+            modalRoles.classList.add('hidden');
+        });
+    }
+
+    // Cerrar si hace clic fuera del contenido del modal
+    modalRoles?.addEventListener('click', (e) => {
+        if (e.target === modalRoles) modalRoles.classList.add('hidden');
+    });
 
     txtBuscar.addEventListener('input', () => renderTabla(txtBuscar.value));
     btnNuevo.addEventListener('click', clearForm);

@@ -7,8 +7,9 @@
   const API_CLIENTES = '/api/clientes';
 
   // 1. Al inicio del archivo, detectamos el usuario logueado
-  const userSession = JSON.parse(localStorage.getItem('ap_current') || '{}');
-  const esAdmin = String(userSession.rol).toLowerCase() === 'administrador';
+    const userSession = JSON.parse(localStorage.getItem('ap_current') || '{}');
+    const userRol = String(userSession.rol || "").toLowerCase();
+    const esAdmin = userRol === 'administrador' || userRol === 'owner';
 
   function formatFechaLarga(iso) {
     if (!iso) return '-';
@@ -99,23 +100,27 @@
   // ---------- API Calls ----------
   async function fetchEmpleados() {
     try {
-        const res = await fetch(API_USUARIOS);
+        const res = await fetch(API_USUARIOS, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('ap_token')}` }
+        });
         if (!res.ok) return [];
         const data = await res.json();
-        // Filtramos usuarios que sean 'Empleado' o tengan rol operativo
+
         return data.filter(u => {
-            const rol = String(u.rol || u.permisos).toLowerCase();
-            return rol.includes('empleado') || rol.includes('chofer') || rol.includes('mantenimiento') || rol.includes('servicio');
+            const rol = String(u.rol || "").toLowerCase();
+            return rol === 'empleado' || rol === 'chofer' || rol === 'mantenimiento';
         }).map(u => ({
-            // Normalizar ID de usuario
-            idUsuarios: u.idUsuarios || u.idusuarios || u.id,
+            idUsuarios: u.idUsuarios, 
             nombre: u.nombre,
             apellido: u.apellido,
-            area: u.area || u.idArea,
-            zona: u.zona // Mapeamos la zona de trabajo (ubicación)
+            area: u.idArea,
+            zona: u.zona || 'S/D' 
         }));
-    } catch (e) { console.error(e); return []; }
-  }
+    } catch (e) { 
+        console.error("Error fetchEmpleados:", e); 
+        return []; 
+    }
+}
 
   async function fetchTareas(fecha) {
     try {
@@ -164,15 +169,18 @@
         clientes = clis;
 
         if (!esAdmin) {
-            empleadoActualId = userSession.idUsuarios || userSession.id;
-        } else {
-            // Recuperar el último empleado visto antes del F5
-            const lastViewed = localStorage.getItem('ap_last_emp_view');
-            if (lastViewed && empleados.some(e => String(e.idUsuarios) === lastViewed)) {
-                empleadoActualId = lastViewed;
-            } else if (empleados.length > 0) {
-                empleadoActualId = empleados[0].idUsuarios;
+            // Esto SOLO se ejecuta para Empleados
+            if (containerTabs) containerTabs.style.display = 'none';
+            if (btnAgregarTarea) btnAgregarTarea.style.display = 'none';
+            
+            const cardInfo = document.querySelector('.card-tareas-info');
+            if (cardInfo) {
+                cardInfo.style.marginTop = '10px';
+                document.querySelector('.tareas-fecha').innerHTML = `Mi Hoja de Ruta: <span id="tareasFecha" class="link-text"></span>`;
             }
+        } else {
+            if (containerTabs) containerTabs.style.display = 'flex'; 
+            if (btnAgregarTarea) btnAgregarTarea.style.display = 'block';
         }
 
         renderTabs();
@@ -327,9 +335,14 @@
   function openModal() {
     // llenar combo de empleados (si aún no)
     selEmpleadoModal.innerHTML = '';
+    
+    if (empleados.length === 0) {
+        selEmpleadoModal.innerHTML = '<option value="">No hay empleados disponibles</option>';
+    }
+
     empleados.forEach(e => {
       const opt = document.createElement('option');
-      opt.value = e.idUsuarios;
+      opt.value = e.idUsuarios; 
       opt.textContent = `${e.nombre} ${e.apellido}`;
       selEmpleadoModal.appendChild(opt);
     });

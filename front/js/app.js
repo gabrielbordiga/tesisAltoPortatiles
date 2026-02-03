@@ -208,7 +208,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     idArea: usuario.idArea || usuario.id_area
                 });
 
-                setTimeout(() => { location.href = "./inicio.html"; }, 100); 
+                setTimeout(() => { location.href = "./inicio.html"; }); 
             } catch (err) {
                 window.showAlert("Error", err.message, "error");
             }
@@ -222,39 +222,45 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const user = requireAuth(); 
     if (!user) return;
-    const userRol = normalizeRole(user.rol);
+    
+    const userRol = String(user.rol || "").trim().toLowerCase();
+    const currentFile = window.location.pathname.split('/').pop() || 'inicio.html';
 
-    // --- LIMPIEZA FÍSICA DEL MENÚ PARA EMPLEADOS ---
-    if (userRol === 'empleado') {
-        const paginasProhibidas = ['inicio.html', 'gestion.html', 'reportes.html', 'stock.html', 'usuarios.html'];
-        const currentFile = window.location.pathname.split('/').pop() || 'inicio.html';
+    // 1. Definición de permisos por rol
+    const permisos = {
+        'owner': ['inicio.html','calendario.html', 'gestion.html', 'logistica.html', 'tareasadm.html', 'reportes.html', 'stock.html', 'usuarios.html', 'mis-datos.html'],
+        'administrador': ['inicio.html','calendario.html', 'gestion.html', 'logistica.html', 'tareasadm.html', 'stock.html', 'mis-datos.html'], 
+        'empleado': ['logistica.html', 'tareasadm.html', 'mis-datos.html']
+    };
 
-        if (paginasProhibidas.includes(currentFile)) {
-            location.href = "./tareasAdm.html";
-            return;
-        }
+    const misPaginas = permisos[userRol] || permisos['empleado'];
 
-        // ELIMINAR botones del menú lateral físicamente del HTML
-        document.querySelectorAll('.side-nav .item').forEach(item => {
-            // No borrar el botón de logout ni los permitidos para empleado
-            if (item.classList.contains('logout-item')) return;
-            
-            const rolesPermitidos = (item.getAttribute('data-roles') || '').toLowerCase();
-            if (!rolesPermitidos.includes('empleado')) {
-                item.remove(); // Esto elimina el elemento del DOM por completo
-            }
-        });
-    } else {
-        applyRoleVisibility(userRol);
+    // 2. Redirección de seguridad
+    if (!misPaginas.includes(currentFile.toLowerCase())) {
+        location.href = `./${misPaginas[0]}`;
+        return;
     }
+
+    // 3. Limpieza física del menú lateral
+    document.querySelectorAll('.side-nav .item').forEach(item => {
+        if (item.classList.contains('logout-item')) return;
+        const href = item.getAttribute('href').split('/').pop().toLowerCase();
+        if (!misPaginas.includes(href)) {
+            item.remove();
+        }
+    });
 
     // --- RENDERIZADO DE DATOS DE USUARIO (whoami) ---
     const whoami = document.getElementById("whoami");
     if (whoami) {
         const name = user.usuario || user.email || "Usuario";
+        const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+        
+        // Restauramos el <a> para que sea clicable
         whoami.innerHTML = `
-            <a href="./mis-datos.html" style="color: white; text-decoration: none; font-size: 0.85em; border-bottom: 1px dotted rgba(255,255,255,0.5); cursor: pointer;">
-                ${name} · ${roleLabel(user.rol)}
+            <a href="./mis-datos.html" style="color: white; text-decoration: none; font-size: 0.85em; opacity: 0.9; display: block; cursor: pointer;">
+                ${name} <br> 
+                <span style="font-weight:bold; color: #ff4d4d;">${cap(userRol)}</span>
             </a>`;
     }
 

@@ -929,7 +929,7 @@ body.dashboard-body{
     background: rgba(0,0,0,0.5);
 }
 
-/* Contenedor de KPIs */
+/* ------------------CONTENEDEOR DE KPIs ----------------------*/
 .kpi-container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -992,4 +992,64 @@ body.dashboard-body{
 
 canvas {
     max-height: 300px !important; 
+}
+
+
+/*---------- ESTADOS DE ALQUILERES-------------------- */
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    display: inline-block;
+    border: 1px solid transparent;
+}
+
+.status-badge.pendiente {
+    background-color: #fff8e1;
+    color: #f57f17;
+    border-color: #ffecb3;
+}
+
+.status-badge.entregado {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    border-color: #c8e6c9;
+}
+
+.status-badge.confirmado {
+    background-color: #e3f2fd;
+    color: #1565c0;
+    border-color: #bbdefb;
+}
+
+.status-badge.para-retirar {
+    background-color: #fce4ec;
+    color: #ec1f26;
+    border-color: #f8bbd0;
+}
+
+.status-badge.retirado {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+    border-color: #e1bee7;
+}
+
+.status-badge.servicio-pendiente {
+    background-color: #efebe9;
+    color: #5d4037;
+    border-color: #d7ccc8;
+}
+
+.status-badge.finalizado {
+    background-color: #e0f2f1;
+    color: #00796b;
+    border-color: #b2dfdb;
+}
+
+.status-badge.pagado {
+    background-color: #f1f8e9;
+    color: #33691e;
+    border-color: #dcedc8;
 }
