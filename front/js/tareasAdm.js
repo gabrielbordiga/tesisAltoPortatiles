@@ -156,41 +156,47 @@
     } catch (e) { return []; }
   }
 
-  async function loadData() {
-    try {
-        const [emps, alqs, clis] = await Promise.all([
-            fetchEmpleados(), 
-            fetchAlquileres(), 
-            fetchClientes()
-        ]);
-        
-        empleados = emps;
-        alquileres = alqs;
-        clientes = clis;
-
-        if (!esAdmin) {
-            // Esto SOLO se ejecuta para Empleados
-            if (containerTabs) containerTabs.style.display = 'none';
-            if (btnAgregarTarea) btnAgregarTarea.style.display = 'none';
+    async function loadData() {
+        try {
+            const [emps, alqs, clis] = await Promise.all([
+                fetchEmpleados(), 
+                fetchAlquileres(), 
+                fetchClientes()
+            ]);
             
-            const cardInfo = document.querySelector('.card-tareas-info');
-            if (cardInfo) {
-                cardInfo.style.marginTop = '10px';
-                document.querySelector('.tareas-fecha').innerHTML = `Mi Hoja de Ruta: <span id="tareasFecha" class="link-text"></span>`;
-            }
-        } else {
-            if (containerTabs) containerTabs.style.display = 'flex'; 
-            if (btnAgregarTarea) btnAgregarTarea.style.display = 'block';
-        }
+            empleados = emps;
+            alquileres = alqs;
+            clientes = clis;
 
-        renderTabs();
-        renderHeader();
-        
-        if (empleadoActualId) {
-            await loadTareas();
+            // --- LÓGICA DE SELECCIÓN POR DEFECTO ---
+            if (esAdmin) {
+                if (containerTabs) containerTabs.style.display = 'flex'; 
+                if (btnAgregarTarea) btnAgregarTarea.style.display = 'block';
+
+                if (empleados.length > 0 && !empleadoActualId) {
+                    const lastId = localStorage.getItem('ap_last_emp_view');
+                    if (lastId && empleados.some(e => String(e.idUsuarios) === lastId)) {
+                        empleadoActualId = lastId;
+                    } else {
+                        empleadoActualId = empleados[0].idUsuarios;
+                    }
+                }
+            } else {
+                // Si es empleado, su ID es el actual por defecto
+                empleadoActualId = userSession.idUsuarios || userSession.id;
+            }
+
+            renderTabs();
+            renderHeader();
+            
+            // Ejecutamos la carga de tareas para el empleado seleccionado
+            if (empleadoActualId) {
+                await loadTareas();
+            }
+        } catch (e) { 
+            console.error("Error en carga inicial:", e); 
         }
-    } catch (e) { console.error("Error en carga inicial:", e); }
-  }
+    }
 
   async function loadTareas() {
       if (!fechaFiltro || !empleadoActualId) return;
@@ -366,13 +372,17 @@
   }
 
   // ---------- Alta de tarea ----------
-  async function handleGuardarTarea() {
+// front/js/tareasAdm.js
+
+async function handleGuardarTarea() {
     const idUsuario = selEmpleadoModal.value;
     const idAlquiler = inpPedidoId.value;
     const fecha = inpFechaTarea.value;
     
     const tipo = selTareaTipo ? selTareaTipo.value : '';
     const texto = inpTareaDetalle ? inpTareaDetalle.value.trim() : '';
+    
+    // 1. Construimos el detalle final
     let detalle = texto;
     if (tipo && !tipo.startsWith('Otro')) {
         detalle = texto ? `${tipo} - ${texto}` : tipo;
@@ -383,16 +393,27 @@
     }
 
     try {
+        // 2. Traemos todas las tareas de la fecha seleccionada para validar
         const resCheck = await fetch(`${API_TAREAS}/${fecha}`);
         if (resCheck.ok) {
             const todasLasTareasDia = await resCheck.json();
-            const yaAsignado = todasLasTareasDia.some(t => String(t.idAlquiler) === String(idAlquiler));
             
-            if (yaAsignado) {
-                return window.showAlert('Pedido ya asignado', 'Este pedido ya fue asignado a un empleado para el día de hoy.', 'error');
+            // CAMBIO CLAVE: Validamos si existe una tarea con el MISMO pedido Y el MISMO detalle
+            const tareaDuplicada = todasLasTareasDia.some(t => 
+                String(t.idAlquiler || t.idalquiler) === String(idAlquiler) && 
+                String(t.detalle).toUpperCase() === detalle.toUpperCase()
+            );
+            
+            if (tareaDuplicada) {
+                return window.showAlert(
+                    'Tarea repetida', 
+                    'Este pedido ya tiene asignada exactamente la misma acción para este día.', 
+                    'error'
+                );
             }
         }
 
+        // 3. Si no es duplicada, procedemos al guardado
         const res = await fetch(API_TAREAS, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -410,7 +431,7 @@
     } catch (err) {
         window.showAlert('Error', err.message, 'error');
     }
-  }
+}
 
   // ---------- Init ----------
   document.addEventListener('DOMContentLoaded', async () => {

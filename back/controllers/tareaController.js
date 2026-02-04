@@ -46,24 +46,20 @@ exports.crearTarea = async (req, res) => {
     }
 };
 
-// Actualizar estado (completada sí/no)
-// back/controllers/tareaController.js
 
 exports.actualizarEstadoTarea = async (req, res) => {
     const { id } = req.params;
     const { completada } = req.body;
 
     try {
-        // 1. Obtenemos datos de la tarea y del alquiler vinculado (incluyendo pagos y líneas para el saldo)
+        // 1. Obtenemos datos de la tarea y del alquiler vinculado 
         const { data: tarea, error: errT } = await supabase
             .from('Tareas')
             .select(`
                 detalle, 
                 idAlquiler,
-                alquiler:Alquileres(
-                    precioTotal,
-                    pagos:Pagos(monto)
-                )
+                idUsuarios,
+                alquiler:Alquileres(precioTotal, pagos:Pagos(monto))
             `)
             .eq('id', id)
             .single();
@@ -83,28 +79,31 @@ exports.actualizarEstadoTarea = async (req, res) => {
         // 3. Lógica Automática de Estados del Alquiler
         if (completada && tarea.idAlquiler) {
             let nuevoEstado = null;
-            const detalle = String(tarea.detalle || "").toUpperCase();
+            const detalleTarea = String(tarea.detalle || "").toUpperCase();
 
-            if (detalle.includes("ENTREGAR")) {
+            if (detalleTarea.includes("ENTREGAR")) {
                 nuevoEstado = "ENTREGADO";
             } 
-            else if (detalle.includes("SERVICIO")) {
+            else if (detalleTarea.includes("SERVICIO")) {
                 nuevoEstado = "SERVICIO PENDIENTE";
             }
-            else if (detalle.includes("RETIRAR")) {
-                // Lógica de Saldo para decidir entre RETIRADO o FINALIZADO
+            else if (detalleTarea.includes("RETIRAR")) {
                 const precioTotal = Number(tarea.alquiler?.precioTotal) || 0;
                 const totalPagado = (tarea.alquiler?.pagos || []).reduce((acc, p) => acc + (Number(p.monto) || 0), 0);
-                
-                // Si el saldo es 0 o menor (pago de más), se finaliza
                 nuevoEstado = (totalPagado >= precioTotal) ? "FINALIZADO" : "RETIRADO";
             }
 
             if (nuevoEstado) {
-                await supabase
-                    .from('Alquileres')
-                    .update({ estado: nuevoEstado })
-                    .eq('idAlquiler', tarea.idAlquiler);
+                // Actualizamos el estado del alquiler
+                await supabase.from('Alquileres').update({ estado: nuevoEstado }).eq('idAlquiler', tarea.idAlquiler);
+
+                // --- INTEGRACIÓN CON HISTORIAL ---
+                await supabase.from('HistorialAlquileres').insert([{
+                    idAlquiler: tarea.idAlquiler,
+                    detalle: `Tarea finalizada: ${detalleTarea} (Estado: ${nuevoEstado})`,
+                    idUsuarios: tarea.idUsuarios, 
+                    fecha: new Date().toISOString()
+                }]);
             }
         }
 
