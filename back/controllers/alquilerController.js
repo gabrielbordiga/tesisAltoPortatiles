@@ -67,28 +67,53 @@ const normalizeMetodo = (m) => {
 
 exports.obtenerAlquileres = async (req, res) => {
     try {
-        // 1. AUTOMATIZACIÓN: Marcar como 'PARA RETIRAR' los que ya vencieron
-        // Solo actualizamos aquellos que estén 'ENTREGADO' y cuya fechaHasta sea menor a hoy
         const hoy = new Date().toISOString().split('T')[0];
-    
-        await supabase
+
+        // 1. IDENTIFICAR CAMBIOS AUTOMÁTICOS
+        const { data: aCambiar, error: errCheck } = await supabase
             .from('Alquileres')
-            .update({ estado: 'PARA RETIRAR' })
-            .in('estado', ['ENTREGADO', 'PENDIENTE']) 
+            .select('idAlquiler, estado')
+            .in('estado', ['ENTREGADO', 'PENDIENTE'])
             .lte('fechaHasta', hoy);
 
-        // 2. CARGA DE DATOS: Intentamos traer todo con las relaciones
+        if (errCheck) console.error("Error al verificar vencimientos:", errCheck.message);
+
+        // 2. PROCESAR ACTUALIZACIÓN E HISTORIAL GRUPAL
+        if (aCambiar && aCambiar.length > 0) {
+            const ids = aCambiar.map(a => a.idAlquiler);
+
+            // Actualización masiva de estado
+            await supabase
+                .from('Alquileres')
+                .update({ estado: 'PARA RETIRAR' })
+                .in('idAlquiler', ids);
+
+            // Creación masiva de registros en el historial
+            const entradasHistorial = aCambiar.map(a => ({
+                idAlquiler: a.idAlquiler,
+                detalle: `Estado actualizado automáticamente de ${a.estado} a PARA RETIRAR (Vencimiento: ${hoy})`,
+                fecha: new Date().toISOString(),
+                idUsuarios: null 
+            }));
+
+            const { error: errHist } = await supabase
+                .from('HistorialAlquileres')
+                .insert(entradasHistorial);
+
+            if (errHist) console.error("Error al registrar historial automático:", errHist.message);
+        }
+
+        // 3. CARGA DE DATOS PRINCIPAL 
         let { data, error } = await supabase
             .from('Alquileres')
             .select('*, lineas:DetalleAlquiler(*), pagos:Pagos(*)')
             .order('created_at', { ascending: false });
 
-        // 3. FALLBACK: Si la relación falla (Manual Join)
+        // 4. FALLBACK: Carga manual si falla la relación de Supabase
         if (error) {
             console.error("❌ Error al obtener alquileres con detalles:", error.message);
-            console.warn("⚠️ Ejecutando carga manual de relaciones...");
+            console.warn("⚠️ Ejecutando carga manual de relaciones (Manual Join)...");
 
-            // Cargar Cabeceras
             const { data: alqs, error: errAlq } = await supabase
                 .from('Alquileres')
                 .select('*')
@@ -96,7 +121,6 @@ exports.obtenerAlquileres = async (req, res) => {
 
             if (errAlq) return res.status(400).json({ error: errAlq.message });
 
-            // Cargar Detalles y Pagos por separado
             let detalles = [], pagosList = [];
             
             const resD = await supabase.from('DetalleAlquiler').select('*');
@@ -105,7 +129,6 @@ exports.obtenerAlquileres = async (req, res) => {
             const resP = await supabase.from('Pagos').select('*');
             if (resP.data) pagosList = resP.data;
 
-            // Unificar en memoria
             const pagosParseados = parsearPagos(pagosList);
             data = alqs.map(a => {
                 const id = a.idAlquiler || a.idalquiler;
@@ -117,7 +140,7 @@ exports.obtenerAlquileres = async (req, res) => {
             });
         }
 
-        // 4. PROCESAMIENTO FINAL: Enriquecer nombres y enviar respuesta
+        // 5. ENRIQUECER Y ENVIAR RESPUESTA
         await enriquecerConNombres(data);
         res.json(data);
 
@@ -255,13 +278,18 @@ exports.crearAlquiler = async (req, res) => {
         }
     }
 
+    await registrarHistorial(idAlquiler, `Alquiler creado - Estado inicial: ${estadoInicial}`, null);
     res.status(201).json({ mensaje: 'Alquiler creado', data: nuevoAlquiler });
 };
 
 // Actualizar alquiler
 exports.actualizarAlquiler = async (req, res) => {
     const { id } = req.params;
-    const { idCliente, ubicacion, fechaDesde, fechaHasta, precioTotal, estado, lineas, pagos } = req.body;
+    // Capturamos idUsuarioEjecutor enviado desde el frontend
+    const { 
+        idCliente, ubicacion, fechaDesde, fechaHasta, 
+        precioTotal, estado, lineas, pagos, idUsuarioEjecutor 
+    } = req.body;
 
     // Validar fechas vacías
     const fDesde = (fechaDesde && String(fechaDesde).trim() !== '') ? fechaDesde : null;
@@ -288,14 +316,10 @@ exports.actualizarAlquiler = async (req, res) => {
         return res.status(400).json({ error: error.message });
     }
 
-    // --- ACTUALIZAR LÍNEAS (Borrar anteriores e insertar nuevas) ---
+    // --- ACTUALIZAR LÍNEAS ---
     if (lineas) {
-        // 1. Borrar anteriores (intentamos en ambas tablas por seguridad)
         await supabase.from('DetalleAlquiler').delete().eq('idAlquiler', id);
-
-        // 2. Insertar nuevas
         if (lineas.length > 0) {
-             // Resolver idUnidad real desde Unidades usando idTipo (mismo que en crear)
             const tiposIds = [...new Set(lineas.map(l => l.idTipo).filter(Boolean))];
             let mapaUnidades = {};
             
@@ -318,17 +342,13 @@ exports.actualizarAlquiler = async (req, res) => {
                 cantidad: l.cantidad,
                 precioUnitario: l.precioUnit
             }));
-
             await supabase.from('DetalleAlquiler').insert(lineasInsert);
         }
     }
 
-    // --- ACTUALIZAR PAGOS (Borrar anteriores e insertar nuevos) ---
+    // --- ACTUALIZAR PAGOS ---
     if (pagos) {
-        // 1. Borrar anteriores
         await supabase.from('Pagos').delete().eq('idAlquiler', id);
-
-        // 2. Insertar nuevos
         if (pagos.length > 0) {
             const pagosInsert = pagos.map(p => ({
                 idAlquiler: id,
@@ -346,6 +366,9 @@ exports.actualizarAlquiler = async (req, res) => {
         }
     }
 
+    // CAMBIO CLAVE: Usamos idUsuarioEjecutor en lugar de null
+    await registrarHistorial(id, `Cambio manual de estado a: ${estado}`, idUsuarioEjecutor || null); 
+    
     res.json({ mensaje: 'Alquiler actualizado', data });
 };
 
@@ -360,4 +383,55 @@ exports.eliminarAlquiler = async (req, res) => {
 
     if (error) return res.status(400).json({ error: error.message });
     res.json({ mensaje: 'Alquiler eliminado' });
+};
+
+
+// Función auxiliar para registrar en el historial
+const registrarHistorial = async (idAlquiler, detalle, idUsuarios = null) => {
+    try {
+        const dataToInsert = {
+            idAlquiler,
+            detalle,
+            fecha: new Date().toISOString()
+        };
+
+        if (idUsuarios) {
+            dataToInsert.idUsuarios = idUsuarios;
+        }
+
+        const { error } = await supabase
+            .from('HistorialAlquileres')
+            .insert([dataToInsert]);
+
+        if (error) console.error("❌ Error Supabase al insertar historial:", error.message);
+    } catch (err) { 
+        console.error("❌ Error crítico registrarHistorial:", err.message); 
+    }
+};
+
+// Nueva ruta para obtener el historial 
+exports.obtenerHistorial = async (req, res) => {
+
+    const { id } = req.params;
+    try {
+        const { data, error } = await supabase
+            .from('HistorialAlquileres')
+            .select(`
+                id,
+                fecha,
+                detalle,
+                idUsuarios,
+                Usuarios (
+                    nombre,
+                    apellido
+                )
+            `) 
+            .eq('idAlquiler', id)
+            .order('fecha', { ascending: false });
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
 };

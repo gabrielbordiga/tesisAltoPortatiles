@@ -330,42 +330,49 @@
 
     // Evento para guardar el cambio de estado desde el modal
     document.getElementById('btnUpdateEstado').addEventListener('click', async () => {
-        const id = document.getElementById('infoIdHidden').value;
-        const nuevoEstado = document.getElementById('infoEstadoSelect').value;
-        
-        // Buscamos el alquiler actual para preservar sus datos obligatorios
-        const alq = ALQUILERES.find(a => String(a.idAlquiler || a.idalquiler) === String(id));
-        if (!alq) return;
+      const id = document.getElementById('infoIdHidden').value;
+      const nuevoEstado = document.getElementById('infoEstadoSelect').value;
+      
+      // Obtenemos el usuario logueado desde el localStorage
+      const userSession = JSON.parse(localStorage.getItem('ap_current') || '{}');
+      const idUsuarioLogueado = userSession.idUsuarios || userSession.id;
+      
+      // Buscamos el alquiler actual para preservar sus datos obligatorios
+      const alq = ALQUILERES.find(a => String(a.idAlquiler || a.idalquiler) === String(id));
+      if (!alq) return;
 
-        // Preparamos payload SOLO con datos de cabecera (sin lineas/pagos para no tocarlos)
-        const payload = {
-            idCliente: alq.idCliente || alq.idcliente,
-            ubicacion: alq.ubicacion,
-            fechaDesde: alq.fechaDesde || alq.fechadesde,
-            fechaHasta: alq.fechaHasta || alq.fechahasta,
-            precioTotal: alq.precioTotal !== undefined ? alq.precioTotal : alq.preciototal,
-            estado: nuevoEstado
-            // Al no enviar 'lineas' ni 'pagos', el backend no los modifica
-        };
+      // Preparamos payload incluyendo el idUsuarioEjecutor
+      const payload = {
+          idCliente: alq.idCliente || alq.idcliente,
+          ubicacion: alq.ubicacion,
+          fechaDesde: alq.fechaDesde || alq.fechadesde,
+          fechaHasta: alq.fechaHasta || alq.fechahasta,
+          precioTotal: alq.precioTotal !== undefined ? alq.precioTotal : alq.preciototal,
+          estado: nuevoEstado,
+          idUsuarioEjecutor: idUsuarioLogueado // Identificamos quién realiza el cambio
+      };
 
-        try {
-            const res = await fetch(`${API_URL}/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.error || 'Error al actualizar estado');
-            }
-            
-            window.showAlert('Éxito', 'Estado actualizado', 'success');
-            // Recargamos datos de fondo
-            ALQUILERES = await loadAlquileres();
-            renderTablaAlquileres(txtBuscar ? txtBuscar.value : '');
-            
-            // Actualizamos visualmente el modal si sigue abierto (opcional, ya cambiamos el select)
-        } catch (e) { window.showAlert('Error', e.message, 'error'); }
+      try {
+          const res = await fetch(`${API_URL}/${id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+          });
+          
+          if (!res.ok) {
+              const errData = await res.json().catch(() => ({}));
+              throw new Error(errData.error || 'Error al actualizar estado');
+          }
+          
+          window.showAlert('Éxito', 'Estado actualizado', 'success');
+          
+          // Recargamos datos de fondo
+          ALQUILERES = await loadAlquileres();
+          renderTablaAlquileres(txtBuscar ? txtBuscar.value : '');
+          
+      } catch (e) { 
+          window.showAlert('Error', e.message, 'error'); 
+      }
     });
 
     // Evento para ver registro
@@ -377,20 +384,20 @@
 
   async function showRegistro(id) {
       const modal = document.getElementById('modalRegistroAlquiler');
-      const tbody = document.getElementById('tbodyRegistro');
+      const tbody = document.getElementById('tbodyRegistro');;
       const titulo = document.getElementById('regTitulo');
       
-      titulo.textContent = `Historial del Alquiler #${id}`;
+      titulo.textContent = `Historial del Alquiler #${id.substring(0, 8)}...`;
       tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">Cargando historial...</td></tr>';
-      modal.classList.remove('hidden');
+      modal.classList.remove('hidden')
 
       try {
           if (!id || id === 'undefined') throw new Error("ID de alquiler no válido.");
+          
+          // Llamada a la nueva ruta que configuraremos en el backend
           const res = await fetch(`${API_URL}/${id}/historial`);
-          if (!res.ok) {
-              const errData = await res.json().catch(() => ({}));
-              throw new Error(errData.error || 'No se pudo cargar el historial.');
-          }
+          if (!res.ok) throw new Error('No se pudo cargar el historial.');
+          
           const data = await res.json();
           
           if (!data || !data.length) {
@@ -398,13 +405,20 @@
               return;
           }
 
-          tbody.innerHTML = data.map(r => `
-            <tr>
-                <td>${formatFechaVisual(r.fecha)}</td>
-                <td>${r.detalle || r.accion || '-'}</td>
-                <td>${r.usuario ? (r.usuario.nombre + ' ' + r.usuario.apellido) : (r.empleado || '-')}</td>
-            </tr>
-          `).join('');
+          tbody.innerHTML = data.map(r => {
+            const nombreEmpleado = (r.Usuarios && r.Usuarios.nombre) 
+                ? `${r.Usuarios.nombre} ${r.Usuarios.apellido}` 
+                : 'Sistema';
+
+            return `
+                <tr>
+                    <td>${formatFechaVisual(r.fecha)}</td>
+                    <td>${r.detalle}</td>
+                    <td>${nombreEmpleado}</td>
+                </tr>
+            `;
+          }).join('');
+          
       } catch (e) {
           tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:red; padding:20px;">${e.message}</td></tr>`;
       }
