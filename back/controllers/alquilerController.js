@@ -192,7 +192,12 @@ exports.obtenerAlquilerPorId = async (req, res) => {
 
 // Crear nuevo alquiler
 exports.crearAlquiler = async (req, res) => {
-    const { idCliente, ubicacion, fechaDesde, fechaHasta, precioTotal, estado, lineas, pagos } = req.body;
+    const { idCliente, ubicacion, fechaDesde, fechaHasta, precioTotal, lineas, pagos, estado } = req.body; 
+
+    const v = await validarDisponibilidadReal(lineas, fechaDesde, fechaHasta);
+    if (!v.ok) {
+        return res.status(400).json({ error: v.msg });
+    }
     
     // Obtenemos la fecha de hoy en formato YYYY-MM-DD para comparar
     const hoy = new Date().toISOString().split('T')[0];
@@ -235,30 +240,32 @@ exports.crearAlquiler = async (req, res) => {
 
     // 3. INSERTAR LÍNEAS (Detalle)
     if (lineas && lineas.length > 0) {
-        const tiposIds = [...new Set(lineas.map(l => l.idTipo).filter(Boolean))];
-        let mapaUnidades = {};
-        
-        if (tiposIds.length > 0) {
-            const { data: uData } = await supabase
+        const lineasParaInsertar = [];
+
+        for (const l of lineas) {
+            const { data: unidadFisica } = await supabase
                 .from('Unidades')
-                .select('idUnidad, idTipo')
-                .in('idTipo', tiposIds);
-            
-            if (uData) {
-                uData.forEach(u => {
-                    if (!mapaUnidades[u.idTipo]) mapaUnidades[u.idTipo] = u.idUnidad;
+                .select('idUnidad')
+                .eq('idTipo', l.idTipo)
+                .limit(1)
+                .single();
+
+            if (unidadFisica) {
+                lineasParaInsertar.push({
+                    idAlquiler,
+                    idUnidad: unidadFisica.idUnidad, 
+                    cantidad: Number(l.cantidad),
+                    precioUnitario: Number(l.precioUnit)
                 });
+            } else {
+                console.error(`No hay unidades físicas registradas para el tipo: ${l.idTipo}`);
             }
         }
 
-        const lineasInsert = lineas.map(l => ({
-            idAlquiler,
-            idUnidad: mapaUnidades[l.idTipo] || l.idTipo, 
-            cantidad: l.cantidad,
-            precioUnitario: l.precioUnit
-        }));
-
-        await supabase.from('DetalleAlquiler').insert(lineasInsert);
+        if (lineasParaInsertar.length > 0) {
+            const { error: errLineas } = await supabase.from('DetalleAlquiler').insert(lineasParaInsertar);
+            if (errLineas) console.error("Error final al insertar líneas:", errLineas.message);
+        }
     }
 
     // 4. INSERTAR PAGOS
@@ -285,11 +292,12 @@ exports.crearAlquiler = async (req, res) => {
 // Actualizar alquiler
 exports.actualizarAlquiler = async (req, res) => {
     const { id } = req.params;
-    // Capturamos idUsuarioEjecutor enviado desde el frontend
-    const { 
-        idCliente, ubicacion, fechaDesde, fechaHasta, 
-        precioTotal, estado, lineas, pagos, idUsuarioEjecutor 
-    } = req.body;
+    const { idCliente, ubicacion, fechaDesde, fechaHasta, lineas, pagos, estado, precioTotal, idUsuarioEjecutor } = req.body;
+
+    const v = await validarDisponibilidadReal(lineas, fechaDesde, fechaHasta);
+    if (!v.ok) {
+        return res.status(400).json({ error: v.msg });
+    }
 
     // Validar fechas vacías
     const fDesde = (fechaDesde && String(fechaDesde).trim() !== '') ? fechaDesde : null;
@@ -338,8 +346,8 @@ exports.actualizarAlquiler = async (req, res) => {
 
             const lineasInsert = lineas.map(l => ({
                 idAlquiler: id,
-                idUnidad: mapaUnidades[l.idTipo] || l.idTipo, 
-                cantidad: l.cantidad,
+                idUnidad: l.idTipo || l.idunidad, 
+                cantidad: Number(l.cantidad),
                 precioUnitario: l.precioUnit
             }));
             await supabase.from('DetalleAlquiler').insert(lineasInsert);
@@ -435,3 +443,44 @@ exports.obtenerHistorial = async (req, res) => {
         res.status(400).json({ error: err.message });
     }
 };
+
+// FUNCIÓN MAESTRA DE VALIDACIÓN DE STOCK
+async function validarDisponibilidadReal(lineas, fDesde, fHasta, idAlquilerExcluir = null) {
+    if (!lineas || !Array.isArray(lineas) || lineas.length === 0) return { ok: true };
+
+    const { data: stockFisico } = await supabase.from('Unidades').select('stock, idTipo');
+
+    // EXPLICACIÓN: Traemos el idTipo a través de la relación con Unidades
+    const { data: ocupacion } = await supabase
+        .from('DetalleAlquiler')
+        .select('cantidad, idUnidad, Unidades!inner(idTipo), Alquileres!inner(idAlquiler, fechaDesde, fechaHasta, estado)')
+        .lte('Alquileres.fechaDesde', fHasta)
+        .gte('Alquileres.fechaHasta', fDesde)
+        .not('Alquileres.estado', 'in', '("FINALIZADO", "RETIRADO", "CANCELADO")');
+
+    for (const linea of lineas) {
+        const idModeloBuscado = String(linea.idTipo || '').trim();
+        if (!idModeloBuscado) continue;
+
+        const totalEmpresa = (stockFisico || [])
+            .filter(s => String(s.idTipo).trim() === idModeloBuscado)
+            .reduce((acc, c) => acc + (Number(c.stock) || 0), 0);
+
+        const yaReservado = (ocupacion || [])
+            .filter(o => {
+                // Comparamos el modelo de la unidad física con el modelo solicitado
+                const idModeloEnDB = String(o.Unidades?.idTipo).trim();
+                const idAlquilerOcupante = String(o.Alquileres.idAlquiler);
+                return idModeloEnDB === idModeloBuscado && idAlquilerOcupante !== String(idAlquilerExcluir);
+            })
+            .reduce((acc, c) => acc + (Number(c.cantidad) || 0), 0);
+
+        console.log(`VALIDANDO: Modelo ${idModeloBuscado.substring(0,5)} | Total: ${totalEmpresa} | Ocupado: ${yaReservado} | Pide: ${linea.cantidad}`);
+
+        if ((yaReservado + Number(linea.cantidad)) > totalEmpresa) {
+            const realesLibres = totalEmpresa - yaReservado;
+            return { ok: false, msg: `Stock insuficiente. Libres: ${realesLibres}` };
+        }
+    }
+    return { ok: true };
+}

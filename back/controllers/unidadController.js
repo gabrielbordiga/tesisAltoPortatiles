@@ -197,3 +197,52 @@ exports.getUnidadesPorEstado = async (req, res) => {
         res.status(400).json({ error: err.message });
     }
 };
+
+//Busca disponibilidades de las unidades en las fechas q se piden
+exports.getDisponibilidadPorRango = async (req, res) => {
+    const { desde, hasta } = req.query;
+
+    if (!desde || !hasta || desde.includes('object')) {
+        return res.status(400).json({ error: "Fechas inválidas" });
+    }
+
+    try {
+        // 1. Capacidad TOTAL de la empresa (Stock físico)
+        const { data: stockFisico } = await supabase.from('Unidades').select('stock, idTipo, precio');
+
+        // 2. SOLAPAMIENTO REAL: Buscamos cualquier pedido que pise estas fechas
+        const { data: ocupadas, error: errOcup } = await supabase
+            .from('DetalleAlquiler')
+            .select('cantidad, idUnidad, Unidades!inner(idTipo), Alquileres!inner(idAlquiler, fechaDesde, fechaHasta, estado)')
+            .lte('Alquileres.fechaDesde', hasta)
+            .gte('Alquileres.fechaHasta', desde)
+            .not('Alquileres.estado', 'in', '("FINALIZADO", "RETIRADO", "CANCELADO")');
+
+        if (errOcup) throw errOcup;
+
+        const { data: tipos } = await supabase.from('Tipo_Unidades').select('*');
+        
+        const disponibilidad = tipos.map(tipo => {
+            // Unidades totales que tenemos de este modelo
+            const total = (stockFisico || [])
+                .filter(s => String(s.idTipo) === String(tipo.idTipo))
+                .reduce((acc, curr) => acc + (curr.stock || 0), 0);
+
+            // Unidades que ya están comprometidas en esas fechas en la DB
+            const reservadas = (ocupadas || [])
+                .filter(o => String(o.Unidades?.idTipo) === String(tipo.idTipo)) 
+                .reduce((acc, curr) => acc + curr.cantidad, 0);
+
+            return {
+                idTipo: tipo.idTipo,
+                nombre: tipo.nombre,
+                disponibles: Math.max(0, total - reservadas), // Esto es lo que queda libre
+                precio: stockFisico?.find(s => String(s.idTipo) === String(tipo.idTipo))?.precio || 0
+            };
+        });
+
+        res.json(disponibilidad);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};

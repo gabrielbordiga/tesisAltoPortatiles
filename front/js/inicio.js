@@ -267,7 +267,8 @@
 
   async function loadUnidades() {
     try {
-      const res = await fetch(`${API_UNIDADES}/resumen`, { headers: getHeaders() });
+      // Cargamos el resumen que agrupa por tipo de unidad
+      const res = await fetch(`/api/unidades/resumen`, { headers: getHeaders() });
       if (res.ok) {
         unidadesCache = await res.json();
         renderUnidades();

@@ -6,6 +6,7 @@
   const API_UNIDADES = '/api/unidades/resumen';
   let CLIENTES_CACHE = [];
   let UNIDADES_CACHE = [];
+  
 
   // ------ Helpers de storage ------
   async function loadAlquileres() {
@@ -82,6 +83,7 @@
 
   // ------ Estado global de la pantalla ------
   let ALQUILERES = [];
+  let UNIDADES_DISPONIBLES_RANGO = [];
   let currentId = null;   // null = nuevo
   let lineas = [];        // unidades del alquiler que se está editando
   let pagos  = [];        // pagos del alquiler que se está editando
@@ -478,8 +480,8 @@
     inpDesde      = document.getElementById('fechaDesde');
     inpHasta      = document.getElementById('fechaHasta');
 
-    inpDesde.addEventListener('change', () => renderLineas());
-    inpHasta.addEventListener('change', () => renderLineas());
+    inpDesde.addEventListener('change', fillUnidadesSelect);
+    inpHasta.addEventListener('change', fillUnidadesSelect);
 
     selUnidad     = document.getElementById('tipoUnidadAlq');
     inpCantidad   = document.getElementById('cantidadUnidadAlq');
@@ -837,32 +839,36 @@
   }
 
   // ------ Carga de combo unidades desde BD ------
-  function fillUnidadesSelect() {
-    const currentVal = selUnidad.value; // Guardar selección actual
-    selUnidad.innerHTML = '<option value="" disabled selected>Seleccionar unidad</option>';
-    UNIDADES_CACHE.forEach(u => {
-      if (!u.nombre) return; // Evitar items sin nombre
+  async function fillUnidadesSelect() {
+    const desde = inpDesde.value;
+    const hasta = inpHasta.value;
 
-      // Precio: soporte para minúsculas/mayúsculas y validación numérica
-      const precio = Number(u.precio) || 0;
-      
-      // Calcular stock restante dinámicamente
-      const stockBase = u.disponibles !== undefined ? Number(u.disponibles) : 0;
-      const enUso = lineas
-        .filter(l => l.unidad === u.nombre)
-        .reduce((acc, l) => acc + l.cantidad, 0);
-      const stockMostrar = Math.max(0, stockBase - enUso);
+    if (!desde || !hasta) return;
 
-      const opt = document.createElement('option');
-      opt.value = u.nombre; 
-      opt.textContent = `${u.nombre} (Disp: ${stockMostrar}) - ${formatMoneda(precio)}`;
-      opt.dataset.precio = precio;
-      opt.dataset.idTipo = u.idTipo || ''; // Guardamos el ID del tipo
-      selUnidad.appendChild(opt);
-    });
+    try {
+        const res = await fetch(`/api/unidades/disponibilidad?desde=${desde}&hasta=${hasta}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('ap_token')}` }
+        });
+        const unidades = await res.json(); 
 
-    // Restaurar selección si aún es válida
-    if (currentVal) selUnidad.value = currentVal;
+        if (!Array.isArray(unidades)) return; 
+
+        UNIDADES_DISPONIBLES_RANGO = unidades;
+
+        selUnidad.innerHTML = '<option value="" disabled selected>Seleccionar unidad</option>';
+        unidades.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.nombre;
+            const disp = u.disponibles ?? 0;
+            const precio = u.precio ?? 0;
+
+            opt.textContent = `${u.nombre} - ${formatMoneda(precio)}`;
+            opt.dataset.precio = precio; 
+            opt.dataset.idTipo = u.idTipo;
+            opt.dataset.disponibles = disp;
+            selUnidad.appendChild(opt);
+        });
+    } catch (e) { console.error("Error stock dinámico:", e); }
   }
 
   // ------ Init ------
@@ -923,21 +929,39 @@
 
     // Agregar unidad
     document.getElementById('btnAgregarUnidad')?.addEventListener('click', () => {
-      const unidad = selUnidad.value;
-      const cant   = Number(inpCantidad.value);
+      const sel = selUnidad.options[selUnidad.selectedIndex];
+      if (!sel || !sel.value) return window.showAlert('Atención', 'Seleccioná una unidad.', 'warning');
 
-      if (!unidad) return window.showAlert('Atención', 'Seleccioná una unidad.', 'warning');
-      if (!cant || cant <= 0) return window.showAlert('Atención', 'Ingresá una cantidad válida.', 'warning');
+      const idTipo = sel.dataset.idTipo;
+      const cantNueva = Number(inpCantidad.value);
 
-      // Obtenemos el precio del dataset de la opción seleccionada
-      const precioUnit = Number(selUnidad.options[selUnidad.selectedIndex]?.dataset.precio) || 0;
-      const idTipo = selUnidad.options[selUnidad.selectedIndex]?.dataset.idTipo;
+      // Sumar lo que el usuario ya puso en la grilla actual (antes de guardar)
+      const yaEnGrillaTemporal = lineas
+          .filter(l => String(l.idTipo) === String(idTipo))
+          .reduce((acc, curr) => acc + curr.cantidad, 0);
 
-      lineas.push({ unidad, cantidad: cant, precioUnit, idTipo });
+      const disponibleEnServer = Number(sel.dataset.disponibles);
+
+      // NUEVO MENSAJE Y LÓGICA
+      if ((yaEnGrillaTemporal + cantNueva) > disponibleEnServer) {
+          let msg = `No hay stock suficiente. `;
+          if (yaEnGrillaTemporal > 0) {
+              msg += `Ya agregaste ${yaEnGrillaTemporal} a este pedido y solo quedan ${disponibleEnServer} en total.`;
+          } else {
+              msg += `Solo hay ${disponibleEnServer} unidades disponibles para estas fechas.`;
+          }
+          return window.showAlert('Sin Stock', msg, 'error');
+      }
+
+      lineas.push({ 
+          unidad: sel.value, 
+          cantidad: cantNueva, 
+          precioUnit: Number(sel.dataset.precio), 
+          idTipo: idTipo
+      });
+      
       renderLineas();
-
       inpCantidad.value = '';
-      if (selUnidad.options.length > 0) selUnidad.selectedIndex = 0;
     });
 
     // Borrar unidad
@@ -984,65 +1008,92 @@
     form.addEventListener('submit', async e => {
       e.preventDefault();
 
-      const idCliente  = selCliente.value;
-      const ubicacion  = inpUbicacion.value.trim();
-      const fechaDesde = inpDesde.value.trim();
-      const fechaHasta = inpHasta.value.trim();
+      // 1. CAPTURA INICIAL DE VARIABLES
+      const idCliente = selCliente.value; 
+      const fDesde = inpDesde.value;
+      const fHasta = inpHasta.value;
+      const ubicacion = inpUbicacion.value.trim();
 
-      if (!idCliente)                return window.showAlert('Atención', 'Seleccioná un cliente.', 'warning');
-      if (!ubicacion)                return window.showAlert('Atención', 'Ingresá la ubicación.', 'warning');
-      if (!lineas.length)            return window.showAlert('Atención', 'Agregá al menos una unidad.', 'warning');
-      if (fechaDesde && fechaHasta && fechaDesde > fechaHasta) return window.showAlert('Atención', 'Fechas inválidas: "Desde" no puede ser mayor a "Hasta".', 'warning');
-
-      if (!ubicacionValida) {
-          const confirm = await window.confirmAction('Atención', 'La ubicación cargada se puede visualizar de manera incorrecta o no visualizarse. ¿Desea cargar el alquiler de todas formas?');
-          if (!confirm) return;
+      if (!idCliente || !lineas.length || !fDesde || !fHasta) {
+          return window.showAlert('Atención', 'Completa cliente, fechas y al menos una unidad.', 'warning');
       }
-
-      const dias = diffDias(fechaDesde, fechaHasta);
-      const { total, pagado, saldo } = calcTotales(lineas, pagos, dias);
-      
-      // Preservar estado si es edición, sino PENDIENTE. Evitar 'PAGADO'.
-      let estadoFinal = 'PENDIENTE';
-      if (currentId) {
-          const actual = ALQUILERES.find(a => String(a.idAlquiler || a.idalquiler) === String(currentId));
-          if (actual && actual.estado && actual.estado !== 'PAGADO') estadoFinal = actual.estado;
-      }
-
-      const payload = {
-        idCliente: idCliente,
-        ubicacion,
-        fechaDesde,
-        fechaHasta,
-        precioTotal: total,
-        estado: estadoFinal,
-        lineas, // Se envían para que el backend las procese si tiene la lógica
-        pagos
-      };
 
       try {
-        const method = currentId ? 'PUT' : 'POST';
-        const url = currentId ? `${API_URL}/${currentId}` : API_URL;
-        
-        const res = await fetch(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+        // BLOQUEO DE ÚLTIMO SEGUNDO: Consultamos stock REAL justo antes de guardar
+        const resCheck = await fetch(`/api/unidades/disponibilidad?desde=${inpDesde.value}&hasta=${inpHasta.value}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('ap_token')}` }
         });
+        const disponibilidadFresca = await resCheck.json();
 
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || 'Error al guardar');
+        for (const linea of lineas) {
+            const infoServer = disponibilidadFresca.find(u => String(u.idTipo) === String(linea.idTipo));
+            
+            if (infoServer) {
+                let unidadesQueYaTeniaEstePedido = 0;
+                // Si estoy EDITANDO, le sumo al disponible lo que este pedido ya ocupaba
+                if (currentId) {
+                    const alqOriginal = ALQUILERES.find(a => String(a.idAlquiler || a.idalquiler) === String(currentId));
+                    const lineaOriginal = alqOriginal?.lineas?.find(l => String(l.idTipo || l.idUnidad) === String(linea.idTipo));
+                    unidadesQueYaTeniaEstePedido = lineaOriginal ? (Number(lineaOriginal.cantidad) || 0) : 0;
+                }
+
+                const cupoMaximoParaEsteCliente = Number(infoServer.disponibles) + unidadesQueYaTeniaEstePedido;
+
+                if (Number(linea.cantidad) > cupoMaximoParaEsteCliente) {
+                    // SI NO HAY STOCK, CORTAMOS TODO AQUÍ
+                    return window.showAlert(
+                        'Stock Insuficiente', 
+                        `No se puede guardar. Para estas fechas solo quedan ${cupoMaximoParaEsteCliente} unidades de "${linea.unidad}".`, 
+                        'error'
+                    );
+                }
+            }
         }
 
-        ALQUILERES = await loadAlquileres();
-        renderTablaAlquileres(txtBuscar.value);
-        clearFormAlquiler();
-        window.showAlert('Éxito', 'Alquiler guardado', 'success');
-      } catch (err) {
-        window.showAlert('Error', err.message, 'error');
+          // 4. DEFINICIÓN DE ESTADO (Soluciona el ReferenceError)
+          let estadoFinal = 'PENDIENTE'; 
+          if (currentId) {
+              const actual = ALQUILERES.find(a => String(a.idAlquiler || a.idalquiler) === String(currentId));
+              if (actual && actual.estado) estadoFinal = actual.estado;
+          }
+
+          // 5. PREPARAR PAYLOAD Y GUARDAR
+          const dias = diffDias(fDesde, fHasta);
+          const { total } = calcTotales(lineas, [], dias); // Calculamos total basado en la grilla actual
+          const userSession = JSON.parse(localStorage.getItem('ap_current') || '{}');
+
+          const payload = {
+              idCliente,
+              ubicacion,
+              fechaDesde: fDesde,
+              fechaHasta: fHasta,
+              precioTotal: total,
+              estado: estadoFinal, // Ahora sí está definido
+              lineas,
+              idUsuarioEjecutor: userSession.idUsuarios || userSession.id
+          };
+
+          const method = currentId ? 'PUT' : 'POST';
+          const url = currentId ? `${API_URL}/${currentId}` : API_URL;
+
+          const res = await fetch(url, {
+              method,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+          });
+
+          if (!res.ok) throw new Error((await res.json()).error || 'Error al guardar');
+
+          window.showAlert('Éxito', 'Alquiler actualizado correctamente', 'success');
+          clearFormAlquiler();
+          ALQUILERES = await loadAlquileres();
+          renderTablaAlquileres();
+
+      } catch (err) { 
+          console.error("Error en submit:", err);
+          window.showAlert('Error', err.message, 'error'); 
       }
-    });
+  });
 
     // arrancamos con el formulario limpio y placeholders seleccionados
     clearFormAlquiler();
