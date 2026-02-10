@@ -386,6 +386,14 @@
 
         if (!idTipo || !cantidad) return window.showAlert('Error', 'Completar campos', 'error');
 
+        const payload = {
+            idTipo,
+            accion: 'alta',
+            stock: cantidad,
+            estado,
+            precio
+        };
+
         try {
             const res = await fetch(`${API_UNIDADES}/gestion`, {
               method: 'POST',
@@ -424,7 +432,7 @@
         try {
             const res = await fetch(`${API_UNIDADES}/gestion`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getHeaders(),
                 body: JSON.stringify(payload)
             });
             if (res.ok) {
@@ -444,7 +452,7 @@
         try {
             const res = await fetch(`${API_UNIDADES}/gestion`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getHeaders(),
                 body: JSON.stringify({ idTipo, accion: 'precio', precio })
             });
             if (res.ok) {
