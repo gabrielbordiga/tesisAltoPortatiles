@@ -200,24 +200,28 @@ exports.getUnidadesPorEstado = async (req, res) => {
 
 //Busca disponibilidades de las unidades en las fechas q se piden
 exports.getDisponibilidadPorRango = async (req, res) => {
-    const { desde, hasta } = req.query;
+    const { desde, hasta, excluir } = req.query; // Capturamos 'excluir'
 
     if (!desde || !hasta || desde.includes('object')) {
         return res.status(400).json({ error: "Fechas inválidas" });
     }
 
     try {
-        // 1. Capacidad TOTAL de la empresa (Stock físico)
         const { data: stockFisico } = await supabase.from('Unidades').select('stock, idTipo, precio');
 
-        // 2. SOLAPAMIENTO REAL: Buscamos cualquier pedido que pise estas fechas
-        const { data: ocupadas, error: errOcup } = await supabase
+        let queryOcupacion = supabase
             .from('DetalleAlquiler')
             .select('cantidad, idUnidad, Unidades!inner(idTipo), Alquileres!inner(idAlquiler, fechaDesde, fechaHasta, estado)')
             .lte('Alquileres.fechaDesde', hasta)
             .gte('Alquileres.fechaHasta', desde)
             .not('Alquileres.estado', 'in', '("FINALIZADO", "RETIRADO", "CANCELADO")');
 
+        if (excluir && excluir !== 'null' && excluir !== '') {
+            queryOcupacion = queryOcupacion.neq('Alquileres.idAlquiler', excluir);
+        }
+
+        const { data: ocupadas, error: errOcup } = await queryOcupacion;
+        
         if (errOcup) throw errOcup;
 
         const { data: tipos } = await supabase.from('Tipo_Unidades').select('*');

@@ -795,7 +795,7 @@
     }
 
     inpUbicacion.value = a.ubicacion || '';
-    ubicacionValida = true; // Asumimos válida si viene de la BD
+    ubicacionValida = true; 
     if (inpUbicacion._errorMsgElement) inpUbicacion._errorMsgElement.style.display = 'none';
     inpDesde.value     = a.fechaDesde || '';
     inpHasta.value     = a.fechaHasta || '';
@@ -803,13 +803,15 @@
     // Mapeamos para normalizar precioUnitario (BD) a precioUnit (Front)
     lineas = (a.lineas || []).map(l => ({
       ...l,
+      idTipo: l.idTipo || l.idUnidad || l.idunidad, 
       precioUnit: l.precioUnit !== undefined ? l.precioUnit : l.precioUnitario,
-      idTipo: l.idTipo || l.idUnidad || l.idunidad // Recuperar idTipo desde la BD
+      unidad: l.unidad || 'Unidad'
     }));
+
     pagos = (a.pagos || []).map(p => ({ 
       ...p,
-      fecha: p.fecha || p.fechaPago, // Mapear fechaPago de la BD a fecha del front
-      monto: Number(p.monto || 0)    // Asegurar que sea número
+      fecha: p.fecha || p.fechaPago,
+      monto: Number(p.monto || 0)
     }));
 
     renderLineas();
@@ -839,46 +841,51 @@
   }
 
   // ------ Carga de combo unidades desde BD ------
-  async function fillUnidadesSelect() {
+async function fillUnidadesSelect() {
     const desde = inpDesde.value;
     const hasta = inpHasta.value;
 
-    if (!desde || !hasta) return;
+    if (!desde || !hasta) {
+        if (UNIDADES_CACHE.length > 0) {
+            renderizarOpcionesUnidad(UNIDADES_CACHE);
+        }
+        return;
+    }
 
     try {
         const res = await fetch(`/api/unidades/disponibilidad?desde=${desde}&hasta=${hasta}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('ap_token')}` }
         });
-        const unidades = await res.json(); 
-
-        if (!Array.isArray(unidades)) return; 
-
+        const unidades = await res.ok ? await res.json() : [];
         UNIDADES_DISPONIBLES_RANGO = unidades;
-
-        selUnidad.innerHTML = '<option value="" disabled selected>Seleccionar unidad</option>';
-        unidades.forEach(u => {
-            const opt = document.createElement('option');
-            opt.value = u.nombre;
-            const disp = u.disponibles ?? 0;
-            const precio = u.precio ?? 0;
-
-            opt.textContent = `${u.nombre} - ${formatMoneda(precio)}`;
-            opt.dataset.precio = precio; 
-            opt.dataset.idTipo = u.idTipo;
-            opt.dataset.disponibles = disp;
-            selUnidad.appendChild(opt);
-        });
+        renderizarOpcionesUnidad(unidades);
     } catch (e) { console.error("Error stock dinámico:", e); }
-  }
+}
+
+function renderizarOpcionesUnidad(lista) {
+    selUnidad.innerHTML = '<option value="" disabled selected>Seleccionar unidad</option>';
+    lista.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.nombre;
+        const disp = u.disponibles ?? u.stock ?? 0; 
+        const precio = u.precio ?? u.precioUnitario ?? 0;
+
+        opt.textContent = `${u.nombre} - ${formatMoneda(precio)}`;
+        opt.dataset.precio = precio;
+        opt.dataset.idTipo = u.idTipo;
+        opt.dataset.disponibles = disp;
+        selUnidad.appendChild(opt);
+    });
+}
 
   // ------ Init ------
   document.addEventListener('DOMContentLoaded', async () => {
     if (!initDomAlquileres()) return;
 
     CLIENTES_CACHE = await loadClientes();
-    UNIDADES_CACHE = await loadUnidades();
+    UNIDADES_CACHE = await loadUnidades(); 
     fillClientesSelect();
-    fillUnidadesSelect();
+    fillUnidadesSelect(); // <--- Llamada inmediata al iniciar el módulo
     ALQUILERES = await loadAlquileres();
     renderTablaAlquileres();
 
@@ -1014,14 +1021,37 @@
       const fHasta = inpHasta.value;
       const ubicacion = inpUbicacion.value.trim();
 
+      // --- NUEVAS VALIDACIONES DE FECHA ---
+      const fDesdeDate = new Date(fDesde);
+      const fHastaDate = new Date(fHasta);
+      const hoy = new Date();
+      const añoActual = hoy.getFullYear();
+
+      // A. Validar campos básicos
       if (!idCliente || !lineas.length || !fDesde || !fHasta) {
           return window.showAlert('Atención', 'Completa cliente, fechas y al menos una unidad.', 'warning');
       }
 
+      // B. Validar que no sea un año muy viejo 
+      if (fDesdeDate.getFullYear() < (añoActual - 1)) {
+          return window.showAlert('Fecha Inválida', `La fecha de inicio no puede ser anterior a ${añoActual - 1}.`, 'error');
+      }
+
+      // C. Validar que la duración no sea eterna 
+      const limiteFuturo = new Date();
+      limiteFuturo.setFullYear(añoActual + 2);
+      if (fHastaDate > limiteFuturo) {
+          return window.showAlert('Rango Excesivo', 'El periodo de alquiler no puede superar los 2 años a futuro.', 'error');
+      }
+
+      // D. Validar coherencia (ya lo hace el navegador, pero por seguridad)
+      if (fHastaDate < fDesdeDate) {
+          return window.showAlert('Error', 'La fecha de fin no puede ser anterior a la de inicio.', 'error');
+      }
+
       try {
-        // BLOQUEO DE ÚLTIMO SEGUNDO: Consultamos stock REAL justo antes de guardar
-        const resCheck = await fetch(`/api/unidades/disponibilidad?desde=${inpDesde.value}&hasta=${inpHasta.value}`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('ap_token')}` }
+        const resCheck = await fetch(`/api/unidades/disponibilidad?desde=${fDesde}&hasta=${fHasta}&excluir=${currentId || ''}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('ap_token')}` }
         });
         const disponibilidadFresca = await resCheck.json();
 
@@ -1054,23 +1084,23 @@
           let estadoFinal = 'PENDIENTE'; 
           if (currentId) {
               const actual = ALQUILERES.find(a => String(a.idAlquiler || a.idalquiler) === String(currentId));
-              if (actual && actual.estado) estadoFinal = actual.estado;
+              if (actual) estadoFinal = actual.estado;
           }
 
           // 5. PREPARAR PAYLOAD Y GUARDAR
           const dias = diffDias(fDesde, fHasta);
-          const { total } = calcTotales(lineas, [], dias); // Calculamos total basado en la grilla actual
-          const userSession = JSON.parse(localStorage.getItem('ap_current') || '{}');
+          const totalesActuales = calcTotales(lineas, pagos, dias);
 
           const payload = {
               idCliente,
               ubicacion,
               fechaDesde: fDesde,
               fechaHasta: fHasta,
-              precioTotal: total,
-              estado: estadoFinal, // Ahora sí está definido
-              lineas,
-              idUsuarioEjecutor: userSession.idUsuarios || userSession.id
+              precioTotal: totalesActuales.total,
+              estado: estadoFinal,
+              lineas: lineas, 
+              pagos: pagos,
+              idUsuarioEjecutor: JSON.parse(localStorage.getItem('ap_current'))?.idUsuarios
           };
 
           const method = currentId ? 'PUT' : 'POST';
@@ -1084,7 +1114,7 @@
 
           if (!res.ok) throw new Error((await res.json()).error || 'Error al guardar');
 
-          window.showAlert('Éxito', 'Alquiler actualizado correctamente', 'success');
+          window.showAlert('Éxito', 'Alquiler guardado correctamente', 'success');
           clearFormAlquiler();
           ALQUILERES = await loadAlquileres();
           renderTablaAlquileres();
