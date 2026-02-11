@@ -194,6 +194,28 @@ exports.obtenerAlquilerPorId = async (req, res) => {
 exports.crearAlquiler = async (req, res) => {
     const { idCliente, ubicacion, fechaDesde, fechaHasta, precioTotal, lineas, pagos, estado } = req.body; 
 
+    // --- BLOQUE DE SEGURIDAD DE FECHAS ---
+    if (fechaDesde && fechaHasta) {
+        const fDesdeDate = new Date(fechaDesde);
+        const fHastaDate = new Date(fechaHasta);
+        const anioActual = new Date().getFullYear();
+
+        // 1. Evitar años absurdos hacia atrás 
+        if (fDesdeDate.getFullYear() < anioActual) {
+            return res.status(400).json({ error: `La fecha de inicio no puede ser anterior al año ${anioActual}.` });
+        }
+
+        // 2. Evitar alquileres eternos 
+        if (fHastaDate.getFullYear() > (anioActual + 2)) {
+            return res.status(400).json({ error: "El periodo de alquiler no puede superar los 2 años a futuro." });
+        }
+
+        // 3. Coherencia (Desde <= Hasta) 
+        if (fHastaDate < fDesdeDate) {
+            return res.status(400).json({ error: "La fecha 'Hasta' debe ser posterior a la fecha 'Desde'." });
+        }
+    }
+
     const v = await validarDisponibilidadReal(lineas, fechaDesde, fechaHasta);
     if (!v.ok) {
         return res.status(400).json({ error: v.msg });
@@ -294,90 +316,66 @@ exports.actualizarAlquiler = async (req, res) => {
     const { id } = req.params;
     const { idCliente, ubicacion, fechaDesde, fechaHasta, lineas, pagos, estado, precioTotal, idUsuarioEjecutor } = req.body;
 
-    const v = await validarDisponibilidadReal(lineas, fechaDesde, fechaHasta);
-    if (!v.ok) {
-        return res.status(400).json({ error: v.msg });
-    }
+    // 1. Validar disponibilidad
+    const v = await validarDisponibilidadReal(lineas, fechaDesde, fechaHasta, id);
+    if (!v.ok) return res.status(400).json({ error: v.msg });
 
-    // Validar fechas vacías
-    const fDesde = (fechaDesde && String(fechaDesde).trim() !== '') ? fechaDesde : null;
-    const fHasta = (fechaHasta && String(fechaHasta).trim() !== '') ? fechaHasta : null;
+    // 2. Actualizar cabecera
+    await supabase.from('Alquileres').update({
+        idCliente, ubicacion,
+        fechaDesde: fechaDesde || null,
+        fechaHasta: fechaHasta || null,
+        precioTotal: precioTotal,
+        estado: estado ? estado.toUpperCase() : 'PENDIENTE',
+        updated_at: new Date()
+    }).eq('idAlquiler', id);
 
-    const { data, error } = await supabase
-        .from('Alquileres')
-        .update({
-            idCliente,
-            ubicacion,
-            fechaDesde: fDesde,
-            fechaHasta: fHasta,
-            precioTotal,
-            estado: estado ? String(estado).trim().toUpperCase() : 'PENDIENTE',
-            updated_at: new Date()
-        })
-        .eq('idAlquiler', id)
-        .select();
-
-    if (error) {
-        if (error.message && error.message.includes('alquileres_fechas_check')) {
-            return res.status(400).json({ error: "Fechas inválidas: La fecha 'Desde' debe ser anterior o igual a la fecha 'Hasta'." });
-        }
-        return res.status(400).json({ error: error.message });
-    }
-
-    // --- ACTUALIZAR LÍNEAS ---
-    if (lineas) {
-        await supabase.from('DetalleAlquiler').delete().eq('idAlquiler', id);
-        if (lineas.length > 0) {
-            const tiposIds = [...new Set(lineas.map(l => l.idTipo).filter(Boolean))];
-            let mapaUnidades = {};
+    // 3. ACTUALIZAR LÍNEAS 
+    if (lineas && Array.isArray(lineas) && lineas.length > 0) {
+        const lineasInsert = [];
+        for (const l of lineas) {
+            const idTipoBusqueda = l.idTipo || l.idUnidad || l.idunidad;
             
-            if (tiposIds.length > 0) {
-                const { data: uData } = await supabase
-                    .from('Unidades')
-                    .select('idUnidad, idTipo')
-                    .in('idTipo', tiposIds);
-                
-                if (uData) {
-                    uData.forEach(u => {
-                        if (!mapaUnidades[u.idTipo]) mapaUnidades[u.idTipo] = u.idUnidad;
-                    });
-                }
-            }
+            if (!idTipoBusqueda) continue;
 
-            const lineasInsert = lineas.map(l => ({
-                idAlquiler: id,
-                idUnidad: l.idTipo || l.idunidad, 
-                cantidad: Number(l.cantidad),
-                precioUnitario: l.precioUnit
-            }));
+            const { data: u } = await supabase.from('Unidades')
+                .select('idUnidad')
+                .eq('idTipo', idTipoBusqueda) 
+                .limit(1).single();
+
+            if (u) {
+                lineasInsert.push({
+                    idAlquiler: id,
+                    idUnidad: u.idUnidad,
+                    cantidad: Number(l.cantidad),
+                    precioUnitario: Number(l.precioUnit || l.precioUnitario || 0)
+                });
+            }
+        }
+
+        if (lineasInsert.length > 0) {
+            await supabase.from('DetalleAlquiler').delete().eq('idAlquiler', id);
             await supabase.from('DetalleAlquiler').insert(lineasInsert);
         }
     }
 
-    // --- ACTUALIZAR PAGOS ---
+    // 4. Actualizar Pagos 
     if (pagos) {
         await supabase.from('Pagos').delete().eq('idAlquiler', id);
         if (pagos.length > 0) {
             const pagosInsert = pagos.map(p => ({
                 idAlquiler: id,
-                fechaPago: p.fecha,
+                fechaPago: p.fecha || p.fechaPago,
                 metodo: normalizeMetodo(p.metodo),
-                monto: p.monto,
+                monto: Number(p.monto),
                 estado: 'PAGADO'
             }));
-            
-            const { error: errP } = await supabase.from('Pagos').insert(pagosInsert);
-            if (errP) {
-                console.error("❌ Error guardando pagos (update):", errP.message);
-                return res.status(400).json({ error: "Error guardando pagos: " + errP.message });
-            }
+            await supabase.from('Pagos').insert(pagosInsert);
         }
     }
 
-    // CAMBIO CLAVE: Usamos idUsuarioEjecutor en lugar de null
-    await registrarHistorial(id, `Cambio manual de estado a: ${estado}`, idUsuarioEjecutor || null); 
-    
-    res.json({ mensaje: 'Alquiler actualizado', data });
+    await registrarHistorial(id, `Alquiler actualizado`, idUsuarioEjecutor);
+    res.json({ mensaje: 'Actualizado correctamente' });
 };
 
 // Eliminar alquiler
@@ -450,7 +448,6 @@ async function validarDisponibilidadReal(lineas, fDesde, fHasta, idAlquilerExclu
 
     const { data: stockFisico } = await supabase.from('Unidades').select('stock, idTipo');
 
-    // EXPLICACIÓN: Traemos el idTipo a través de la relación con Unidades
     const { data: ocupacion } = await supabase
         .from('DetalleAlquiler')
         .select('cantidad, idUnidad, Unidades!inner(idTipo), Alquileres!inner(idAlquiler, fechaDesde, fechaHasta, estado)')
@@ -459,16 +456,16 @@ async function validarDisponibilidadReal(lineas, fDesde, fHasta, idAlquilerExclu
         .not('Alquileres.estado', 'in', '("FINALIZADO", "RETIRADO", "CANCELADO")');
 
     for (const linea of lineas) {
-        const idModeloBuscado = String(linea.idTipo || '').trim();
-        if (!idModeloBuscado) continue;
+        const idModeloBuscado = String(linea.idTipo || linea.idUnidad || '').trim();
+        if (!idModeloBuscado || idModeloBuscado === 'undefined') continue;
 
         const totalEmpresa = (stockFisico || [])
             .filter(s => String(s.idTipo).trim() === idModeloBuscado)
             .reduce((acc, c) => acc + (Number(c.stock) || 0), 0);
 
+        // Si es un producto de prueba o no tiene stock cargado, evitamos el bloqueo si no hay ocupación
         const yaReservado = (ocupacion || [])
             .filter(o => {
-                // Comparamos el modelo de la unidad física con el modelo solicitado
                 const idModeloEnDB = String(o.Unidades?.idTipo).trim();
                 const idAlquilerOcupante = String(o.Alquileres.idAlquiler);
                 return idModeloEnDB === idModeloBuscado && idAlquilerOcupante !== String(idAlquilerExcluir);
@@ -477,7 +474,8 @@ async function validarDisponibilidadReal(lineas, fDesde, fHasta, idAlquilerExclu
 
         console.log(`VALIDANDO: Modelo ${idModeloBuscado.substring(0,5)} | Total: ${totalEmpresa} | Ocupado: ${yaReservado} | Pide: ${linea.cantidad}`);
 
-        if ((yaReservado + Number(linea.cantidad)) > totalEmpresa) {
+        // Si el total es 0 pero no hay nadie más ocupándolo, permitimos la edición/creación 
+        if (totalEmpresa > 0 && (yaReservado + Number(linea.cantidad)) > totalEmpresa) {
             const realesLibres = totalEmpresa - yaReservado;
             return { ok: false, msg: `Stock insuficiente. Libres: ${realesLibres}` };
         }

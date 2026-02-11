@@ -266,10 +266,6 @@
               <label>Unidad
                 <select id="tipoUnidadAlq" class="input">
                   <option value="" disabled selected>Seleccionar unidad</option>
-                  <option>Baño estándar</option>
-                  <option>Baño para obras</option>
-                  <option>Baños VIP</option>
-                  <option>Cabinas de seguridad</option>
                 </select>
               </label>
 
@@ -310,46 +306,49 @@
             </div>
 
             <!-- Monto pagado + método -->
-            <div class="mini-table-block">
-              <div class="row">
-                <label>Monto pagado
-                  <div class="input-with-plus">
-                    <input id="montoPagado" type="number" min="0" class="input" placeholder="Ej: 200000">
-                    <button type="button" id="btnAgregarPago" class="btn-plus-mini">+</button>
-                  </div>
-                </label>
-
-                <label>Método
-                  <select id="metodoPago" class="input">
-                    <option value="" disabled selected>Seleccionar método</option>
-                    <option>Efectivo</option>
-                    <option>Transferencia</option>
-                    <option>Tarjeta</option>
-                  </select>
-                </label>
+            <div class="row" style="margin-bottom: 20px;">
+              <div class="col">
+                  <label>Monto pagado</label>
+                  <input id="montoPagado" type="number" min="0" class="input" placeholder="Ej: 200000">
               </div>
+              
+              <div class="col">
+                  <label>Método</label>
+                  <div class="input-group">
+                      <select id="metodoPago" class="input">
+                          <option value="" disabled selected>Seleccionar método</option>
+                          <option>Efectivo</option>
+                          <option>Transferencia</option>
+                          <option>Tarjeta debito</option>
+                          <option>Tarjeta credito</option>
+                      </select>
+                      <button type="button" id="btnAgregarPago" class="btn-plus-mini">+</button>
+                  </div>
+              </div>
+          </div>
 
-              <table class="tabla tabla-mini">
-                <thead>
-                  <tr>
-                    <th>Fecha de pago</th>
-                    <th>Monto pagado</th>
-                    <th>Método de pago</th>
-                    <th>Saldo pendiente</th>
-                    <th style="width:40px;"></th>
-                  </tr>
-                </thead>
-                <tbody id="tbodyPagos">
-                  <tr>
-                    <td>25/05/25</td>
-                    <td>$200.000</td>
-                    <td>Transferencia</td>
-                    <td class="saldo-pendiente">$50.000</td>
-                    <td class="col-icon-remove">✖</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+          <div class="pago-tabla-container">
+              <div class="tabla-wrap-mini">
+                  <table class="tabla-mini">
+                      <thead>
+                          <tr>
+                              <th>Fecha de pago</th>
+                              <th>Monto pagado</th>
+                              <th>Método de pago</th>
+                              <th>Saldo pendiente</th>
+                              <th></th>
+                          </tr>
+                      </thead>
+                      <tbody id="tbodyPagos">
+                          <tr>
+                              <td colspan="5" style="text-align:center; color:#999; padding: 20px;">
+                                  Sin pagos registrados.
+                              </td>
+                          </tr>
+                      </tbody>
+                  </table>
+              </div>
+          </div>
 
             <div class="form-actions">
               <button type="submit" class="btn primary">Guardar</button>

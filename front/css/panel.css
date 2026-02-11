@@ -1053,3 +1053,25 @@ canvas {
     color: #33691e;
     border-color: #dcedc8;
 }
+
+
+/* Contenedor para que el select y el botón estén pegados */
+.input-group {
+    display: flex;
+    align-items: center; /* Centra verticalmente el botón con el select */
+    gap: 8px;            /* Espacio pequeño entre el select y el botón */
+    margin-top: 4px;     /* Espacio opcional respecto al texto del label */
+}
+
+/* Ajuste para que el select ocupe el espacio disponible si es necesario */
+#metodoPago {
+    flex: 1; 
+}
+
+.pago-tabla-container {
+    background-color: #f9f9f9; /* Fondo gris muy clarito como en tu captura */
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 10px;
+}
