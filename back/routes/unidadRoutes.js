@@ -5,6 +5,7 @@ const unidadController = require('../controllers/unidadController');
 router.get('/tipos', unidadController.getTipos);
 router.get('/resumen', unidadController.getResumenStock);
 router.get('/disponibilidad', unidadController.getDisponibilidadPorRango);
+router.get('/:idTipo/alquiladas', unidadController.getDetalleAlquiladas);
 router.post('/tipos', unidadController.crearTipo);
 router.post('/gestion', unidadController.gestionarStock);
 
