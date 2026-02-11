@@ -42,7 +42,7 @@
 
       initRemindersLogic();
     } catch (e) { console.error("Error en inicio:", e); }
-});
+  });
 
   // =========================================================
   // AGENDA UNIFICADA (LADO DERECHO)
@@ -292,18 +292,34 @@
         return;
     }
 
-    tbody.innerHTML = data.map(u => `
-      <tr>
-        <td>${u.nombre}</td>
-        <td><span style="font-weight:bold; color:green;">${u.disponibles}</span></td>
-        <td><span style="font-weight:bold; color:orange;">${u.alquiladas}</span></td>
-        <td><span style="font-weight:bold; color:red;">${u.servicio}</span></td>
-        <td>$${(u.precio || 0).toLocaleString()}</td>
-        <td>
-          <button class="action danger" data-accion="${u.idTipo}" data-nombre="${u.nombre}" data-precio="${u.precio}">Editar</button>
-        </td>
-      </tr>
-    `).join('');
+    tbody.innerHTML = data.map(u => {
+
+        const colorDisp = u.disponibles > 0 ? 'green' : 'red';
+
+        return `
+          <tr>
+            <td style="font-weight: 500;">${u.nombre}</td>
+            <td><span style="font-weight:bold; color:${colorDisp};">${u.disponibles}</span></td>
+            <td>
+                <span style="font-weight:bold; color:orange; cursor:pointer; text-decoration:underline;" 
+                      onclick="window.verDetalleAlquiladas('${u.idTipo}', '${u.nombre}')"
+                      title="Hacer clic para ver quiénes tienen estas unidades">
+                    ${u.alquiladas}
+                </span>
+            </td>
+            <td><span style="font-weight:bold; color:#666;">${u.servicio}</span></td>
+            <td>$${(u.precio || 0).toLocaleString('es-AR')}</td>
+            <td>
+              <button class="action danger" 
+                      data-accion="${u.idTipo}" 
+                      data-nombre="${u.nombre}" 
+                      data-precio="${u.precio}">
+                Editar
+              </button>
+            </td>
+          </tr>
+        `;
+    }).join('');
   }
 
   async function loadTiposUnidad() {
@@ -378,27 +394,45 @@
 
     // Gestionar Stock (Agregar/Actualizar)
     if (formGestion) formGestion.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const idTipo = document.getElementById('tipoUnidad').value;
-        const cantidad = document.getElementById('cantidadUnidad').value;
-        const estado = document.getElementById('estadoUnidad').value;
-        const precio = document.getElementById('precioUnidad').value;
+      e.preventDefault();
+      
+      const idTipo   = document.getElementById('tipoUnidad').value;
+      const cantidad = document.getElementById('cantidadUnidad').value;
+      const estado   = document.getElementById('estadoUnidad').value;
+      const precioInput = document.getElementById('precioUnidad').value;
 
-        if (!idTipo || !cantidad) return window.showAlert('Error', 'Completar campos', 'error');
+      if (!idTipo || !cantidad) return window.showAlert('Error', 'Completar campos', 'error');
 
-        try {
-            const res = await fetch(`${API_UNIDADES}/gestion`, {
+      const precioFinal = precioInput === "" ? 0 : parseFloat(precioInput);
+
+      const payload = {
+          idTipo,
+          accion: 'alta',
+          stock: parseInt(cantidad),
+          estado: estado,
+          precio: precioFinal
+      };
+
+      try {
+          const res = await fetch(`${API_UNIDADES}/gestion`, {
               method: 'POST',
               headers: getHeaders(),
               body: JSON.stringify(payload)
-            });
-            if (res.ok) {
-                window.showAlert('Éxito', 'Stock actualizado', 'success');
-                modalGestion.classList.add('hidden');
-                loadUnidades();
-            }
-        } catch (e) { console.error(e); }
-    });
+          });
+
+          if (res.ok) {
+              window.showAlert('Éxito', 'Stock actualizado', 'success');
+              modalGestion.classList.add('hidden');
+              formGestion.reset();
+              await loadUnidades(); 
+          } else {
+              const errorData = await res.json();
+              window.showAlert('Error', errorData.error || 'Error al guardar', 'error');
+          }
+      } catch (e) { 
+          console.error("Error en submit gestión:", e); 
+      }
+  });
 
     // Acciones Stock (Mover/Baja) y Precio
     if (selAccion) selAccion.addEventListener('change', () => {
@@ -438,21 +472,40 @@
         } catch (e) { console.error(e); }
     });
 
-    if (btnGuardarPrecio) btnGuardarPrecio.addEventListener('click', async () => {
-        const idTipo = document.getElementById('idTipoAccion').value;
-        const precio = document.getElementById('editPrecio').value;
-        try {
-            const res = await fetch(`${API_UNIDADES}/gestion`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ idTipo, accion: 'precio', precio })
-            });
-            if (res.ok) {
-                window.showAlert('Éxito', 'Precio actualizado', 'success');
-                loadUnidades();
-            }
-        } catch (e) { console.error(e); }
-    });
+    if (btnGuardarPrecio) {
+      btnGuardarPrecio.addEventListener('click', async () => {
+          const idTipo = document.getElementById('idTipoAccion').value;
+          const precio = document.getElementById('editPrecio').value;
+
+          // Validamos solo el precio
+          if (precio === "" || parseFloat(precio) < 0) {
+              return window.showAlert('Atención', 'Ingresá un precio válido (0 o más).', 'warning');
+          }
+
+          try {
+              const res = await fetch(`${API_UNIDADES}/gestion`, {
+                  method: 'POST',
+                  headers: getHeaders(),
+                  body: JSON.stringify({ 
+                      idTipo: idTipo, 
+                      accion: 'precio', 
+                      precio: parseFloat(precio),
+                      stock: 0 
+                  })
+              });
+
+              if (res.ok) {
+                  window.showAlert('Éxito', 'Precio actualizado para todas las unidades de este tipo.', 'success');
+                  await loadUnidades(); 
+              } else {
+                  const err = await res.json();
+                  window.showAlert('Error', err.error || 'No se pudo actualizar el precio', 'error');
+              }
+          } catch (e) { 
+              console.error("Error al actualizar precio:", e); 
+          }
+      });
+    }
 
     // Click en tabla (Abrir acciones)
     const tbody = document.getElementById('tbodyUnidades');
@@ -609,5 +662,48 @@
         modal.style.zIndex = "2000"; 
     }
   }
+
+  window.verDetalleAlquiladas = async (idTipo, nombre) => {
+    const modal = document.getElementById('modalDetalleAlquiladas');
+    const tbody = document.getElementById('tbodyDetalleAlquiladas');
+    const lblNombre = document.getElementById('nombreUnidadDetalle');
+
+    if (!modal || !tbody) return;
+
+    lblNombre.textContent = nombre.toUpperCase();
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px;">Cargando detalles...</td></tr>';
+    modal.classList.remove('hidden');
+
+    try {
+        const res = await fetch(`/api/unidades/${idTipo}/alquiladas`, { 
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('ap_token')}` } 
+        });
+        const data = await res.json();
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:#999;">No hay alquileres activos para esta unidad hoy.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.map(d => {
+            const c = clientesCache.find(x => String(x.idCliente) === String(d.Alquileres.idCliente));
+            const clienteLabel = c ? (c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial) : 'Desconocido';
+            const fechaVence = d.Alquileres.fechaHasta ? d.Alquileres.fechaHasta.split('-').reverse().join('/') : '-';
+
+            return `
+                <tr>
+                    <td style="font-size:12px;">${clienteLabel}</td>
+                    <td style="font-size:11px; color:#555;">${d.Alquileres.ubicacion || '-'}</td>
+                    <td style="text-align:center; font-weight:600;">${d.cantidad}</td>
+                    <td style="font-size:12px; white-space:nowrap;">${fechaVence}</td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch (e) {
+        console.error("Error al cargar detalle de alquiladas:", e);
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Error al obtener datos.</td></tr>';
+    }
+  };
 
 })();
