@@ -12,7 +12,7 @@ const stockRoutes = require('./routes/stockRoutes');
 const recordatorioRoutes = require('./routes/recordatorioRoutes');
 const reporteRoutes = require('./routes/reporteRoutes');
 
-// --- MIDDLEWARES ---
+// --- MIDDLEWARES --- 
 app.use(cors()); 
 app.use(express.json()); 
 

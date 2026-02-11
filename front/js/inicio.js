@@ -458,7 +458,7 @@
         try {
             const res = await fetch(`${API_UNIDADES}/gestion`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getHeaders(),
                 body: JSON.stringify(payload)
             });
             if (res.ok) {

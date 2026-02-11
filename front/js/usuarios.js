@@ -47,13 +47,6 @@
     } catch (error) { console.error("Error áreas:", error); }
   }
 
-  function getCurrent() {
-    const r = localStorage.getItem(LS_CURRENT);
-    return r ? JSON.parse(r) : null;
-  }
-  function setCurrent(u) { localStorage.setItem(LS_CURRENT, JSON.stringify(u)); }
-  function logoutToLogin() { localStorage.removeItem(LS_CURRENT); location.href = './login.html'; }
-
   let USUARIOS = [];
   const tbody = document.getElementById('tbodyUsuarios');
   const txtBuscar = document.getElementById('txtBuscar');
@@ -77,7 +70,6 @@
     cancelar: document.getElementById('btnCancelar')
   };
 
-  // Referencias Modal Info
   const modalInfo = document.getElementById('modalInfoUsuario');
   const btnCerrarInfo = document.getElementById('btnCerrarInfo');
 
@@ -132,25 +124,6 @@
     f.area.value = user.area || '';
     if (f.chkPass) f.chkPass.checked = false;
     if (f.lblPass) f.lblPass.classList.remove('hidden');
-  }
-
-  function showInfo(u) {
-    if (!modalInfo) return;
-    document.getElementById('infoNombre').textContent = u.nombre || '-';
-    document.getElementById('infoApellido').textContent = u.apellido || '-';
-    document.getElementById('infoDni').textContent = u.dni || '-';
-    document.getElementById('infoUsuario').textContent = u.usuario || '-';
-    document.getElementById('infoCorreo').textContent = u.correo || '-';
-    document.getElementById('infoRol').textContent = u.rol || '-';
-    
-    // Intentar buscar nombre del área en el select, sino mostrar ID
-    let areaNombre = u.area;
-    const areaOpt = document.querySelector(`#area option[value="${u.area}"]`);
-    if(areaOpt) areaNombre = areaOpt.textContent;
-    
-    document.getElementById('infoArea').textContent = areaNombre || 'Sin área';
-    document.getElementById('infoEstado').textContent = u.estado;
-    modalInfo.classList.remove('hidden');
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
@@ -221,7 +194,6 @@
       }
     });
 
-    // --- SUBMIT CORREGIDO  ---
     f.form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
@@ -237,11 +209,11 @@
       }
 
       const payload = {
-        nombre: f.nombre ? f.nombre.value.trim() : null,
-        apellido: f.apellido ? f.apellido.value.trim() : null,
-        dni: f.dni ? f.dni.value.trim() : null,
-        usuario: f.usuario.value.trim(),
-        correo: f.correo.value.trim(),
+        usuario: f.usuario.value.trim(), 
+        nombre: f.nombre.value.trim(),
+        apellido: f.apellido.value.trim(),
+        dni: f.dni.value.trim(),
+        email: f.correo.value.trim(), // Sincronizado con el backend
         rol: f.rol.value,
         estado: f.estado.value,
         id_area: f.area.value || null

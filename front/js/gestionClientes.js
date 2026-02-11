@@ -149,9 +149,13 @@
     CLIENTES = await loadClientes();
     renderTabla();
 
+    const limits = { cuit: 11, dni: 8, tel1: 15, tel2: 15 };
     [f.cuit, f.tel1, f.tel2, f.dni].forEach(input => {
       input.addEventListener('input', (e) => {
-        e.target.value = e.target.value.replace(/[^0-9]/g, '');
+        let val = e.target.value.replace(/[^0-9]/g, '');
+        const max = limits[input.id];
+        if (max && val.length > max) val = val.slice(0, max);
+        e.target.value = val;
       });
     });
 
