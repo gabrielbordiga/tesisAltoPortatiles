@@ -134,7 +134,7 @@
             </label>
 
             <label>Teléfono
-              <input id="provTelefono" class="input" type="text" placeholder="Ej: 3516789865">
+              <input id="provTelefono" class="input" type="text" placeholder="Ej: 3516789865" maxlength="10">
             </label>
 
             <label>Dirección
@@ -249,9 +249,23 @@
             <input id="prodNombre" type="text" class="input" placeholder="Ej: Papel higiénico" required />
           </label>
 
-          <label>Unidad
-            <input id="prodUnidad" type="text" class="input" placeholder="Ej: rollos, unidades, litros" />
-          </label>
+          <div id="wrapperUnidad">
+            <label id="labelComboUnidad">Unidad
+                <div style="display: flex; gap: 5px;">
+                    <select id="prodUnidadSelect" class="input">
+                        </select>
+                    <button type="button" class="btn-plus" id="btnHabilitarNuevaUnidad" style="font-size: 14px; min-width: 40px;" title="Agregar nueva unidad">✎</button>
+                </div>
+            </label>
+
+            <label id="labelNuevaUnidad" class="hidden">Nueva Unidad
+                <div style="display: flex; gap: 5px;">
+                    <input id="prodUnidadNueva" type="text" class="input" placeholder="Ej: metros, bultos...">
+                    <button type="button" class="btn primary" id="btnGuardarNuevaUnidad" style="min-width: 40px;">OK</button>
+                    <button type="button" class="btn outline" id="btnCancelarNuevaUnidad" style="min-width: 40px;">🔙</button>
+                </div>
+            </label>
+        </div>
 
           <div class="form-actions">
             <button type="submit" class="btn primary">Guardar</button>

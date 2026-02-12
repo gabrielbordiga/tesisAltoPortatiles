@@ -1058,9 +1058,9 @@ canvas {
 /* Contenedor para que el select y el botón estén pegados */
 .input-group {
     display: flex;
-    align-items: center; /* Centra verticalmente el botón con el select */
-    gap: 8px;            /* Espacio pequeño entre el select y el botón */
-    margin-top: 4px;     /* Espacio opcional respecto al texto del label */
+    align-items: center; 
+    gap: 8px;           
+    margin-top: 4px;  
 }
 
 /* Ajuste para que el select ocupe el espacio disponible si es necesario */
@@ -1069,9 +1069,26 @@ canvas {
 }
 
 .pago-tabla-container {
-    background-color: #f9f9f9; /* Fondo gris muy clarito como en tu captura */
+    background-color: #f9f9f9; 
     border: 1px solid #e0e0e0;
     border-radius: 8px;
     padding: 10px;
     margin-top: 10px;
+}
+
+
+/* Contenedor que agrupa el buscador y los botones */
+.select-with-plus {
+    display: flex;
+    align-items: center;
+    gap: 8px; 
+    width: 100%;
+}
+
+.select-with-plus > div {
+    flex: 1; 
+}
+
+.select-with-plus input[type="text"] {
+    width: 100%;
 }

@@ -13,7 +13,10 @@
   // Inputs Form
   const inpId = document.getElementById('provId');
   const inpNombre = document.getElementById('provNombre');
+
   const inpTel = document.getElementById('provTelefono');
+  if(inpTel) inpTel.setAttribute('maxlength', '10');
+
   const inpDir = document.getElementById('provDireccion');
   const inpEmail = document.getElementById('provEmail');
 
