@@ -59,11 +59,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const eventosFinales = [];
 
                 // A. Mapear Recordatorios Personales (Color Salmón)
-                reminders.forEach(r => {
+                recordatoriosBD.forEach(r => {
                     eventosFinales.push({
                         id: r.id,
-                        title: `📌 ${r.title}`,
-                        start: r.start,
+                        title: `📌 ${r.descripcion}`,
+                        start: r.fecha,
                         backgroundColor: '#ff9f89',
                         borderColor: '#ff9f89',
                         allDay: true,
@@ -71,24 +71,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                 });
 
-                // B. Mapear Alquileres (Color Azul)
+                // B. Mapear Alquileres (Entregas y Retiros)
                 alquileres.forEach(a => {
                     const c = clientesCache.find(x => String(x.idCliente) === String(a.idCliente));
-                    const nombre = c ? (c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial) : 'Cliente';
+                    const nom = c ? (c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial) : 'Cliente';
                     
                     if (a.fechaDesde && a.fechaHasta) {
-                        // Ajuste visual: FullCalendar excluye el día final, sumamos 1
                         const fFin = new Date(a.fechaHasta);
                         fFin.setDate(fFin.getDate() + 1);
 
-                        eventosFinales.push({
+                        eventos.push({
                             id: `alq-${a.idAlquiler}`,
-                            title: `Alquiler: ${nombre}`,
+                            title: `Alquiler: ${nom}`,
                             start: a.fechaDesde,
                             end: fFin.toISOString().split('T')[0],
-                            backgroundColor: '#3788d8',
+                            backgroundColor: '#3788d8', 
                             borderColor: '#3788d8',
-                            extendedProps: { tipo: 'ALQUILER', detalle: a.ubicacion }
+                            extendedProps: { tipo: 'ALQUILER', detalle: `Ubicación: ${a.ubicacion}` }
                         });
                     }
                 });

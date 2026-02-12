@@ -34,6 +34,12 @@
   const inpProdNombre = document.getElementById('prodNombre');
   const inpProdUnidad = document.getElementById('prodUnidad');
 
+  //Modal Nueva unidad
+  const selUnidad = document.getElementById('prodUnidadSelect');
+  const inpNuevaUnidad = document.getElementById('prodUnidadNueva');
+  const labelCombo = document.getElementById('labelComboUnidad');
+  const labelNueva = document.getElementById('labelNuevaUnidad');
+
   // Modal Editar Stock
   const modalEditStock = document.getElementById('modalEditarStock');
   const formEditStock = document.getElementById('formEditarStock');
@@ -206,17 +212,19 @@
       ]);
       
       if (resMov.ok) MOVIMIENTOS = await resMov.json();
-      if (resProd.ok) PRODUCTOS = await resProd.json();
+      if (resProd.ok) {
+            PRODUCTOS = await resProd.json();
+            actualizarComboUnidades();
+        }
       if (resProv.ok) PROVEEDORES = await resProv.json();
-
+      
       fillSelects();
       renderTabla();
-      renderStockTable(); // Renderizar la nueva grilla de stock
+      renderStockTable();
     } catch (e) { console.error(e); }
   }
 
   function transformToSearchable(el, data, idKey, labelFn, placeholder) {
-    // Si ya fue transformado (es un hidden input), solo actualizamos la lista
     if (el.tagName === 'INPUT' && el.type === 'hidden') {
       const container = el.parentNode;
       const dl = container.querySelector('datalist');
@@ -250,17 +258,15 @@
 
     const hid = document.createElement('input');
     hid.type = 'hidden';
-    hid.id = el.id; // Mantenemos ID original
+    hid.id = el.id; 
     hid.value = '';
 
-    // Sincronización: Texto -> ID
     txt.addEventListener('input', () => {
       const val = txt.value;
       const found = data.find(d => labelFn(d) === val);
       hid.value = found ? found[idKey] : '';
     });
     
-    // Limpiar si el usuario deja texto que no coincide con ninguna opción
     txt.addEventListener('change', () => {
         const val = txt.value;
         const found = data.find(d => labelFn(d) === val);
@@ -304,7 +310,7 @@
         <td data-label="Precio">$${Number(m.precio).toLocaleString('es-AR')}</td>
         <td data-label="Método">${m.metodoPago || '-'}</td>
         <td class="acciones">
-          <button class="action" style="background:var(--rojo); color:#fff; border-color:var(--rojo);" onclick="window.editMovimiento('${m.idCompra}')">Editar</button>
+          <button class="action" onclick="window.editMovimiento('${m.idCompra}')">Editar</button>
           <button class="action danger" onclick="window.deleteMovimiento('${m.idCompra}')">🗑</button>
         </td>
       </tr>
@@ -432,6 +438,16 @@
   // Guardar Compra
   formMov.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    // VALIDACIÓN DE FECHA
+    const fechaSeleccionada = new Date(inpFecha.value);
+    const año = fechaSeleccionada.getFullYear();
+    const hoy = new Date();
+
+    if (año < 2020 || fechaSeleccionada > hoy) {
+        return window.showAlert('Error', 'Por favor, ingrese una fecha válida y reciente.', 'error');
+    }
+
     const payload = {
       idProveedor: selProv.value,
       idProducto: selProd.value,
@@ -465,7 +481,7 @@
     e.preventDefault();
     const payload = {
       nombre: inpProdNombre.value,
-      unidadMedida: inpProdUnidad.value
+      unidadMedida: selUnidad.value
     };
     try {
       const res = await fetch(API_PROD, {
@@ -500,6 +516,78 @@
       }
       renderStockTable();
     });
+  });
+
+  // 1. Llenar el combo con lo que ya existe en PRODUCTOS
+  function actualizarComboUnidades() {
+    if (!selUnidad) return;
+    const unidadesExistentes = [...new Set(PRODUCTOS.map(p => p.unidadMedida).filter(u => u))];
+    if (unidadesExistentes.length === 0) unidadesExistentes.push("unidades");
+    selUnidad.innerHTML = unidadesExistentes.map(u => `<option value="${u}">${u}</option>`).join('');
+  }
+
+  // 2. Eventos para el intercambio
+  document.addEventListener('click', (e) => {
+      // Botón Lápiz (Habilitar edición)
+      if (e.target && e.target.id === 'btnHabilitarNuevaUnidad') {
+          labelCombo.classList.add('hidden');
+          labelNueva.classList.remove('hidden');
+          inpNuevaUnidad.focus();
+      }
+      
+      // Botón Cancelar (Volver al combo)
+      if (e.target && e.target.id === 'btnCancelarNuevaUnidad') {
+          labelCombo.classList.remove('hidden');
+          labelNueva.classList.add('hidden');
+          inpNuevaUnidad.value = '';
+      }
+
+      // Botón OK (Guardar nueva unidad en el combo)
+      if (e.target && e.target.id === 'btnGuardarNuevaUnidad') {
+          const valor = inpNuevaUnidad.value.trim();
+          if (valor === "") return;
+
+          const existe = Array.from(selUnidad.options).some(opt => opt.value === valor);
+          
+          if (!existe) {
+              const opt = document.createElement('option');
+              opt.value = valor;
+              opt.textContent = valor;
+              selUnidad.appendChild(opt);
+          }
+          
+          selUnidad.value = valor; 
+
+          // Volver al modo combo
+          labelCombo.classList.remove('hidden');
+          labelNueva.classList.add('hidden');
+          inpNuevaUnidad.value = '';
+      }
+  });
+
+  document.getElementById('btnCancelarNuevaUnidad').addEventListener('click', () => {
+      labelCombo.classList.remove('hidden');
+      labelNueva.classList.add('hidden');
+      inpNuevaUnidad.value = '';
+  });
+
+  // 3. Al tocar "OK", añadimos la unidad al combo y volvemos
+  document.getElementById('btnGuardarNuevaUnidad').addEventListener('click', () => {
+      const valor = inpNuevaUnidad.value.trim();
+      if (valor === "") return;
+
+      // Crear la nueva opción y seleccionarla
+      const opt = document.createElement('option');
+      opt.value = valor;
+      opt.textContent = valor;
+      opt.selected = true;
+      
+      selUnidad.appendChild(opt);
+
+      // Volver al modo combo
+      labelCombo.classList.remove('hidden');
+      labelNueva.classList.add('hidden');
+      inpNuevaUnidad.value = '';
   });
 
   // Init
