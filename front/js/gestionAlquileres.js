@@ -1027,6 +1027,11 @@ function renderizarOpcionesUnidad(lista) {
       const hoy = new Date();
       const añoActual = hoy.getFullYear();
 
+      console.log("ID del Cliente a enviar:", idCliente); 
+      if (!idCliente) {
+          return window.showAlert('Error', 'Selecciona un cliente de la lista desplegable', 'error');
+      }
+
       // A. Validar campos básicos
       if (!idCliente || !lineas.length || !fDesde || !fHasta) {
           return window.showAlert('Atención', 'Completa cliente, fechas y al menos una unidad.', 'warning');
@@ -1050,6 +1055,7 @@ function renderizarOpcionesUnidad(lista) {
       }
 
       try {
+
         const resCheck = await fetch(`/api/unidades/disponibilidad?desde=${fDesde}&hasta=${fHasta}&excluir=${currentId || ''}`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('ap_token')}` }
         });
@@ -1105,6 +1111,12 @@ function renderizarOpcionesUnidad(lista) {
 
           const method = currentId ? 'PUT' : 'POST';
           const url = currentId ? `${API_URL}/${currentId}` : API_URL;
+          const user = JSON.parse(localStorage.getItem('ap_current'));
+          console.log("DEBUG ENVÍO:", {
+              cliente: idCliente,
+              usuario: user?.idUsuarios || user?.id,
+              precio: totalesActuales.total
+          });
 
           const res = await fetch(url, {
               method,
