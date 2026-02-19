@@ -53,39 +53,29 @@ exports.getResumenStock = async (req, res) => {
         
         if (errStock) throw errStock;
 
+        // FILTRO MEJORADO: Ocupado si (está en fecha) O (ya está entregado/servicio)
         const { data: ocupacionHoy, error: errOcup } = await supabase
             .from('DetalleAlquiler')
             .select('cantidad, Unidades!inner(idTipo), Alquileres!inner(estado, fechaDesde, fechaHasta)')
-            .lte('Alquileres.fechaDesde', hoy)
-            .gte('Alquileres.fechaHasta', hoy)
-            .not('Alquileres.estado', 'in', '("FINALIZADO", "CANCELADO", "PARA RETIRAR")');
+            // Sintaxis corregida:
+            .or(`and(fechaDesde.lte.${hoy},fechaHasta.gte.${hoy}),estado.eq.ENTREGADO,estado.eq."SERVICIO PENDIENTE"`, { foreignTable: 'Alquileres' })
+            .not('Alquileres.estado', 'in', '("FINALIZADO", "CANCELADO", "RETIRADO")');
 
         if (errOcup) throw errOcup;
 
         const resumen = {};
-
         stockFisico.forEach(curr => {
             const tipo = curr.Tipo_Unidades;
             if (!tipo) return;
-
             if (!resumen[tipo.idTipo]) {
                 resumen[tipo.idTipo] = { 
-                    idTipo: tipo.idTipo,
-                    nombre: tipo.nombre, 
-                    disponibles: 0, 
-                    alquiladas: 0, 
-                    servicio: 0, 
-                    precio: 0,
-                    totalFisico: 0 
+                    idTipo: tipo.idTipo, nombre: tipo.nombre, disponibles: 0, 
+                    alquiladas: 0, servicio: 0, precio: 0, totalFisico: 0 
                 };
             }
-
             if (curr.esatdo === 'Disponible') resumen[tipo.idTipo].totalFisico += (curr.stock || 0);
             if (curr.esatdo === 'En servicio') resumen[tipo.idTipo].servicio += (curr.stock || 0);
-            
-            if (curr.precio > 0) {
-                resumen[tipo.idTipo].precio = curr.precio;
-            }
+            if (curr.precio > 0) resumen[tipo.idTipo].precio = curr.precio;
         });
 
         ocupacionHoy.forEach(det => {
@@ -110,7 +100,7 @@ exports.gestionarStock = async (req, res) => {
     try {
         const { idTipo, stock, estado, precio, accion, origen, destino } = req.body;
 
-        // 1. PRIMERO PROCESAMOS EL PRECIO (Si la acción es precio, no validamos cantidad)
+        // 1. PRIMERO PROCESAMOS EL PRECIO
         if (accion === 'precio') {
             const nuevoPrecio = parseFloat(precio);
             if (isNaN(nuevoPrecio)) return res.status(400).json({ error: "Precio inválido" });
@@ -124,7 +114,7 @@ exports.gestionarStock = async (req, res) => {
             return res.json({ mensaje: "Precio actualizado correctamente" });
         }
 
-        // 2. PARA EL RESTO DE ACCIONES (mover, baja, alta), SÍ VALIDAMOS CANTIDAD
+        // 2. VALIDAMOS CANTIDAD
         const cantidad = parseInt(stock);
         if (isNaN(cantidad) || cantidad <= 0) {
             return res.status(400).json({ error: "La cantidad debe ser mayor a 0 para esta acción." });
@@ -185,14 +175,33 @@ exports.gestionarStock = async (req, res) => {
         }
 
         const { data: existente } = await supabase
-            .from('Unidades').select('idUnidad, stock, precio').eq('idTipo', idTipo).eq('esatdo', estado).maybeSingle();
+            .from('Unidades')
+            .select('idUnidad, stock, precio')
+            .eq('idTipo', idTipo)
+            .eq('esatdo', estado)
+            .maybeSingle();
 
-        const precioAGuardar = (precio !== undefined && precio !== null) ? parseFloat(precio) : (existente?.precio || 0);
+        // Si el precio enviado es > 0, usamos ese. Si no, usamos el precio que ya tiene la unidad (o 0 si no existe)
+        const precioEnviado = parseFloat(precio);
+        const precioAGuardar = (precioEnviado > 0) ? precioEnviado : (existente?.precio || 0);
 
         if (existente) {
-            await supabase.from('Unidades').update({ stock: existente.stock + cantidad, precio: precioAGuardar }).eq('idUnidad', existente.idUnidad);
+            await supabase
+                .from('Unidades')
+                .update({ 
+                    stock: existente.stock + cantidad, 
+                    precio: precioAGuardar 
+                })
+                .eq('idUnidad', existente.idUnidad);
         } else {
-            await supabase.from('Unidades').insert([{ idTipo, stock: cantidad, esatdo: estado, precio: precioAGuardar }]);
+            await supabase
+                .from('Unidades')
+                .insert([{ 
+                    idTipo, 
+                    stock: cantidad, 
+                    esatdo: estado, 
+                    precio: precioAGuardar 
+                }]);
         }
 
         res.json({ mensaje: "Stock actualizado correctamente" });
@@ -218,20 +227,20 @@ exports.getUnidadesPorEstado = async (req, res) => {
 
 //Busca disponibilidades de las unidades en las fechas q se piden
 exports.getDisponibilidadPorRango = async (req, res) => {
-    const { desde, hasta, excluir } = req.query; // Capturamos 'excluir'
+    const { desde, hasta, excluir } = req.query;
 
     if (!desde || !hasta || desde.includes('object')) {
         return res.status(400).json({ error: "Fechas inválidas" });
     }
 
     try {
+        const hoy = new Date().toISOString().split('T')[0];
         const { data: stockFisico } = await supabase.from('Unidades').select('stock, idTipo, precio');
 
         let queryOcupacion = supabase
             .from('DetalleAlquiler')
             .select('cantidad, idUnidad, Unidades!inner(idTipo), Alquileres!inner(idAlquiler, fechaDesde, fechaHasta, estado)')
-            .lte('Alquileres.fechaDesde', hasta)
-            .gte('Alquileres.fechaHasta', desde)
+            .or(`and(fechaDesde.lte.${hasta},fechaHasta.gte.${desde}),estado.eq.ENTREGADO,estado.eq."SERVICIO PENDIENTE"`)
             .not('Alquileres.estado', 'in', '("FINALIZADO", "RETIRADO", "CANCELADO")');
 
         if (excluir && excluir !== 'null' && excluir !== '') {
@@ -239,18 +248,15 @@ exports.getDisponibilidadPorRango = async (req, res) => {
         }
 
         const { data: ocupadas, error: errOcup } = await queryOcupacion;
-        
         if (errOcup) throw errOcup;
 
         const { data: tipos } = await supabase.from('Tipo_Unidades').select('*');
         
         const disponibilidad = tipos.map(tipo => {
-            // Unidades totales que tenemos de este modelo
             const total = (stockFisico || [])
                 .filter(s => String(s.idTipo) === String(tipo.idTipo))
                 .reduce((acc, curr) => acc + (curr.stock || 0), 0);
 
-            // Unidades que ya están comprometidas en esas fechas en la DB
             const reservadas = (ocupadas || [])
                 .filter(o => String(o.Unidades?.idTipo) === String(tipo.idTipo)) 
                 .reduce((acc, curr) => acc + curr.cantidad, 0);
@@ -258,7 +264,7 @@ exports.getDisponibilidadPorRango = async (req, res) => {
             return {
                 idTipo: tipo.idTipo,
                 nombre: tipo.nombre,
-                disponibles: Math.max(0, total - reservadas), // Esto es lo que queda libre
+                disponibles: Math.max(0, total - reservadas),
                 precio: stockFisico?.find(s => String(s.idTipo) === String(tipo.idTipo))?.precio || 0
             };
         });
@@ -279,18 +285,11 @@ exports.getDetalleAlquiladas = async (req, res) => {
             .select(`
                 cantidad,
                 Unidades!inner(idTipo),
-                Alquileres!inner(
-                    idAlquiler,
-                    ubicacion,
-                    fechaHasta,
-                    estado,
-                    idCliente
-                )
+                Alquileres!inner(idAlquiler, ubicacion, fechaHasta, estado, idCliente)
             `)
             .eq('Unidades.idTipo', idTipo)
-            .lte('Alquileres.fechaDesde', hoy)
-            .gte('Alquileres.fechaHasta', hoy)
-            .not('Alquileres.estado', 'in', '("FINALIZADO", "CANCELADO", "PARA RETIRAR")');
+            .or(`and(fechaDesde.lte.${hoy},fechaHasta.gte.${hoy}),estado.eq.ENTREGADO,estado.eq."SERVICIO PENDIENTE"`, { foreignTable: 'Alquileres' })
+            .not('Alquileres.estado', 'in', '("FINALIZADO", "CANCELADO", "RETIRADO")');
 
         if (error) throw error;
         res.json(data);

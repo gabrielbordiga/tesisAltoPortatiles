@@ -42,21 +42,23 @@
 
   // 2. Cargar datos del backend
   async function loadAlquileres() {
-    try {
-      const res = await fetch(API_ALQUILERES);
-      if (!res.ok) return [];
-      const data = await res.json();
-      
-      // Filtramos solo los activos (que no estén finalizados ni cancelados)
-      // Ajusta los estados según tu lógica de negocio
-      return data.filter(a => {
-        const estado = String(a.estado || '').toUpperCase();
-        return estado !== 'FINALIZADO' && estado !== 'CANCELADO';
-      });
-    } catch (e) {
-      console.error("Error cargando alquileres:", e);
-      return [];
-    }
+      try {
+        const res = await fetch(API_ALQUILERES);
+        if (!res.ok) return [];
+        const data = await res.json();
+        
+        const estadosPermitidos = ['ENTREGADO', 'SERVICIO PENDIENTE', 'PARA RETIRAR'];
+
+        return data.filter(a => {
+          const estadoActual = String(a.estado || '').toUpperCase().trim();
+          
+          return estadosPermitidos.includes(estadoActual);
+        });
+        
+      } catch (e) {
+        console.error("Error cargando alquileres:", e);
+        return [];
+      }
   }
 
   async function loadClientes() {

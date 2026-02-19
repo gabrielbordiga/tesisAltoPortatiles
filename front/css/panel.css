@@ -1092,3 +1092,12 @@ canvas {
 .select-with-plus input[type="text"] {
     width: 100%;
 }
+
+#modalGestionUnidades { z-index: 1000 !important; }
+#modalNuevoTipoUnidad { z-index: 2000 !important; }
+
+/* Aseguramos que el contenido del modal también suba */
+#modalNuevoTipoUnidad .modal {
+    z-index: 2001 !important;
+    position: relative;
+}

@@ -91,7 +91,7 @@ exports.obtenerAlquileres = async (req, res) => {
             // Creación masiva de registros en el historial
             const entradasHistorial = aCambiar.map(a => ({
                 idAlquiler: a.idAlquiler,
-                detalle: `Estado actualizado automáticamente de ${a.estado} a PARA RETIRAR (Vencimiento: ${hoy})`,
+                detalle: `VENCIMIENTO: Estado cambiado de ${a.estado} a PARA RETIRAR`, 
                 fecha: new Date().toISOString(),
                 idUsuarios: null 
             }));
@@ -245,7 +245,7 @@ exports.crearAlquiler = async (req, res) => {
             fechaDesde: fDesde,
             fechaHasta: fHasta,
             precioTotal,
-            estado: estadoInicial
+            estado: estadoInicial,
         }])
         .select();
 
@@ -374,7 +374,12 @@ exports.actualizarAlquiler = async (req, res) => {
         }
     }
 
-    await registrarHistorial(id, `Alquiler actualizado`, idUsuarioEjecutor);
+    const detalleHistorial = estado 
+    ? `Alquiler actualizado - Nuevo estado: ${estado.toUpperCase()}` 
+    : `Alquiler actualizado (cambio de datos generales)`;
+
+    await registrarHistorial(id, detalleHistorial, idUsuarioEjecutor);
+
     res.json({ mensaje: 'Actualizado correctamente' });
 };
 

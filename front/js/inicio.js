@@ -72,8 +72,12 @@
       alquileres.forEach(a => {
         const c = clientesCache.find(x => String(x.idCliente) === String(a.idCliente));
         const nom = c ? (c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial) : 'Cliente';
+        
+        // Verificamos si ya fue entregado
+        const estaEntregado = (a.estado === 'ENTREGADO' || a.estado === 'SERVICIO PENDIENTE');
 
-        if (a.fechaDesde) {
+        // A. Entrega: Solo mostrar si NO fue entregado aún
+        if (a.fechaDesde && !estaEntregado) {
           agendaTotal.push({
             id: `ent-${a.idAlquiler}`,
             fecha: a.fechaDesde,
@@ -82,6 +86,7 @@
           });
         }
 
+        // B. Retiro: Mostrar siempre (porque es a futuro)
         if (a.fechaHasta) {
           agendaTotal.push({
             id: `ret-${a.idAlquiler}`,
@@ -245,8 +250,17 @@
   function initRemindersLogic() {
     const form = document.getElementById('formRecordatorio');
     const btnNuevo = document.getElementById('btnNuevoRecordatorio');
+    const modal = document.getElementById('modalRecordatorio'); 
+    const btnCerrar = document.getElementById('btnCerrarRecordatorio'); 
 
     if (btnNuevo) btnNuevo.addEventListener('click', () => openModalRecordatorio(new Date().toISOString().split('T')[0]));
+
+    if (btnCerrar && modal) {
+      btnCerrar.addEventListener('click', () => {
+        modal.classList.add('hidden');
+        form.reset(); 
+      });
+    }
 
     if (form) {
       form.addEventListener('submit', async (e) => {
@@ -379,8 +393,29 @@
     const btnGuardarPrecio = document.getElementById('btnGuardarPrecio');
     const selAccion = document.getElementById('accionStock');
 
-    if (btnGestion) btnGestion.addEventListener('click', () => { loadTiposUnidad(); modalGestion.classList.remove('hidden'); });
-    if (btnCerrarGestion) btnCerrarGestion.addEventListener('click', () => modalGestion.classList.add('hidden'));
+    
+
+    if (btnGestion && modalGestion) {
+        btnGestion.addEventListener('click', async (e) => { 
+            e.preventDefault(); 
+            console.log("Clic detectado en el botón +");
+            try {
+                await loadTiposUnidad(); 
+                modalGestion.classList.remove('hidden');
+                modalGestion.style.display = 'flex'; 
+                modalGestion.style.zIndex = '9999';
+            } catch (err) {
+                console.error("Error al abrir modal:", err);
+            }
+        });
+    }
+
+    if (btnCerrarGestion) {
+        btnCerrarGestion.addEventListener('click', () => {
+            modalGestion.classList.add('hidden');
+            modalGestion.style.display = 'none';
+        });
+    }
     if (btnCerrarAcciones) btnCerrarAcciones.addEventListener('click', () => modalAcciones.classList.add('hidden'));
 
     if (formGestion) formGestion.addEventListener('submit', async (e) => {
@@ -390,7 +425,7 @@
           accion: 'alta',
           stock: parseInt(document.getElementById('cantidadUnidad').value),
           estado: document.getElementById('estadoUnidad').value,
-          precio: parseFloat(document.getElementById('precioUnidad').value) || 0
+          precio: document.getElementById('precioUnidad').value || null
       };
       try {
           const res = await fetch(`${API_UNIDADES}/gestion`, { method: 'POST', headers: getHeaders(), body: JSON.stringify(payload) });
@@ -441,6 +476,63 @@
             modalAcciones.classList.remove('hidden');
         }
     });
+
+    // Dentro de initUnidadesLogic()
+    document.addEventListener('click', (e) => {
+        if (e.target && e.target.id === 'btnAbrirNuevoTipoUnidad') {
+            e.preventDefault();
+            
+            const modalNuevoTipo = document.getElementById('modalNuevoTipoUnidad');
+            
+            if (modalNuevoTipo) {
+                modalNuevoTipo.classList.remove('hidden');
+
+                Object.assign(modalNuevoTipo.style, {
+                    display: 'flex',
+                    zIndex: '10000', 
+                    opacity: '1'  
+                });
+            }
+        }
+
+        if (e.target && e.target.id === 'btnCerrarNuevoTipoUnidad') {
+            const modalNuevoTipo = document.getElementById('modalNuevoTipoUnidad');
+            if (modalNuevoTipo) {
+                modalNuevoTipo.classList.add('hidden');
+                modalNuevoTipo.style.display = 'none';
+            }
+        }
+    });
+
+    // 3. Lógica para guardar el nuevo tipo (el submit del segundo modal)
+    const formNuevoTipo = document.getElementById('formNuevoTipoUnidad');
+    if (formNuevoTipo) {
+        formNuevoTipo.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nombre = document.getElementById('nombreNuevoTipoUnidad').value;
+            
+            try {
+                const res = await fetch('/api/unidades/tipos', {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ nombre })
+                });
+
+                if (res.ok) {
+                    window.showAlert('Éxito', 'Tipo de unidad creado', 'success');
+                    document.getElementById('modalNuevoTipoUnidad').classList.add('hidden');
+                    formNuevoTipo.reset();
+                    // Recargamos los combos para que aparezca el nuevo tipo
+                    await loadTiposUnidad(); 
+                } else {
+                    const err = await res.json();
+                    window.showAlert('Error', err.error, 'error');
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        });
+    }
   }
 
   window.verDetalleAlquiladas = async (idTipo, nombre) => {
