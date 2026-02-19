@@ -110,6 +110,31 @@ function applyRoleVisibility(role) {
 
 // --- LÓGICA PRINCIPAL ---
 document.addEventListener("DOMContentLoaded", async () => {
+    
+    // --- LOGICA OJITO CONTRASEÑA ---
+    document.addEventListener("click", (e) => {
+        const toggleBtn = e.target.closest("#togglePassword");
+        if (!toggleBtn) return;
+
+        const passwordInput = document.getElementById("password");
+        if (!passwordInput) return;
+
+        e.preventDefault();
+        const isPassword = passwordInput.type === "password";
+        passwordInput.type = isPassword ? "text" : "password";
+
+        toggleBtn.setAttribute("data-lucide", isPassword ? "eye-off" : "eye");
+        if (window.lucide) {
+            window.lucide.createIcons();
+            const newIcon = document.querySelector('[data-lucide="' + (isPassword ? "eye-off" : "eye") + '"]');
+            if (newIcon) newIcon.id = "togglePassword";
+        }
+        toggleBtn.style.color = isPassword ? "#ec1f26" : "#999";
+    });
+
+    if (window.lucide) window.lucide.createIcons();
+
+    //------------- 
     const formLogin = document.getElementById("formLogin");
     const resForm = document.getElementById("resPasswordForm");
     const formNueva = document.getElementById("formNuevaPass");
@@ -179,6 +204,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
         return;
     }
+    
 
     // 3. LÓGICA DE LOGIN
     if (formLogin) {

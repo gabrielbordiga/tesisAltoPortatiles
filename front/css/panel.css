@@ -1101,3 +1101,19 @@ canvas {
     z-index: 2001 !important;
     position: relative;
 }
+
+/* Estilo para el ojito de password */
+#togglePassword {
+    opacity: 0.7;
+}
+
+#togglePassword:hover {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.1) !important; 
+}
+
+#togglePassword svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}

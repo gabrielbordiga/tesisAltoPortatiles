@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../css/styles.css" />
   <link rel="icon" type="image/png" href="../recursos/imagenes/logo.png" />
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 
 <body>
@@ -27,9 +28,23 @@
           <input type="text" id="username" name="username" required />
         </label>
 
-        <label>
+        <label style="position: relative; display: flex; flex-direction: column;">
           <span>Contraseña</span>
-          <input type="password" id="password" name="password" required />
+          <div style="position: relative;">
+            <input type="password" id="password" name="password" required style="padding-right: 40px; width: 100%;" />
+            <i id="togglePassword" data-lucide="eye" style="
+              position: absolute; 
+              right: 12px; 
+              top: 50%; 
+              transform: translateY(-50%); 
+              cursor: pointer; 
+              width: 20px; 
+              height: 20px;
+              color: #999;
+              z-index: 10; /* Asegura que esté por encima del input */
+              transition: all 0.2s;
+            "></i>
+          </div>
         </label>
 
         <a href="./res-passwrod.html" class="forgot">¿Olvidaste tu contraseña?</a>
