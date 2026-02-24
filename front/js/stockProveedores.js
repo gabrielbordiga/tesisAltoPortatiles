@@ -111,6 +111,25 @@
   btnCancelar.addEventListener('click', clearForm);
   inpBuscar.addEventListener('input', render);
 
+  const btnNuevoProv = document.getElementById('btnNuevoProveedor');
+  if (btnNuevoProv) {
+      btnNuevoProv.addEventListener('click', () => {
+          clearForm();
+
+          const inpId = document.getElementById('provId');
+          if (inpId) inpId.value = '';
+
+
+          const formElement = document.getElementById('formProveedor');
+          if (formElement) {
+              formElement.scrollIntoView({ behavior: 'smooth' });
+          }
+          
+          const nameInput = document.getElementById('provNombre');
+          if (nameInput) nameInput.focus();
+      });
+  }
+
   // Init
   loadProveedores();
 })();

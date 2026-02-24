@@ -164,11 +164,30 @@ document.addEventListener('DOMContentLoaded', () => {
             cutout: '65%', 
             plugins: {
                 legend: {
-                    position: 'right', // Leyenda a la derecha para no pisar el gráfico
-                    labels: { boxWidth: 12, font: { size: 11, family: 'Poppins' } }
+                    position: 'right',
+                    labels: { 
+                        boxWidth: 12, 
+                        font: { size: 11, family: 'Poppins' },
+                        padding: 15 // Espaciado entre items de leyenda
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    titleFont: { size: 14 },
+                    bodyFont: { size: 13 },
+                    padding: 10,
+                    cornerRadius: 4,
+                    displayColors: true
+                }
+            },
+            // Añade esto para separar los gajos del gráfico
+            elements: {
+                arc: {
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
                 }
             }
-        };
+        }
 
         const barOptions = {
             responsive: true,
@@ -187,17 +206,29 @@ document.addEventListener('DOMContentLoaded', () => {
             unidades[n] = (unidades[n] || 0) + l.cantidad;
         }));
 
+        const coloresDinamicos = [
+            '#ec1f26', 
+            '#222222', 
+            '#43A047', 
+            '#1E88E5', 
+            '#FFB300', 
+            '#8E24AA', 
+            '#00ACC1'  
+        ];
+
         pieChart = new Chart(pieCanvas, {
             type: 'doughnut',
             data: {
                 labels: Object.keys(unidades),
                 datasets: [{ 
                     data: Object.values(unidades), 
-                    backgroundColor: ['#cf142b', '#333333', '#666666', '#999999'] 
+
+                    backgroundColor: coloresDinamicos 
                 }]
             },
-            options: pieOptions // <--- Aplicamos las opciones aquí
+            options: pieOptions 
         });
+
 
         const fechas = {};
         arrIng.forEach(i => fechas[i.fecha] = (fechas[i.fecha] || 0) + i.monto);

@@ -590,6 +590,31 @@
       inpNuevaUnidad.value = '';
   });
 
+  const btnNuevoMov = document.getElementById('btnNuevoMovimiento');
+
+if (btnNuevoMov) {
+    btnNuevoMov.addEventListener('click', () => {
+        formMov.reset();
+
+        const inputsTexto = formMov.querySelectorAll('input[type="text"]');
+        const inputsHidden = formMov.querySelectorAll('input[type="hidden"]');
+
+        inputsTexto.forEach(inp => inp.value = '');
+        inputsHidden.forEach(inp => {
+
+            if (inp.id !== 'movId') inp.value = '';
+        });
+        
+        if (document.getElementById('movId')) {
+            document.getElementById('movId').value = '';
+        }
+
+        if (inpFecha) {
+            inpFecha.value = new Date().toISOString().split('T')[0];
+        }
+        formMov.scrollIntoView({ behavior: 'smooth' });
+    });
+}
   // Init
   loadData();
 })();
