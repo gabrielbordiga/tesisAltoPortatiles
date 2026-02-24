@@ -21,24 +21,35 @@
 
   document.addEventListener('DOMContentLoaded', async () => {
     try {
-      const h = getHeaders();
-      const [resC] = await Promise.all([
-        fetch(API_CLIENTES, { headers: h })
+      // --- OPTIMIZACIÓN: CARGA EN PARALELO ---
+      // Lanzamos todas las peticiones al mismo tiempo
+      await Promise.all([
+        fetchClientes(),
+        loadTiposUnidad(),
+        loadUnidades(),
+        renderRemindersList()
       ]);
-      if (resC.ok) clientesCache = await resC.json();
-      
-      await loadTiposUnidad(); 
-      await renderRemindersList(); 
+
+      // Una vez que tenemos los datos base, inicializamos la lógica visual
       initCalendarLogic();
-      await loadUnidades();
       initUnidadesLogic();
+      initRemindersLogic();
 
       const filtro = document.getElementById('filtroTipo');
       if (filtro) filtro.addEventListener('change', renderUnidades);
 
-      initRemindersLogic();
-    } catch (e) { console.error("Error en inicio:", e); }
+    } catch (e) { 
+      console.error("Error en inicio:", e); 
+    }
   });
+
+  // Helper para cargar clientes sin bloquear el resto
+  async function fetchClientes() {
+    try {
+      const res = await fetch(API_CLIENTES, { headers: getHeaders() });
+      if (res.ok) clientesCache = await res.json();
+    } catch (e) { console.error("Error clientes:", e); }
+  }
 
   // =========================================================
   // AGENDA UNIFICADA (LADO DERECHO)
@@ -49,6 +60,7 @@
 
     try {
       const h = getHeaders();
+      // Peticiones paralelas específicas de la agenda
       const [resA, resR] = await Promise.all([
         fetch(`${API_ALQUILERES}?t=${Date.now()}`, { headers: h }),
         fetch(`${API_RECORDATORIOS}?t=${Date.now()}`, { headers: h })
@@ -72,11 +84,8 @@
       alquileres.forEach(a => {
         const c = clientesCache.find(x => String(x.idCliente) === String(a.idCliente));
         const nom = c ? (c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial) : 'Cliente';
-        
-        // Verificamos si ya fue entregado
         const estaEntregado = (a.estado === 'ENTREGADO' || a.estado === 'SERVICIO PENDIENTE');
 
-        // A. Entrega: Solo mostrar si NO fue entregado aún
         if (a.fechaDesde && !estaEntregado) {
           agendaTotal.push({
             id: `ent-${a.idAlquiler}`,
@@ -86,7 +95,6 @@
           });
         }
 
-        // B. Retiro: Mostrar siempre (porque es a futuro)
         if (a.fechaHasta) {
           agendaTotal.push({
             id: `ret-${a.idAlquiler}`,
@@ -112,23 +120,15 @@
       ul.innerHTML = agendaFinal.map(e => {
         const p = e.fecha.split('-');
         const diaMes = `${p[2]}/${p[1]}`;
-        
-        let color = '#ff9f89'; 
-        let prefijo = '';
-        let icono = '📌';
+        let color = '#ff9f89', prefijo = '', icono = '📌';
 
         if (e.tipo === 'ALQ_ENT') {
-          color = '#28a745'; // Verde para Entrega
-          prefijo = 'Entrega: ';
-          icono = '🚚';
+          color = '#28a745'; prefijo = 'Entrega: '; icono = '🚚';
         } else if (e.tipo === 'ALQ_RET') {
-          color = '#3788d8'; // Celeste para Retiro
-          prefijo = 'Retiro: ';
-          icono = '🧹';
+          color = '#3788d8'; prefijo = 'Retiro: '; icono = '🧹';
         }
 
         const textoFinal = `${prefijo}${e.texto}`;
-
         return `
           <li style="border-left: 5px solid ${color}; padding: 12px; margin-bottom: 10px; background: #fff; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); list-style:none; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;">
             <div style="min-width: 0; flex: 1;">
@@ -139,11 +139,7 @@
                   ${textoFinal}
               </div>
             </div>
-            ${e.tipo === 'REC' ? `
-              <button onclick="window.borrarRecordatorio('${e.id}')" 
-                      style="background: #f5f5f5; border: none; color: #333; cursor: pointer; padding: 4px 8px; font-size: 1.1em; line-height: 1; border-radius: 4px; font-weight: bold;">
-                  &times;
-              </button>` : ''}
+            ${e.tipo === 'REC' ? `<button onclick="window.borrarRecordatorio('${e.id}')" style="background: #f5f5f5; border: none; color: #333; cursor: pointer; padding: 4px 8px; font-size: 1.1em; line-height: 1; border-radius: 4px; font-weight: bold;">&times;</button>` : ''}
           </li>`;
       }).join('');
     } catch (e) { console.error("Error Agenda:", e); }

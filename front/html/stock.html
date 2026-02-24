@@ -101,11 +101,12 @@
 
         <!-- BUSCADOR + TABLA PROVEEDORES -->
         <section class="card">
-          <div class="toolbar" style="justify-content: space-between;">
-            <div class="input-wrap w-60" style="width:100%;">
+          <div class="toolbar" style="justify-content: space-between; gap: 10px;">
+            <div class="input-wrap" style="flex: 1;">
               <input id="provBuscar" type="text" class="input"
-                     placeholder="Buscar (nombre, teléfono, dirección, email)" />
+                    placeholder="Buscar (nombre, teléfono, dirección, email)" />
             </div>
+            <button type="button" id="btnNuevoProveedor" class="btn primary">+ Nuevo</button>
           </div>
 
           <div class="tabla-wrap">
@@ -158,11 +159,12 @@
 
         <!-- BUSCADOR + TABLA MOVIMIENTOS DE PRODUCTOS -->
         <section class="card">
-          <div class="toolbar" style="justify-content: space-between;">
-            <div class="input-wrap w-60" style="width:100%;">
+          <div class="toolbar" style="justify-content: space-between; gap: 10px;">
+            <div class="input-wrap" style="flex: 1;">
               <input id="movBuscar" type="text" class="input"
-                     placeholder="Buscar (fecha, proveedor, producto, método)" />
+                    placeholder="Buscar (fecha, proveedor, producto, método)" />
             </div>
+            <button type="button" id="btnNuevoMovimiento" class="btn primary">+Nuevo</button>
           </div>
 
           <div class="tabla-wrap">
