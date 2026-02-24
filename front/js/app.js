@@ -71,7 +71,7 @@ function requireAuth() {
 
 async function logout() {
     clearCurrent();
-    location.href = "./login.html";
+    location.replace("./login.html");
 }
 
 function normalizeRole(role) {
@@ -242,17 +242,29 @@ document.addEventListener("DOMContentLoaded", async () => {
         return; 
     }
 
-    // 4. PROTECCIÓN DE RUTAS INTERNAS
+    // 4. PROTECCIÓN DE RUTAS INTERNAS Y SEGURIDAD DE HISTORIAL
     const path = location.pathname.toLowerCase();
-    if (/(^|\/)login(\.html)?$/i.test(path)) return;
+    const user = getCurrent();
+    const currentFile = path.split('/').pop() || 'inicio.html';
 
-    const user = requireAuth(); 
-    if (!user) return;
-    
+    // A. Si intenta entrar al Login estando ya logueado, lo mandamos al Inicio
+    if (path.includes("login.html") && user) {
+        location.replace("./inicio.html");
+        return;
+    }
+
+    // B. Si NO hay usuario y NO está en el Login, lo sacamos (Protección contra "Atrás")
+    if (!path.includes("login.html") && !user) {
+        location.replace("./login.html");
+        return;
+    }
+
+    // C. Si estamos en el Login y no hay usuario, no ejecutamos el resto (permisos)
+    if (path.includes("login.html")) return;
+
+    // --- Control de Permisos por Rol ---
     const userRol = String(user.rol || "").trim().toLowerCase();
-    const currentFile = window.location.pathname.split('/').pop() || 'inicio.html';
 
-    // 1. Definición de permisos por rol
     const permisos = {
         'owner': ['inicio.html','calendario.html', 'gestion.html', 'logistica.html', 'tareasadm.html', 'reportes.html', 'stock.html', 'usuarios.html', 'mis-datos.html'],
         'administrador': ['inicio.html','calendario.html', 'gestion.html', 'logistica.html', 'tareasadm.html', 'stock.html', 'mis-datos.html'], 
@@ -261,13 +273,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const misPaginas = permisos[userRol] || permisos['empleado'];
 
-    // 2. Redirección de seguridad
+    // D. Redirección de seguridad si intenta entrar a una URL prohibida
     if (!misPaginas.includes(currentFile.toLowerCase())) {
-        location.href = `./${misPaginas[0]}`;
+        location.replace(`./${misPaginas[0]}`);
         return;
     }
 
-    // 3. Limpieza física del menú lateral
+    // 3. Limpieza física del menú lateral (Solo deja ver lo permitido)
     document.querySelectorAll('.side-nav .item').forEach(item => {
         if (item.classList.contains('logout-item')) return;
         const href = item.getAttribute('href').split('/').pop().toLowerCase();
@@ -296,6 +308,18 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (confirmar) {
                 localStorage.clear();
                 location.href = "./login.html";
+            }
+        }
+    });
+
+    // Detectar si el usuario entra a la página usando las flechas del navegador
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+            const user = getCurrent();
+            const path = location.pathname.toLowerCase();
+            
+            if (!user && !path.includes("login.html")) {
+                window.location.replace("./login.html");
             }
         }
     });

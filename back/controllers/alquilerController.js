@@ -450,40 +450,47 @@ exports.obtenerHistorial = async (req, res) => {
 // FUNCIÓN MAESTRA DE VALIDACIÓN DE STOCK
 async function validarDisponibilidadReal(lineas, fDesde, fHasta, idAlquilerExcluir = null) {
     if (!lineas || !Array.isArray(lineas) || lineas.length === 0) return { ok: true };
+    if (!fDesde || !fHasta) return { ok: false, msg: "Faltan fechas para validar" };
 
-    const { data: stockFisico } = await supabase.from('Unidades').select('stock, idTipo');
+    try {
+        const { data: stockFisico } = await supabase.from('Unidades').select('stock, idTipo');
 
-    const { data: ocupacion } = await supabase
-        .from('DetalleAlquiler')
-        .select('cantidad, idUnidad, Unidades!inner(idTipo), Alquileres!inner(idAlquiler, fechaDesde, fechaHasta, estado)')
-        .lte('Alquileres.fechaDesde', fHasta)
-        .gte('Alquileres.fechaHasta', fDesde)
-        .not('Alquileres.estado', 'in', '("FINALIZADO", "RETIRADO", "CANCELADO")');
+        // Usamos .not('Alquileres.estado', 'in', ...) asegurando que los strings coincidan
+        const { data: ocupacion, error: errOcup } = await supabase
+            .from('DetalleAlquiler')
+            .select('cantidad, idUnidad, Unidades!inner(idTipo), Alquileres!inner(idAlquiler, fechaDesde, fechaHasta, estado)')
+            .lte('Alquileres.fechaDesde', fHasta)
+            .gte('Alquileres.fechaHasta', fDesde)
+            .not('Alquileres.estado', 'in', '("FINALIZADO", "CANCELADO", "RETIRADO")');
 
-    for (const linea of lineas) {
-        const idModeloBuscado = String(linea.idTipo || linea.idUnidad || '').trim();
-        if (!idModeloBuscado || idModeloBuscado === 'undefined') continue;
+        if (errOcup) throw errOcup;
 
-        const totalEmpresa = (stockFisico || [])
-            .filter(s => String(s.idTipo).trim() === idModeloBuscado)
-            .reduce((acc, c) => acc + (Number(c.stock) || 0), 0);
+        for (const linea of lineas) {
+            // Normalizamos el ID para evitar errores de comparación
+            const idModeloBuscado = String(linea.idTipo || linea.idUnidad || '').trim();
+            if (!idModeloBuscado || idModeloBuscado === 'undefined') continue;
 
-        // Si es un producto de prueba o no tiene stock cargado, evitamos el bloqueo si no hay ocupación
-        const yaReservado = (ocupacion || [])
-            .filter(o => {
-                const idModeloEnDB = String(o.Unidades?.idTipo).trim();
-                const idAlquilerOcupante = String(o.Alquileres.idAlquiler);
-                return idModeloEnDB === idModeloBuscado && idAlquilerOcupante !== String(idAlquilerExcluir);
-            })
-            .reduce((acc, c) => acc + (Number(c.cantidad) || 0), 0);
+            const totalEmpresa = (stockFisico || [])
+                .filter(s => String(s.idTipo).trim() === idModeloBuscado)
+                .reduce((acc, c) => acc + (Number(c.stock) || 0), 0);
 
-        console.log(`VALIDANDO: Modelo ${idModeloBuscado.substring(0,5)} | Total: ${totalEmpresa} | Ocupado: ${yaReservado} | Pide: ${linea.cantidad}`);
+            const yaReservado = (ocupacion || [])
+                .filter(o => {
+                    const idModeloEnDB = String(o.Unidades?.idTipo).trim();
+                    const idAlquilerOcupante = String(o.Alquileres?.idAlquiler);
+                    // No contamos el alquiler que estamos editando actualmente
+                    return idModeloEnDB === idModeloBuscado && idAlquilerOcupante !== String(idAlquilerExcluir);
+                })
+                .reduce((acc, c) => acc + (Number(c.cantidad) || 0), 0);
 
-        // Si el total es 0 pero no hay nadie más ocupándolo, permitimos la edición/creación 
-        if (totalEmpresa > 0 && (yaReservado + Number(linea.cantidad)) > totalEmpresa) {
-            const realesLibres = totalEmpresa - yaReservado;
-            return { ok: false, msg: `Stock insuficiente. Libres: ${realesLibres}` };
+            if (totalEmpresa > 0 && (yaReservado + Number(linea.cantidad)) > totalEmpresa) {
+                const realesLibres = totalEmpresa - yaReservado;
+                return { ok: false, msg: `Stock insuficiente para esas fechas. Disponibles: ${realesLibres}` };
+            }
         }
+        return { ok: true };
+    } catch (err) {
+        console.error("❌ Error en validación de stock:", err.message);
+        return { ok: false, msg: "Error técnico al verificar stock" };
     }
-    return { ok: true };
 }
