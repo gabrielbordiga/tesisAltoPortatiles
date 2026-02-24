@@ -756,17 +756,18 @@
   }
 
   // ------ Helpers formulario principal ------
-  function clearFormAlquiler() {
+function clearFormAlquiler() {
     currentId = null;
 
     if (selCliente) selCliente.value = '';
     if (inpClienteNombre) inpClienteNombre.value = '';
 
     inpUbicacion.value = '';
-    ubicacionValida = false; // Resetear validación
+    ubicacionValida = false; 
     if (inpUbicacion._errorMsgElement) inpUbicacion._errorMsgElement.style.display = 'none';
-    inpDesde.value     = '';
-    inpHasta.value     = '';
+    
+    inpDesde.value = '';
+    inpHasta.value = '';
 
     if (selUnidad && selUnidad.options.length > 0) {
       selUnidad.selectedIndex = 0;
@@ -780,8 +781,14 @@
 
     lineas = [];
     pagos  = [];
+
+    fillUnidadesSelect(); 
+
     renderLineas();
     renderPagos();
+
+    const formElement = document.getElementById('formAlquiler');
+    if (formElement) formElement.scrollIntoView({ behavior: 'smooth' });
   }
 
   function fillFormAlquiler(a) {
@@ -842,24 +849,17 @@
 
   // ------ Carga de combo unidades desde BD ------
 async function fillUnidadesSelect() {
-    const desde = inpDesde.value;
-    const hasta = inpHasta.value;
-
-    if (!desde || !hasta) {
-        if (UNIDADES_CACHE.length > 0) {
+    if (UNIDADES_CACHE.length > 0) {
+        renderizarOpcionesUnidad(UNIDADES_CACHE);
+    } else {
+        try {
+            const res = await fetch(API_UNIDADES);
+            UNIDADES_CACHE = res.ok ? await res.json() : [];
             renderizarOpcionesUnidad(UNIDADES_CACHE);
+        } catch (e) { 
+            console.error("Error cargando catálogo:", e); 
         }
-        return;
     }
-
-    try {
-        const res = await fetch(`/api/unidades/disponibilidad?desde=${desde}&hasta=${hasta}`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('ap_token')}` }
-        });
-        const unidades = await res.ok ? await res.json() : [];
-        UNIDADES_DISPONIBLES_RANGO = unidades;
-        renderizarOpcionesUnidad(unidades);
-    } catch (e) { console.error("Error stock dinámico:", e); }
 }
 
 function renderizarOpcionesUnidad(lista) {
@@ -867,13 +867,11 @@ function renderizarOpcionesUnidad(lista) {
     lista.forEach(u => {
         const opt = document.createElement('option');
         opt.value = u.nombre;
-        const disp = u.disponibles ?? u.stock ?? 0; 
         const precio = u.precio ?? u.precioUnitario ?? 0;
 
         opt.textContent = `${u.nombre} - ${formatMoneda(precio)}`;
         opt.dataset.precio = precio;
         opt.dataset.idTipo = u.idTipo;
-        opt.dataset.disponibles = disp;
         selUnidad.appendChild(opt);
     });
 }
@@ -935,40 +933,57 @@ function renderizarOpcionesUnidad(lista) {
     });
 
     // Agregar unidad
-    document.getElementById('btnAgregarUnidad')?.addEventListener('click', () => {
+    document.getElementById('btnAgregarUnidad')?.addEventListener('click', async () => {
       const sel = selUnidad.options[selUnidad.selectedIndex];
+      const fDesde = inpDesde.value;
+      const fHasta = inpHasta.value;
+
       if (!sel || !sel.value) return window.showAlert('Atención', 'Seleccioná una unidad.', 'warning');
+      if (!fDesde || !fHasta) return window.showAlert('Atención', 'Ingresá las fechas primero.', 'warning');
 
       const idTipo = sel.dataset.idTipo;
       const cantNueva = Number(inpCantidad.value);
 
-      // Sumar lo que el usuario ya puso en la grilla actual (antes de guardar)
-      const yaEnGrillaTemporal = lineas
-          .filter(l => String(l.idTipo) === String(idTipo))
-          .reduce((acc, curr) => acc + curr.cantidad, 0);
+      try {
+          // Construimos la URL de forma segura
+          let url = `/api/unidades/disponibilidad?desde=${fDesde}&hasta=${fHasta}`;
+          if (currentId) url += `&excluir=${currentId}`;
 
-      const disponibleEnServer = Number(sel.dataset.disponibles);
-
-      // NUEVO MENSAJE Y LÓGICA
-      if ((yaEnGrillaTemporal + cantNueva) > disponibleEnServer) {
-          let msg = `No hay stock suficiente. `;
-          if (yaEnGrillaTemporal > 0) {
-              msg += `Ya agregaste ${yaEnGrillaTemporal} a este pedido y solo quedan ${disponibleEnServer} en total.`;
-          } else {
-              msg += `Solo hay ${disponibleEnServer} unidades disponibles para estas fechas.`;
+          const res = await fetch(url);
+          
+          if (!res.ok) {
+              const errorData = await res.json();
+              throw new Error(errorData.error || "Error en el servidor");
           }
-          return window.showAlert('Sin Stock', msg, 'error');
-      }
+          
+          const disponibilidad = await res.json();
+          const infoStock = disponibilidad.find(u => String(u.idTipo) === String(idTipo));
 
-      lineas.push({ 
-          unidad: sel.value, 
-          cantidad: cantNueva, 
-          precioUnit: Number(sel.dataset.precio), 
-          idTipo: idTipo
-      });
-      
-      renderLineas();
-      inpCantidad.value = '';
+          // Si el servidor no devuelve info de ese tipo, asumimos disponible 0
+          const disponibleReal = infoStock ? Number(infoStock.disponibles) : 0;
+          
+          const yaEnGrilla = lineas
+              .filter(l => String(l.idTipo) === String(idTipo))
+              .reduce((acc, curr) => acc + curr.cantidad, 0);
+
+          if ((yaEnGrilla + cantNueva) > disponibleReal) {
+              return window.showAlert('Sin Stock', `Solo quedan ${disponibleReal} unidades para esas fechas.`, 'error');
+          }
+
+          lineas.push({ 
+              unidad: sel.value, 
+              cantidad: cantNueva, 
+              precioUnit: Number(sel.dataset.precio), 
+              idTipo: idTipo
+          });
+          
+          renderLineas();
+          inpCantidad.value = '';
+
+      } catch (e) {
+          console.error("Error validando stock:", e);
+          window.showAlert('Error', 'No se pudo verificar el stock: ' + e.message, 'error');
+      }
     });
 
     // Borrar unidad

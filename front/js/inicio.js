@@ -416,17 +416,45 @@
 
     if (formGestion) formGestion.addEventListener('submit', async (e) => {
       e.preventDefault();
+      
+      const idTipoSel = document.getElementById('tipoUnidad').value;
+      const precioInput = document.getElementById('precioUnidad').value;
+      const stockInput = document.getElementById('cantidadUnidad').value;
+      const estadoInput = document.getElementById('estadoUnidad').value;
+
+      const unidadExistente = unidadesCache.find(u => String(u.idTipo) === String(idTipoSel));
+
+      if (!unidadExistente && (!precioInput || parseFloat(precioInput) <= 0)) {
+          return window.showAlert('Atención', 'Al ser un tipo de unidad nuevo, debe ingresar un precio base.', 'warning');
+      }
+
       const payload = {
-          idTipo: document.getElementById('tipoUnidad').value,
+          idTipo: idTipoSel,
           accion: 'alta',
-          stock: parseInt(document.getElementById('cantidadUnidad').value),
-          estado: document.getElementById('estadoUnidad').value,
-          precio: document.getElementById('precioUnidad').value || null
+          stock: parseInt(stockInput),
+          estado: estadoInput,
+          precio: precioInput 
       };
+
       try {
-          const res = await fetch(`${API_UNIDADES}/gestion`, { method: 'POST', headers: getHeaders(), body: JSON.stringify(payload) });
-          if (res.ok) { window.showAlert('Éxito', 'Stock actualizado', 'success'); modalGestion.classList.add('hidden'); formGestion.reset(); await loadUnidades(); }
-      } catch (e) { console.error(e); }
+          const res = await fetch(`${API_UNIDADES}/gestion`, { 
+              method: 'POST', 
+              headers: getHeaders(), 
+              body: JSON.stringify(payload) 
+          });
+          const data = await res.json();
+
+          if (res.ok) { 
+              window.showAlert('Éxito', 'Stock actualizado', 'success'); 
+              modalGestion.classList.add('hidden'); 
+              formGestion.reset(); 
+              await loadUnidades(); 
+          } else {
+              window.showAlert('Error', data.error || 'No se pudo actualizar', 'error');
+          }
+      } catch (e) { 
+          window.showAlert('Error', 'Error de conexión', 'error');
+      }
     });
 
     if (selAccion) selAccion.addEventListener('change', () => {

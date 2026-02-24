@@ -20,7 +20,7 @@
 
     <!-- Panel blanco vertical -->
     <div class="panel">
-      <form class="form" id="formLogin">
+      <form class="form" id="formLogin" autocomplete="off">
         <h1 class="title">Iniciar Sesión</h1>
 
         <label>
@@ -31,7 +31,7 @@
         <label style="position: relative; display: flex; flex-direction: column;">
           <span>Contraseña</span>
           <div style="position: relative;">
-            <input type="password" id="password" name="password" required style="padding-right: 40px; width: 100%;" />
+            <input type="password" id="password" name="password" required autocomplete="new-password" style="padding-right: 40px; width: 100%;" />
             <i id="togglePassword" data-lucide="eye" style="
               position: absolute; 
               right: 12px; 

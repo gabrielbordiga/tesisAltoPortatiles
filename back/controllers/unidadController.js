@@ -53,17 +53,16 @@ exports.getResumenStock = async (req, res) => {
         
         if (errStock) throw errStock;
 
-        // FILTRO MEJORADO: Ocupado si (está en fecha) O (ya está entregado/servicio)
         const { data: ocupacionHoy, error: errOcup } = await supabase
             .from('DetalleAlquiler')
             .select('cantidad, Unidades!inner(idTipo), Alquileres!inner(estado, fechaDesde, fechaHasta)')
-            // Sintaxis corregida:
-            .or(`and(fechaDesde.lte.${hoy},fechaHasta.gte.${hoy}),estado.eq.ENTREGADO,estado.eq."SERVICIO PENDIENTE"`, { foreignTable: 'Alquileres' })
+            .or(`and(fechaDesde.lte.${hoy},fechaHasta.gte.${hoy}),estado.eq.ENTREGADO,estado.eq.SERVICIO PENDIENTE`, { foreignTable: 'Alquileres' })
             .not('Alquileres.estado', 'in', '("FINALIZADO", "CANCELADO", "RETIRADO")');
 
         if (errOcup) throw errOcup;
 
         const resumen = {};
+        
         stockFisico.forEach(curr => {
             const tipo = curr.Tipo_Unidades;
             if (!tipo) return;
@@ -73,8 +72,13 @@ exports.getResumenStock = async (req, res) => {
                     alquiladas: 0, servicio: 0, precio: 0, totalFisico: 0 
                 };
             }
-            if (curr.esatdo === 'Disponible') resumen[tipo.idTipo].totalFisico += (curr.stock || 0);
-            if (curr.esatdo === 'En servicio') resumen[tipo.idTipo].servicio += (curr.stock || 0);
+            
+            resumen[tipo.idTipo].totalFisico += (curr.stock || 0);
+            
+            if (curr.esatdo === 'En servicio') {
+                resumen[tipo.idTipo].servicio += (curr.stock || 0);
+            }
+            
             if (curr.precio > 0) resumen[tipo.idTipo].precio = curr.precio;
         });
 
@@ -87,7 +91,7 @@ exports.getResumenStock = async (req, res) => {
 
         const resultadoFinal = Object.values(resumen).map(r => ({
             ...r,
-            disponibles: Math.max(0, r.totalFisico - r.alquiladas)
+            disponibles: Math.max(0, r.totalFisico - (r.alquiladas + r.servicio))
         }));
 
         res.json(resultadoFinal);
@@ -114,7 +118,7 @@ exports.gestionarStock = async (req, res) => {
             return res.json({ mensaje: "Precio actualizado correctamente" });
         }
 
-        // 2. VALIDAMOS CANTIDAD
+        // 2. VALIDAMOS CANTIDAD 
         const cantidad = parseInt(stock);
         if (isNaN(cantidad) || cantidad <= 0) {
             return res.status(400).json({ error: "La cantidad debe ser mayor a 0 para esta acción." });
@@ -140,7 +144,7 @@ exports.gestionarStock = async (req, res) => {
             return res.json({ mensaje: "Baja realizada correctamente" });
         }
 
-        // 4. Acción: Mover
+        // 4. Acción: Mover 
         if (accion === 'mover') {
             if (!origen || !destino) return res.status(400).json({ error: "Faltan origen o destino" });
             
@@ -163,16 +167,12 @@ exports.gestionarStock = async (req, res) => {
             return res.json({ mensaje: "Movimiento realizado" });
         }
 
-        // 5. Lógica por defecto (Alta/Descuento de stock disponible)
-        if (estado === 'Alquilada' || estado === 'En servicio') {
-            const { data: disp } = await supabase
-                .from('Unidades').select('idUnidad, stock').eq('idTipo', idTipo).eq('esatdo', 'Disponible').maybeSingle();
-
-            if (!disp || disp.stock < cantidad) {
-                return res.status(400).json({ error: `Stock insuficiente en Disponible` });
-            }
-            await supabase.from('Unidades').update({ stock: disp.stock - cantidad }).eq('idUnidad', disp.idUnidad);
-        }
+        const { data: registroBase } = await supabase
+            .from('Unidades')
+            .select('precio')
+            .eq('idTipo', idTipo)
+            .limit(1)
+            .maybeSingle();
 
         const { data: existente } = await supabase
             .from('Unidades')
@@ -181,9 +181,25 @@ exports.gestionarStock = async (req, res) => {
             .eq('esatdo', estado)
             .maybeSingle();
 
-        // Si el precio enviado es > 0, usamos ese. Si no, usamos el precio que ya tiene la unidad (o 0 si no existe)
         const precioEnviado = parseFloat(precio);
-        const precioAGuardar = (precioEnviado > 0) ? precioEnviado : (existente?.precio || 0);
+
+        if (!registroBase && (isNaN(precioEnviado) || precioEnviado <= 0)) {
+            return res.status(400).json({ 
+                error: "Al ser un tipo de unidad nuevo en el sistema, debe ingresar el precio de alquiler por primera vez." 
+            });
+        }
+
+        if (estado === 'Alquilada' || estado === 'En servicio') {
+            const { data: disp } = await supabase
+                .from('Unidades').select('idUnidad, stock').eq('idTipo', idTipo).eq('esatdo', 'Disponible').maybeSingle();
+
+            if (!disp || disp.stock < cantidad) {
+                return res.status(400).json({ error: `Stock insuficiente en 'Disponible' para realizar esta acción.` });
+            }
+            await supabase.from('Unidades').update({ stock: disp.stock - cantidad }).eq('idUnidad', disp.idUnidad);
+        }
+
+        const precioAGuardar = (precioEnviado > 0) ? precioEnviado : (registroBase?.precio || 0);
 
         if (existente) {
             await supabase
@@ -225,23 +241,27 @@ exports.getUnidadesPorEstado = async (req, res) => {
     }
 };
 
-//Busca disponibilidades de las unidades en las fechas q se piden
+
 exports.getDisponibilidadPorRango = async (req, res) => {
     const { desde, hasta, excluir } = req.query;
 
-    if (!desde || !hasta || desde.includes('object')) {
+    if (!desde || !hasta || desde === 'undefined') {
         return res.status(400).json({ error: "Fechas inválidas" });
     }
 
     try {
-        const hoy = new Date().toISOString().split('T')[0];
-        const { data: stockFisico } = await supabase.from('Unidades').select('stock, idTipo, precio');
+        const { data: stockFisico } = await supabase.from('Unidades').select('stock, idTipo, precio, esatdo');
 
+        // Buscamos colisiones de fechas
         let queryOcupacion = supabase
             .from('DetalleAlquiler')
-            .select('cantidad, idUnidad, Unidades!inner(idTipo), Alquileres!inner(idAlquiler, fechaDesde, fechaHasta, estado)')
-            .or(`and(fechaDesde.lte.${hasta},fechaHasta.gte.${desde}),estado.eq.ENTREGADO,estado.eq."SERVICIO PENDIENTE"`)
-            .not('Alquileres.estado', 'in', '("FINALIZADO", "RETIRADO", "CANCELADO")');
+            .select(`
+                cantidad, 
+                Unidades!inner(idTipo), 
+                Alquileres!inner(idAlquiler, fechaDesde, fechaHasta, estado)
+            `)
+            .filter('Alquileres.estado', 'not.in', '("FINALIZADO","RETIRADO","CANCELADO")')
+            .or(`and(fechaDesde.lte.${hasta},fechaHasta.gte.${desde}),estado.eq.ENTREGADO,estado.eq.SERVICIO PENDIENTE`, { foreignTable: 'Alquileres' });
 
         if (excluir && excluir !== 'null' && excluir !== '') {
             queryOcupacion = queryOcupacion.neq('Alquileres.idAlquiler', excluir);
@@ -253,18 +273,18 @@ exports.getDisponibilidadPorRango = async (req, res) => {
         const { data: tipos } = await supabase.from('Tipo_Unidades').select('*');
         
         const disponibilidad = tipos.map(tipo => {
-            const total = (stockFisico || [])
-                .filter(s => String(s.idTipo) === String(tipo.idTipo))
+            const aptasFisicamente = (stockFisico || [])
+                .filter(s => String(s.idTipo) === String(tipo.idTipo) && s.esatdo !== 'En servicio')
                 .reduce((acc, curr) => acc + (curr.stock || 0), 0);
 
             const reservadas = (ocupadas || [])
                 .filter(o => String(o.Unidades?.idTipo) === String(tipo.idTipo)) 
-                .reduce((acc, curr) => acc + curr.cantidad, 0);
+                .reduce((acc, curr) => acc + (curr.cantidad || 0), 0);
 
             return {
                 idTipo: tipo.idTipo,
                 nombre: tipo.nombre,
-                disponibles: Math.max(0, total - reservadas),
+                disponibles: Math.max(0, aptasFisicamente - reservadas),
                 precio: stockFisico?.find(s => String(s.idTipo) === String(tipo.idTipo))?.precio || 0
             };
         });
