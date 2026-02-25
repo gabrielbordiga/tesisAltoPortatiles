@@ -15,26 +15,27 @@
 
   async function loadUsuarios() {
     try {
-      const res = await fetch(API_URL, { headers: getHeaders() });
-      if (!res.ok) throw new Error('Error al cargar usuarios');
-      const data = await res.json();
+        const res = await fetch(API_URL, { headers: getHeaders() });
+        if (!res.ok) throw new Error('Error al cargar usuarios');
+        const data = await res.json();
 
-      return data.map(u => ({
-        id: u.idUsuarios ?? u.id ?? u.auth_id,
-        usuario: u.usuario,
-        nombre: u.nombre,
-        apellido: u.apellido,
-        dni: u.dni,
-        correo: u.email || u.correo,
-        rol: u.rol || u.permisos,
-        estado: (u.activo === true || u.activo === 'Activo') ? 'Activo' : 'Inactivo',
-        area: u.idArea || u.id_area
-      }));
+        return data.map(u => ({
+            id: u.idUsuarios ?? u.id ?? u.auth_id,
+            usuario: u.usuario,
+            nombre: u.nombre,
+            apellido: u.apellido,
+            dni: u.dni,
+            correo: u.email || u.correo,
+            rol: u.rol || u.permisos,
+            estado: (u.activo === true || u.activo === 'Activo') ? 'Activo' : 'Inactivo',
+            idArea: u.idArea,
+            nombreArea: u.nombreArea 
+        }));
     } catch (error) {
-      console.error(error);
-      return [];
+        console.error(error);
+        return [];
     }
-  }
+}
 
   async function loadAreas() {
     try {
@@ -77,31 +78,28 @@
   function normalize(s) { return String(s || '').trim().toLowerCase(); }
 
   function renderTabla(filtro = '') {
-      const q = normalize(filtro);
-      const usuariosVisibles = USUARIOS.filter(u => {
-        return normalize(u.rol) !== 'borrados'; 
-      });
+    const q = normalize(filtro);
+    const usuariosVisibles = USUARIOS.filter(u => normalize(u.rol) !== 'borrados');
 
-      const data = usuariosVisibles.filter(u =>
-        [u.usuario, u.nombre, u.apellido, u.dni, u.correo, u.rol, u.estado].some(val => normalize(val).includes(q))
-      ).sort((a, b) => String(a.usuario).localeCompare(String(b.usuario)));
+    const data = usuariosVisibles.filter(u =>
+        [u.usuario, u.nombre, u.apellido, u.dni, u.correo, u.rol, u.nombreArea].some(val => normalize(val).includes(q))
+    ).sort((a, b) => String(a.usuario).localeCompare(String(b.usuario)));
 
-      tbody.innerHTML = data.map((u) => `
+    tbody.innerHTML = data.map((u) => `
         <tr style="${u.estado === 'Inactivo' ? 'background-color: #fdf2f2;' : ''}">
-          <td>
-            <div style="font-weight:500;">${u.nombre || ''} ${u.apellido || ''}</div>
-            <div style="font-size:12px; color:#666;">${u.dni || ''}</div>
-          </td>
-          <td>${u.usuario}</td>
-          <td>${u.correo}</td>
-          <td><span class="tag">${u.rol}</span></td>
-          <td><span class="tag">${u.estado}</span></td>
-          <td>
-            <button class="action" data-edit="${u.id}">Editar</button>
-            <button class="action danger" data-del="${u.id}">🗑</button>
-          </td>
+            <td>
+                <div style="font-weight:500;">${u.nombre || ''} ${u.apellido || ''}</div>
+                <div style="font-size:12px; color:#666;">${u.dni || ''}</div>
+            </td>
+            <td>${u.usuario}</td>
+            <td>${u.correo}</td>
+            <td><span class="tag-area">${u.nombreArea}</span></td> <td><span class="tag-permiso">${u.rol}</span></td> <td>${u.estado}</td>
+            <td>
+                <button class="action" data-edit="${u.id}">Editar</button>
+                <button class="action danger" data-del="${u.id}">🗑</button>
+            </td>
         </tr>
-      `).join('');
+    `).join('');
   }
 
   function clearForm() {
