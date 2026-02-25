@@ -85,7 +85,8 @@ exports.actualizarEstadoTarea = async (req, res) => {
                 nuevoEstado = "ENTREGADO";
             } 
             else if (detalleTarea.includes("SERVICIO")) {
-                nuevoEstado = "SERVICIO PENDIENTE";
+                console.log("✅ Detectada tarea de SERVICIO. Cambiando alquiler a SERVICIO REALIZADO");
+                nuevoEstado = "SERVICIO REALIZADO";
             }
             else if (detalleTarea.includes("RETIRAR")) {
                 const precioTotal = Number(tarea.alquiler?.precioTotal) || 0;
@@ -94,16 +95,19 @@ exports.actualizarEstadoTarea = async (req, res) => {
             }
 
             if (nuevoEstado) {
-                // Actualizamos el estado del alquiler
-                await supabase.from('Alquileres').update({ estado: nuevoEstado }).eq('idAlquiler', tarea.idAlquiler);
+                console.log(`Intentando actualizar Alquiler ${tarea.idAlquiler} a estado: ${nuevoEstado}`);
+                
+                const { data: resUpdate, error: errAlqUpdate } = await supabase
+                    .from('Alquileres')
+                    .update({ estado: nuevoEstado })
+                    .eq('idAlquiler', tarea.idAlquiler)
+                    .select();
 
-                // --- INTEGRACIÓN CON HISTORIAL ---
-                await supabase.from('HistorialAlquileres').insert([{
-                    idAlquiler: tarea.idAlquiler,
-                    detalle: `Tarea finalizada: ${detalleTarea} (Estado: ${nuevoEstado})`,
-                    idUsuarios: tarea.idUsuarios, 
-                    fecha: new Date().toISOString()
-                }]);
+                if (errAlqUpdate) {
+                    console.error("❌ ERROR DE SUPABASE AL ACTUALIZAR ALQUILER:", errAlqUpdate.message);
+                } else {
+                    console.log("✅ ALQUILER ACTUALIZADO EXITOSAMENTE:", resUpdate);
+                }
             }
         }
 
