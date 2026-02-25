@@ -439,21 +439,24 @@
   formMov.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // VALIDACIÓN DE FECHA
-    const fechaSeleccionada = new Date(inpFecha.value);
-    const año = fechaSeleccionada.getFullYear();
-    const hoy = new Date();
+    // CAPTURA DE VALORES
+    const provId = selProv.value;
+    const prodId = selProd.value;
+    const cantidad = inpCant.value;
+    const precio = inpPrecio.value;
 
-    if (año < 2020 || fechaSeleccionada > hoy) {
-        return window.showAlert('Error', 'Por favor, ingrese una fecha válida y reciente.', 'error');
-    }
+    // VALIDACIÓN DETALLADA
+    if (!provId) return window.showAlert('Atención', 'Debe seleccionar un Proveedor.', 'warning');
+    if (!prodId) return window.showAlert('Atención', 'Debe seleccionar un Producto.', 'warning');
+    if (!cantidad || cantidad <= 0) return window.showAlert('Atención', 'La cantidad debe ser mayor a cero.', 'warning');
+    if (!precio || precio <= 0) return window.showAlert('Atención', 'El precio debe ser un valor positivo.', 'warning');
 
     const payload = {
-      idProveedor: selProv.value,
-      idProducto: selProd.value,
+      idProveedor: provId,
+      idProducto: prodId,
       fecha: inpFecha.value,
-      cantidad: inpCant.value,
-      precio: inpPrecio.value,
+      cantidad: cantidad,
+      precio: precio,
       metodoPago: selMetodo.value ? selMetodo.value.toUpperCase() : null
     };
 

@@ -302,4 +302,70 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnGenerar.addEventListener('click', generarReporte);
     generarReporte();
+
+    document.getElementById('btnExportarPDF')?.addEventListener('click', async () => {
+        const { jsPDF } = window.jspdf;
+        const elemento = document.getElementById('seccionResultados');
+        const tablaWrap = document.querySelector('.tabla-wrap');
+
+        if (!elemento) return window.showAlert('Error', 'No hay datos para exportar', 'error');
+
+        const btn = document.getElementById('btnExportarPDF');
+        btn.textContent = 'Generando...';
+        btn.disabled = true;
+
+        const originalMaxHeight = tablaWrap.style.maxHeight;
+        const originalOverflow = tablaWrap.style.overflowY;
+
+        tablaWrap.style.maxHeight = 'none';
+        tablaWrap.style.overflowY = 'visible';
+
+        try {
+            const canvas = await html2canvas(elemento, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff'
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const margin = 15; 
+            const contentWidth = pageWidth - (margin * 2);
+            
+            const imgProps = pdf.getImageProperties(imgData);
+            const imgHeight = (imgProps.height * contentWidth) / imgProps.width;
+
+            pdf.setFillColor(236, 31, 38); 
+            pdf.rect(0, 0, pageWidth, 40, 'F');
+
+            // Título en blanco
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFont("helvetica", "bold");
+            pdf.setFontSize(22);
+            pdf.text("REPORTE DE GESTIÓN", margin, 20);
+            
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(10);
+            pdf.text("ALTO PORTÁTILES - Sistema de Administración", margin, 28);
+
+            const fechaStr = new Date().toLocaleDateString();
+            pdf.text(`Emisión: ${fechaStr}`, pageWidth - margin - 30, 28);
+
+            pdf.addImage(imgData, 'PNG', margin, 45, contentWidth, imgHeight);
+            
+            pdf.save(`Reporte_AltoPortatiles_${Date.now()}.pdf`);
+
+        } catch (e) {
+            console.error(e);
+            window.showAlert('Error', 'Fallo al exportar', 'error');
+        } finally {
+            tablaWrap.style.maxHeight = originalMaxHeight;
+            tablaWrap.style.overflowY = originalOverflow;
+            btn.textContent = 'Exportar a PDF';
+            btn.disabled = false;
+        }
+    });
 });

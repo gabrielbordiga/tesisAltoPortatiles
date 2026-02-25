@@ -173,12 +173,24 @@
       }
       if (idDel) {
         if (await window.confirmAction('¿Eliminar cliente?', 'Esta acción no se puede deshacer.')) {
-          await fetch(`${API_URL}/${idDel}`, { 
-            method: 'DELETE',
-            headers: getHeaders()
-          });
-          CLIENTES = await loadClientes();
-          renderTabla();
+          try {
+            const res = await fetch(`${API_URL}/${idDel}`, { 
+              method: 'DELETE',
+              headers: getHeaders()
+            });
+
+            const data = await res.json(); 
+
+            if (res.ok) {
+              window.showAlert('Éxito', data.mensaje || 'Cliente eliminado', 'success');
+              CLIENTES = await loadClientes();
+              renderTabla();
+            } else {
+              throw new Error(data.error || 'Error al eliminar');
+            }
+          } catch (err) {
+            window.showAlert('Error', err.message, 'error');
+          }
         }
       }
     });

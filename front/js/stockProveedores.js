@@ -81,15 +81,31 @@
     } catch (e) { window.showAlert('Error', 'No se pudo eliminar', 'error'); }
   };
 
+  if (inpTel) {
+    inpTel.addEventListener('input', (e) => {
+      e.target.value = e.target.value.replace(/[^0-9]/g, '');
+    });
+  }
+  
   // Eventos
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    // --- NUEVA VALIDACIÓN DE CAMPOS ---
+    if (!inpNombre.value.trim()) {
+      return window.showAlert('Atención', 'El nombre del proveedor es obligatorio.', 'warning');
+    }
+    if (!inpTel.value.trim() || inpTel.value.length < 8) {
+      return window.showAlert('Atención', 'Ingrese un teléfono válido (mínimo 8 dígitos).', 'warning');
+    }
+    // ----------------------------------
+
     const id = inpId.value;
     const payload = {
-      nombre: inpNombre.value,
-      tel: inpTel.value,
-      direccion: inpDir ? inpDir.value : '',
-      email: inpEmail ? inpEmail.value : ''
+      nombre: inpNombre.value.trim(),
+      tel: inpTel.value.trim(),
+      direccion: inpDir ? inpDir.value.trim() : '',
+      email: inpEmail ? inpEmail.value.trim() : ''
     };
 
     try {
@@ -100,12 +116,18 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      if (!res.ok) throw new Error('Error al guardar');
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Error al guardar en la base de datos');
+      }
       
       loadProveedores();
       clearForm();
-      window.showAlert('Éxito', 'Proveedor guardado', 'success');
-    } catch (err) { window.showAlert('Error', err.message, 'error'); }
+      window.showAlert('Éxito', 'Proveedor guardado correctamente', 'success');
+    } catch (err) { 
+      window.showAlert('Error', err.message, 'error'); 
+    }
   });
 
   btnCancelar.addEventListener('click', clearForm);

@@ -124,38 +124,22 @@ exports.editarUsuario = async (req, res) => {
 
 // 4. Eliminar un usuario 
 exports.eliminarUsuario = async (req, res) => {
-    const { id } = req.params; // Este es el idUsuarios de tu tabla
+    const { id } = req.params;
 
     try {
-        // 1. Buscamos el auth_id del usuario antes de borrarlo de la tabla
-        const { data: usuario, error: errorBusq } = await supabase
-            .from('Usuarios')
-            .select('auth_id')
-            .eq('idUsuarios', id)
-            .single();
-
-        if (errorBusq) throw new Error("No se encontró el usuario");
-
-        // 2. Primero borramos el usuario del motor de SEGURIDAD (Auth)
-        // Esto libera el email para que pueda ser usado nuevamente
-        const { error: authError } = await supabase.auth.admin.deleteUser(usuario.auth_id);
-        if (authError) throw authError;
-
-        // 3. Limpiamos las tareas asociadas (opcional, para evitar errores de FK)
-        await supabase.from('Tareas').delete().eq('idUsuarios', id);
-
-        // 4. Finalmente borramos el perfil de la tabla Usuarios
         const { error: dbError } = await supabase
             .from('Usuarios')
-            .delete()
+            .update({ 
+                activo: false, 
+                rol: 'Borrados'
+            }) 
             .eq('idUsuarios', id);
 
         if (dbError) throw dbError;
 
-        res.json({ mensaje: "Usuario eliminado completamente del sistema" });
+        res.json({ mensaje: "Usuario eliminado de la vista" });
 
     } catch (err) {
-        console.error("Error al eliminar:", err.message);
         res.status(400).json({ error: err.message });
     }
 };

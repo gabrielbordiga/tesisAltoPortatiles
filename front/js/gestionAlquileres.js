@@ -7,6 +7,13 @@
   let CLIENTES_CACHE = [];
   let UNIDADES_CACHE = [];
   
+  function getHeaders() {
+    const token = localStorage.getItem('ap_token');
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    };
+  }
 
   // ------ Helpers de storage ------
   async function loadAlquileres() {
@@ -921,12 +928,23 @@ function renderizarOpcionesUnidad(lista) {
         const id = btnDel;
         if (await window.confirmAction('¿Eliminar alquiler?', 'Esta acción no se puede deshacer.')) {
           try {
-            await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-            ALQUILERES = await loadAlquileres();
-            renderTablaAlquileres(txtBuscar.value);
-            if (currentId === id) clearFormAlquiler();
+            const res = await fetch(`${API_URL}/${id}`, { 
+                method: 'DELETE',
+                headers: getHeaders() 
+            });
+            
+            const data = await res.json(); 
+
+            if (res.ok) {
+              window.showAlert('Éxito', data.mensaje || 'Alquiler eliminado', 'success'); 
+              ALQUILERES = await loadAlquileres();
+              renderTablaAlquileres(txtBuscar.value);
+              if (currentId === id) clearFormAlquiler();
+            } else {
+              throw new Error(data.error || 'No se pudo eliminar');
+            }
           } catch (err) {
-            window.showAlert('Error', 'No se pudo eliminar', 'error');
+            window.showAlert('Error', err.message, 'error');
           }
         }
       }
