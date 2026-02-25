@@ -5,10 +5,21 @@ const jwt = require('jsonwebtoken');
 exports.obtenerUsuarios = async (req, res) => {
     const { data, error } = await supabase
         .from('Usuarios')
-        .select('*')
+        .select(`
+            *,
+            Areas (nombre)
+        `)
         .order('idUsuarios', { ascending: true });
+
     if (error) return res.status(400).json({ error: error.message });
-    res.json(data);
+
+    const usuariosFormateados = data.map(u => ({
+        ...u,
+        nombreArea: u.Areas ? u.Areas.nombre : 'Sin Área',
+        permisos: u.rol 
+    }));
+
+    res.json(usuariosFormateados);
 };
 
 // 1.5. Obtener todas las áreas 
