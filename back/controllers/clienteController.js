@@ -151,7 +151,7 @@ exports.eliminarCliente = async (req, res) => {
         const { id } = req.params;
         const { error } = await supabase.from('Cliente').update({ activo: false }).eq('idCliente', id);
         if (error) throw error;
-        res.json({ mensaje: "Baja exitosa" });
+        res.json({ mensaje: "Cliente eliminado correctamente" });;
     } catch (error) {
         res.status(400).json({ error: error.message });
     }

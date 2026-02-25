@@ -393,7 +393,7 @@ exports.eliminarAlquiler = async (req, res) => {
         .eq('idAlquiler', id);
 
     if (error) return res.status(400).json({ error: error.message });
-    res.json({ mensaje: 'Alquiler eliminado' });
+    res.json({ mensaje: 'Alquiler eliminado correctamente' });
 };
 
 

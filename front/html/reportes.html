@@ -8,13 +8,13 @@
   <link rel="stylesheet" href="../css/panel.css" />
   <link rel="icon" type="image/png" href="../recursos/imagenes/logo.png" />
 
-  <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 
 <body class="dashboard-body">
   <div class="layout">
-    <!-- SIDEBAR -->
     <aside class="sidebar">
       <div class="brand">
         <img src="../recursos/imagenes/AltoPortatiles.png" alt="Alto Portátiles" class="brand-logo">
@@ -25,27 +25,21 @@
         <a class="item" href="./inicio.html" data-roles="Administrador,Empleado">
           <img src="../recursos/iconos/inicio.svg" class="icon-svg" alt=""><span>Inicio</span>
         </a>
-
         <a class="item" href="./gestion.html" data-roles="Administrador,Empleado">
           <img src="../recursos/iconos/gestion.svg" class="icon-svg" alt=""><span>Gestión</span>
         </a>
-
         <a class="item" href="./logistica.html" data-roles="Administrador,Empleado">
           <img src="../recursos/iconos/logistica.svg" class="icon-svg" alt=""><span>Logística</span>
         </a>
-
         <a class="item" href="./tareasAdm.html" data-roles="Administrador,Empleado">
           <img src="../recursos/iconos/tareas.svg" class="icon-svg" alt=""><span>Tareas</span>
         </a>
-
         <a class="item active" href="./reportes.html" data-roles="Administrador">
           <img src="../recursos/iconos/reportes.svg" class="icon-svg" alt=""><span>Reportes</span>
         </a>
-
         <a class="item" href="./stock.html" data-roles="Administrador">
           <img src="../recursos/iconos/stock.svg" class="icon-svg" alt=""><span>Stock</span>
         </a>
-
         <a class="item" href="./usuarios.html" data-roles="Administrador">
           <img src="../recursos/iconos/usuarios.svg" class="icon-svg" alt=""><span>Usuarios</span>
         </a>
@@ -58,10 +52,8 @@
       </nav>
     </aside>
 
-    <!-- CONTENIDO -->
     <main class="content">
 
-      <!-- FILTROS -->
       <section class="card">
         <div class="reportes-filtros">
           <div class="filtro-item">
@@ -85,75 +77,79 @@
 
           <div class="filtro-btn">
             <button id="btnGenerarReporte" class="btn primary">Generar reporte</button>
+            <button id="btnExportarPDF" class="btn outline" style="margin-left: 10px;">
+              <span>📄</span> Exportar a PDF
+            </button>
           </div>
         </div>
       </section>
 
-      <!-- TABLA RESULTADOS -->
-      <section class="card">
-        <div class="card-header">
-          <h3>Resultados</h3>
-        </div>
-        <div class="tabla-wrap">
-          <table class="tabla tabla-reportes">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Categoría</th>
-                <th>Proveedor / Cliente</th>
-                <th>Producto / Servicio</th>
-                <th>Cantidad</th>
-                <th>Precio</th>
-                <th>Método</th>
-              </tr>
-            </thead>
-            <tbody id="tbodyReportes">
-              <!-- filas por JS -->
-            </tbody>
-          </table>
-        </div>
-      </section>
-      
-      <section class="card">
-        <div class="kpi-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
-          <div class="kpi-card" id="card1">
-              <small id="lab1">Unidad más alquilada</small>
-              <h4 id="val1">...</h4>
+      <div id="seccionResultados" style="background-color: #ffffff; padding: 20px; border-radius: 8px;">
+        
+        <section class="card">
+          <div class="card-header">
+            <h3>Resultados del Periodo</h3>
           </div>
-          <div class="kpi-card" id="card2">
-              <small id="lab2">Mayor gasto en</small>
-              <h4 id="val2">...</h4>
+          <div class="tabla-wrap">
+            <table class="tabla tabla-reportes">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Categoría</th>
+                  <th>Proveedor / Cliente</th>
+                  <th>Producto / Servicio</th>
+                  <th>Cantidad</th>
+                  <th>Precio</th>
+                  <th>Método</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyReportes">
+                </tbody>
+            </table>
           </div>
-          <div class="kpi-card" id="card3">
-              <small id="lab3">Total Ingresos</small>
-              <h4 id="val3">$0</h4>
+        </section>
+        
+        <section class="card">
+          <div class="kpi-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+            <div class="kpi-card" id="card1">
+                <small id="lab1">Unidad más alquilada</small>
+                <h4 id="val1">...</h4>
+            </div>
+            <div class="kpi-card" id="card2">
+                <small id="lab2">Mayor gasto en</small>
+                <h4 id="val2">...</h4>
+            </div>
+            <div class="kpi-card" id="card3">
+                <small id="lab3">Total Ingresos</small>
+                <h4 id="val3">$0</h4>
+            </div>
+            <div class="kpi-card" id="card4">
+                <small id="lab4">Total Egresos</small>
+                <h4 id="val4">$0</h4>
+            </div>
+            <div class="kpi-card" id="cardBalance" style="border-left: 5px solid #ec1f26;">
+                <small>Balance Neto</small>
+                <h4 id="valBalance">$0</h4>
+            </div>
           </div>
-          <div class="kpi-card" id="card4">
-              <small id="lab4">Total Egresos</small>
-              <h4 id="val4">$0</h4>
-          </div>
-          <div class="kpi-card" id="cardBalance" style="border-left: 5px solid #ec1f26;">
-              <small>Balance Neto</small>
-              <h4 id="valBalance">$0</h4>
-          </div>
-        </div>
 
-        <section class="charts-grid">
-          <div class="chart-block">
-              <h4>Distribución (%)</h4>
-              <div class="chart-container">
-                  <canvas id="chartPie"></canvas>
-              </div>
-          </div>
-          <div class="chart-block">
-              <h4>Evolución Mensual</h4>
-              <div class="chart-container">
-                  <canvas id="chartBar"></canvas>
-              </div>
-          </div>
-      </section>
+          <section class="charts-grid">
+            <div class="chart-block">
+                <h4>Distribución (%)</h4>
+                <div class="chart-container" style="position: relative; height:300px;">
+                    <canvas id="chartPie"></canvas>
+                </div>
+            </div>
+            <div class="chart-block">
+                <h4>Evolución Temporal</h4>
+                <div class="chart-container" style="position: relative; height:300px;">
+                    <canvas id="chartBar"></canvas>
+                </div>
+            </div>
+          </section>
+        </section>
 
-    </main>
+      </div> </main>
   </div>
 
   <script type="module" src="../js/app.js"></script>

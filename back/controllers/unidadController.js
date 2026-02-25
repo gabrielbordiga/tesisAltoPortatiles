@@ -89,9 +89,11 @@ exports.getResumenStock = async (req, res) => {
             }
         });
 
-        const resultadoFinal = Object.values(resumen).map(r => ({
-            ...r,
-            disponibles: Math.max(0, r.totalFisico - (r.alquiladas + r.servicio))
+        const resultadoFinal = Object.values(resumen)
+            .filter(r => r.totalFisico > 0) 
+            .map(r => ({
+                ...r,
+                disponibles: Math.max(0, r.totalFisico - (r.alquiladas + r.servicio))
         }));
 
         res.json(resultadoFinal);
