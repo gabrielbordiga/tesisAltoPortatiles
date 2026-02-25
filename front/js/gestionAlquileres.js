@@ -301,9 +301,8 @@
                 <select id="infoEstadoSelect" class="input" style="padding:2px 4px; height:28px; font-size:13px; width:auto;">
                     <option value="PENDIENTE">PENDIENTE</option>
                     <option value="ENTREGADO">ENTREGADO</option>
-                    <option value="PARA RETIRAR">PARA RETIRAR</option>
+                    <option value="SERVICIO REALIZADO">SERVICIO REALIZADO</option> <option value="PARA RETIRAR">PARA RETIRAR</option>
                     <option value="RETIRADO">RETIRADO</option>
-                    <option value="SERVICIO PENDIENTE">SERVICIO PENDIENTE</option>
                     <option value="FINALIZADO">FINALIZADO</option>
                 </select>
                 <button id="btnUpdateEstado" class="action" title="Guardar estado" style="padding:2px 6px; height:28px;">💾</button>

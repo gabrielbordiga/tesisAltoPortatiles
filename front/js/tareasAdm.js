@@ -35,7 +35,7 @@
   let fechaFiltro = `${year}-${month}-${day}`;
 
   // ---------- DOM refs ----------
-  let containerTabs, tbody, lblFecha, lblEmpleado, lblZona, inpFiltroFecha;
+  let containerTabs, tbody, lblFecha, lblEmpleado, inpFiltroFecha;
   let modalOverlay, formTarea, selEmpleadoModal, inpFechaTarea;
   let inpBuscarPedido, tbodyPedidos, inpPedidoId, lblPedidoInfo, inpTareaDetalle, selTareaTipo;
   let btnAgregarTarea, btnGuardarTarea, btnCancelarTarea;
@@ -45,7 +45,6 @@
     tbody           = document.getElementById('tbodyTareas');
     lblFecha        = document.getElementById('tareasFecha');
     lblEmpleado     = document.getElementById('tareasEmpleado');
-    lblZona         = document.getElementById('tareasZona');
     inpFiltroFecha  = document.getElementById('filtroFecha');
 
     modalOverlay    = document.getElementById('modalTarea');
@@ -218,7 +217,6 @@
     const emp = empleados.find(e => String(e.idUsuarios) === String(empleadoActualId));
     lblFecha.textContent    = formatFechaLarga(fechaFiltro);
     lblEmpleado.textContent = emp ? `${emp.nombre} ${emp.apellido}` : 'Seleccione empleado';
-    lblZona.textContent     = (emp && emp.zona) ? emp.zona : '-';
   }
 
   // ---------- Render tabla ----------
@@ -385,7 +383,7 @@ async function handleGuardarTarea() {
     // 1. Construimos el detalle final
     let detalle = texto;
     if (tipo && !tipo.startsWith('Otro')) {
-        detalle = texto ? `${tipo} - ${texto}` : tipo;
+        detalle = texto ? `${tipo} - ${texto}` : tipo; 
     }
 
     if (!idUsuario || !idAlquiler || !fecha) {
@@ -489,34 +487,40 @@ async function handleGuardarTarea() {
         } catch (err) { chk.checked = !completada; }
       }
 
-      if (btnDel) {
-        // Obtenemos el ID directamente del atributo que acabamos de corregir
-        const delId = btnDel.getAttribute('data-del');
-        
-        if (!delId || delId === "undefined") {
-            return window.showAlert('Error', 'No se pudo identificar la tarea.', 'error');
+        if (btnDel) {
+    // Usamos el ID del atributo data-del
+    const delId = btnDel.getAttribute('data-del');
+    
+    // Validación de seguridad
+    if (!delId || delId === "undefined" || delId === "null") {
+            return window.showAlert('Error', 'No se pudo obtener el ID de la tarea.', 'error');
         }
 
-        const confirmar = await window.confirmAction('¿Eliminar tarea?', 'Esta acción es permanente.');
+        const confirmar = await window.confirmAction('¿Eliminar tarea?', 'Esta acción no se puede deshacer.');
         if (confirmar) {
             try {
-                // Enviamos el DELETE al ID correcto
+                const token = localStorage.getItem('ap_token');
                 const res = await fetch(`${API_TAREAS}/${delId}`, { 
                     method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('ap_token')}` }
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
                 });
 
                 if (res.ok) {
-                    window.showAlert('Éxito', 'Tarea eliminada', 'success');
-                    await loadTareas(); // Refresca la lista inmediatamente
+                    window.showAlert('Éxito', 'Tarea eliminada correctamente', 'success');
+                    // IMPORTANTE: Volver a cargar para que desaparezca de la vista
+                    await loadTareas(); 
                 } else {
                     const errData = await res.json();
-                    // Esto te mostrará en pantalla por qué Supabase rechaza el borrado
-                    throw new Error(errData.error || "Error al eliminar");
+                    throw new Error(errData.error || "Error al eliminar en el servidor");
                 }
-            } catch (err) { window.showAlert('Error', err.message, 'error'); }
+            } catch (err) { 
+                window.showAlert('Error', err.message, 'error'); 
+            }
         }
-      }
+    }
     });
   });
 })();

@@ -73,7 +73,7 @@ exports.obtenerAlquileres = async (req, res) => {
         const { data: aCambiar, error: errCheck } = await supabase
             .from('Alquileres')
             .select('idAlquiler, estado')
-            .in('estado', ['ENTREGADO', 'PENDIENTE'])
+            .in('estado', ['ENTREGADO', 'PENDIENTE', 'SERVICIO REALIZADO'])
             .lte('fechaHasta', hoy);
 
         if (errCheck) console.error("Error al verificar vencimientos:", errCheck.message);

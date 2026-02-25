@@ -47,7 +47,7 @@
         if (!res.ok) return [];
         const data = await res.json();
         
-        const estadosPermitidos = ['ENTREGADO', 'SERVICIO PENDIENTE', 'PARA RETIRAR'];
+        const estadosPermitidos = ['ENTREGADO', 'SERVICIO REALIZADO', 'PARA RETIRAR'];
 
         return data.filter(a => {
           const estadoActual = String(a.estado || '').toUpperCase().trim();
