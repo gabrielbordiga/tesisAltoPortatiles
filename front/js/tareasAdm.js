@@ -225,7 +225,9 @@
     const tareasEmp = tareas.filter(t => String(t.idUsuarios) === String(idActivo));
 
     tbody.innerHTML = tareasEmp.map(t => {
-        const alq = alquileres.find(a => String(a.idAlquiler) === String(t.idAlquiler)) || t.alquiler;
+        // Normalizamos el ID para no tener problemas
+        const idReal = t.idTarea || t.idtarea || t.id;
+        const alq = alquileres.find(a => String(a.idAlquiler || a.idalquiler) === String(t.idAlquiler)) || t.alquiler;
         
         let clienteNombre = 'Cliente desconocido';
         if (alq && alq.idCliente) {
@@ -235,22 +237,22 @@
         
         return `
         <tr>
-          <td>
-              <div style="font-weight:600; color:var(--rojo); font-size: 14px;">${alq?.ubicacion || 'Sin ubicación'}</div>
-              <div style="font-size:12px; color:#555; font-weight:500;">👤 ${clienteNombre}</div>
+          <td data-label="UBICACIÓN / CLIENTE">
+              <div style="font-weight:600; color:var(--rojo); font-size: 15px;">${alq?.ubicacion || 'Sin ubicación'}</div>
+              <div style="font-size:13px; color:#555; font-weight:500;">👤 ${clienteNombre}</div>
               <div style="font-size:11px; color:#888; margin-top:2px;">Pedido #${t.idAlquiler}</div>
           </td>
-          <td>${formatDetalle(alq?.lineas)}</td>
-          <td>${t.detalle || '-'}</td>
-          <td>
-            <div style="display:flex; align-items:center; gap:10px;">
-                <input type="checkbox" class="check-tarea" data-id="${t.idTarea || t.id}" ${t.completada ? 'checked' : ''} 
-                       style="width:18px; height:18px; cursor:pointer;">
-                <label style="font-size:12px; font-weight:600; color:${t.completada ? 'green' : '#999'};">
+          <td data-label="DATOS">${formatDetalle(alq?.lineas)}</td>
+          <td data-label="DETALLE">${t.detalle || '-'}</td>
+          <td data-label="ACCION">
+            <div style="display:flex; align-items:center; justify-content: space-between; width: 100%;">
+                <label style="font-size:12px; font-weight:700; color:${t.completada ? 'green' : '#999'};">
                     ${t.completada ? 'TERMINADO' : 'PENDIENTE'}
                 </label>
-                
-                ${esAdmin ? `<button class="btn-icon-delete" data-del="${t.id}" title="Eliminar tarea" style="margin-left:auto; background:none; border:none; cursor:pointer; font-size:1.1em;">🗑</button>` : ''}
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <input type="checkbox" class="check-tarea" data-id="${idReal}" ${t.completada ? 'checked' : ''}>
+                    ${esAdmin ? `<button class="btn-icon-delete" data-del="${idReal}" title="Eliminar" style="background:none; border:none; cursor:pointer; font-size:1.4em;">🗑</button>` : ''}
+                </div>
             </div>
           </td>
         </tr>`;
@@ -475,16 +477,27 @@ async function handleGuardarTarea() {
         const id = chk.dataset.id;
         const completada = chk.checked;
         try {
-            await fetch(`${API_TAREAS}/${id}`, {
+            const res = await fetch(`${API_TAREAS}/${id}`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('ap_token')}`
+                },
                 body: JSON.stringify({ completada })
             });
-            // Buscamos por .id para actualizar el estado local
-            const t = tareas.find(x => String(x.id) === String(id));
-            if (t) t.completada = completada;
-            renderTabla(); 
-        } catch (err) { chk.checked = !completada; }
+
+            if (res.ok) {
+                // Actualizamos el estado local para que el render refleje el cambio
+                const t = tareas.find(x => String(x.idTarea || x.idtarea || x.id) === String(id));
+                if (t) t.completada = completada;
+                renderTabla(); 
+            } else {
+                chk.checked = !completada; // Revertir si falló el servidor
+            }
+        } catch (err) { 
+            console.error(err);
+            chk.checked = !completada; 
+        }
       }
 
         if (btnDel) {

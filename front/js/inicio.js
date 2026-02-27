@@ -158,22 +158,28 @@
 
     btnAbrir.addEventListener('click', () => {
       modal.classList.remove('hidden');
+      
       if (!calendarInstance) {
         calendarInstance = new FullCalendar.Calendar(calendarEl, {
           initialView: 'dayGridMonth',
           locale: 'es',
-          headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listWeek' },
+          height: 'auto', 
+          contentHeight: 'auto',
+          aspectRatio: 1.35, 
+          headerToolbar: { 
+            left: 'prev,next', 
+            center: 'title', 
+            right: 'today'
+          },
           events: fetchAllEvents,
           dateClick: (info) => openModalRecordatorio(info.dateStr),
           eventClick: handleEventClick
         });
         calendarInstance.render();
-      } else {
-        setTimeout(() => {
-          calendarInstance.updateSize();
-          calendarInstance.refetchEvents();
-        }, 100);
       }
+      setTimeout(() => {
+        calendarInstance.updateSize();
+      }, 200);
     });
     if (btnCerrar) btnCerrar.addEventListener('click', () => modal.classList.add('hidden'));
   }
@@ -181,18 +187,19 @@
   async function fetchAllEvents(info, successCallback, failureCallback) {
     try {
       const h = getHeaders();
-      const [resA, resT, resR] = await Promise.all([
-        fetch(API_ALQUILERES, { headers: h }),
-        fetch(API_TAREAS, { headers: h }),
-        fetch(API_RECORDATORIOS, { headers: h })
+      
+      // QUITAMOS API_TAREAS de aquí para que no de error 404
+      const [resA, resR] = await Promise.all([
+        fetch(API_ALQUILERES, { headers: h }).catch(() => ({ ok: false })),
+        fetch(API_RECORDATORIOS, { headers: h }).catch(() => ({ ok: false }))
       ]);
+
       const alquileres = resA.ok ? await resA.json() : [];
-      const tareas = resT.ok ? await resT.json() : [];
       const recordatoriosBD = resR.ok ? await resR.json() : [];
       
       const eventosFinales = [];
 
-      // A. Recordatorios (Puntos)
+      // A. Recordatorios
       recordatoriosBD.forEach(r => {
         eventosFinales.push({
           id: r.id,
@@ -205,7 +212,7 @@
         });
       });
 
-      // B. Alquileres (Barras de corrido)
+      // B. Alquileres
       alquileres.forEach(a => {
         const c = clientesCache.find(x => String(x.idCliente) === String(a.idCliente));
         const nom = c ? (c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial) : 'Cliente';
@@ -226,18 +233,11 @@
         }
       });
 
-      // C. Tareas
-      tareas.forEach(t => {
-        eventosFinales.push({
-          title: `Tarea: ${t.usuario?.nombre || 'Pendiente'}`,
-          start: t.fecha,
-          backgroundColor: t.completada ? '#28a745' : '#ec1f26',
-          extendedProps: { tipo: 'TAREA', detalle: t.descripcion }
-        });
-      });
-
       successCallback(eventosFinales);
-    } catch (e) { failureCallback(e); }
+    } catch (e) { 
+      console.error("Error en calendario:", e);
+      successCallback([]); 
+    }
   }
 
   // =========================================================
@@ -346,17 +346,17 @@
         const colorDisp = u.disponibles > 0 ? 'green' : 'red';
         return `
           <tr>
-            <td style="font-weight: 500;">${u.nombre}</td>
-            <td><span style="font-weight:bold; color:${colorDisp};">${u.disponibles}</span></td>
-            <td>
+            <td data-label="Unidad" style="font-weight: 500;">${u.nombre}</td>
+            <td data-label="Disponibles"><span style="font-weight:bold; color:${colorDisp};">${u.disponibles}</span></td>
+            <td data-label="Alquiladas">
                 <span style="font-weight:bold; color:orange; cursor:pointer; text-decoration:underline;" 
                       onclick="window.verDetalleAlquiladas('${u.idTipo}', '${u.nombre}')">
                     ${u.alquiladas}
                 </span>
             </td>
-            <td><span style="font-weight:bold; color:#666;">${u.servicio}</span></td>
-            <td>$${(u.precio || 0).toLocaleString('es-AR')}</td>
-            <td>
+            <td data-label="En servicio"><span style="font-weight:bold; color:#666;">${u.servicio}</span></td>
+            <td data-label="Precio">$${(u.precio || 0).toLocaleString('es-AR')}</td>
+            <td data-label="Acciones">
               <button class="action danger" data-accion="${u.idTipo}" data-nombre="${u.nombre}" data-precio="${u.precio}">
                 Editar
               </button>

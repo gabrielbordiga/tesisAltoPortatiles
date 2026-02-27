@@ -111,26 +111,29 @@ function applyRoleVisibility(role) {
 // --- LÓGICA PRINCIPAL ---
 document.addEventListener("DOMContentLoaded", async () => {
     
-    // --- LOGICA OJITO CONTRASEÑA ---
-    document.addEventListener("click", (e) => {
-        const toggleBtn = e.target.closest("#togglePassword");
-        if (!toggleBtn) return;
+    // --- LOGICA OJITO CONTRASEÑA (INVERSA) ---
+    document.addEventListener("click", (e) => {
+        const toggleBtn = e.target.closest("#togglePassword");
+        if (!toggleBtn) return;
 
-        const passwordInput = document.getElementById("password");
-        if (!passwordInput) return;
+        const passwordInput = document.getElementById("password");
+        if (!passwordInput) return;
 
-        e.preventDefault();
-        const isPassword = passwordInput.type === "password";
-        passwordInput.type = isPassword ? "text" : "password";
+        e.preventDefault();
+        
+        const isPasswordNow = passwordInput.type === "password";
+        passwordInput.type = isPasswordNow ? "text" : "password";
+        const nuevoIcono = (passwordInput.type === "text") ? "eye" : "eye-off";
 
-        toggleBtn.setAttribute("data-lucide", isPassword ? "eye-off" : "eye");
-        if (window.lucide) {
-            window.lucide.createIcons();
-            const newIcon = document.querySelector('[data-lucide="' + (isPassword ? "eye-off" : "eye") + '"]');
-            if (newIcon) newIcon.id = "togglePassword";
-        }
-        toggleBtn.style.color = isPassword ? "#ec1f26" : "#999";
-    });
+        toggleBtn.setAttribute("data-lucide", nuevoIcono);
+
+        if (window.lucide) {
+            window.lucide.createIcons();
+            const newIconElement = document.querySelector('[data-lucide="' + nuevoIcono + '"]');
+            if (newIconElement) newIconElement.id = "togglePassword";
+        }
+        toggleBtn.style.color = (passwordInput.type === "text") ? "#ec1f26" : "#999";
+    });
 
     if (window.lucide) window.lucide.createIcons();
 

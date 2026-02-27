@@ -19,41 +19,42 @@ body {
     height: 100%;
     width: 100%;
     background: var(--black);
-    /* fondo negro total */
-    overflow: hidden;
+    overflow: hidden; 
 }
 
-.container {
+
+.login-container, .container {
     position: relative;
     height: 100vh;
     width: 100vw;
 }
 
-/* LOGO */
+/* --- LOGO --- */
 .left {
-  position: relative;
-  height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    pointer-events: none; 
 }
 
-/* Centramos el logo entre el borde izquierdo y el panel blanco */
 .logo {
-  position: absolute;
-  top: 50%;
-  left: calc((100% - 30% - 40%)/2); 
-  transform: translateY(-50%);
-  width: 500px;
-  height: auto;
+    position: absolute;
+    top: 50%;
+    left: calc((100% - 30% - 15%)/2); 
+    transform: translate(-50%, -50%); 
+    width: 500px;
+    height: auto;
+    display: block;
 }
 
-/* PANEL BLANCO: vertical de arriba a abajo */
 .panel {
     position: absolute;
     top: 0;
     bottom: 0;
-    right: 15%;
-    /* deja margen negro a la derecha */
+    right: 15%; 
     width: 30%;
-    /* ancho del panel blanco */
     background: var(--white);
     display: flex;
     justify-content: center;
@@ -61,13 +62,12 @@ body {
     box-shadow: -4px 0 30px rgba(0, 0, 0, 0.5);
 }
 
-/* FORMULARIO */
+/* --- FORMULARIO --- */
 .form {
     display: flex;
     flex-direction: column;
     gap: 1rem;
     width: 80%;
-    max-width: 880px;
 }
 
 .title {
@@ -81,12 +81,8 @@ label {
     flex-direction: column;
     gap: 0.4rem;
     font-size: 0.9rem;
-    color: #555;
-}
-
-.parrafo {
-    font-size: 0.8rem;
-    color: #555;
+    color: #333;
+    font-weight: 500;
 }
 
 input {
@@ -97,58 +93,97 @@ input {
     outline: none;
 }
 
-input:focus {
-    border-color: #bbb;
-}
+input:focus { border-color: #bbb; }
 
 .forgot {
     font-size: 0.8rem;
     color: var(--gray);
     text-decoration: none;
+    text-align: right;
 }
 
-.forgot:hover {
-    text-decoration: underline;
+.parrafo {
+    font-size: 0.8rem;
+    color: #555;
 }
 
 button {
     background: var(--btn-bg);
     color: var(--btn-text);
     border: none;
-    border-radius: 6px;
-    padding: 10px;
+    border-radius: 8px;
+    padding: 12px;
     font-size: 0.9rem;
     cursor: pointer;
     transition: 0.2s;
 }
 
-button:hover {
-    opacity: 0.9;
+button:hover { opacity: 0.9; }
+
+.forgot {
+    font-size: 0.8rem;
+    color: var(--gray);
+    text-decoration: none;
+    display: inline-block; 
+    margin-top: 5px;
 }
 
-/* RESPONSIVE */
+.forgot:hover {
+    text-decoration: underline;
+}
+
+.form .forgot {
+    text-align: left;
+    align-self: flex-start; 
+}
+
+.back-link {
+    display: block;     
+    text-align: left;  
+    margin-top: 15px;    
+    width: 100%;        
+}
+
+/* --- RESPONSIVE ) --- */
 @media (max-width: 900px) {
-    .panel {
-        position: static;
-        width: 90%;
-        margin: 2rem auto;
-        box-shadow: none;
+    body, html {
+        overflow: auto; 
+    }
+
+    .container, .login-container {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
     }
 
     .left {
-        display: none;
+        position: static;
+        height: 200px;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex: none;
+    }
+
+    .logo {
+        position: static;
+        transform: none;
+        width: 180px; 
+        margin: 0 auto;
+    }
+
+    .panel {
+        position: static;
+        width: 100%;
+        flex: 1; 
+        padding: 40px 20px;
+        border-radius: 20px 20px 0 0;
+        box-shadow: 0 -5px 15px rgba(0,0,0,0.2);
+    }
+    
+    .form {
+        max-width: 100%;
     }
 }
-
-button {
-  background: var(--btn-bg);
-  color: var(--btn-text);
-  border: none;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: .2s;
-}
-button:hover { opacity: .9; }
-label { color: #333; font-weight: 500; }

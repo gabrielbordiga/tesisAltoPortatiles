@@ -631,153 +631,6 @@ body.dashboard-body{
 }
 .leaflet-container{width:100%;height:100%;}
 
-/* =========================================================
-   RESPONSIVE
-   ========================================================= */
-
-/* <= 980px: sidebar colapsa a íconos */
-@media (max-width:980px){
-  body.dashboard-body{overflow:auto;}
-  .layout{grid-template-columns: var(--sidebar-w-collapsed) 1fr;}
-  .brand{display:none;}
-
-  .side-nav .item{
-    justify-content:center;
-    padding:12px 0;
-    gap:0;
-  }
-  .side-nav .item span{display:none;}
-  .icon-svg{width:24px;height:24px;}
-
-  .content{padding:16px;}
-  .toolbar{flex-direction:column;align-items:stretch;}
-  .input-wrap.w-60{width:100%;}
-  .form-grid{grid-template-columns:1fr;}
-
-  /* Reportes se achica */
-  .reportes-filtros{grid-template-columns:repeat(2, minmax(0,1fr));}
-  .charts-wrap{grid-template-columns:1fr;}
-}
-
-/* <= 768px: sidebar pasa arriba como barra horizontal */
-@media (max-width:768px){
-  .layout{
-    grid-template-columns:1fr;
-    grid-template-rows:auto 1fr;
-  }
-
-  .sidebar{
-    flex-direction:row;
-    align-items:center;
-    gap:10px;
-    padding:8px;
-    position:sticky;
-    top:0;
-    z-index:1000;
-  }
-
-  .whoami{display:none;} /* en móvil ocupa mucho */
-  .side-nav{
-    flex-direction:row;
-    gap:6px;
-    padding:0;
-    overflow-x:auto;
-    width:100%;
-  }
-
-  .side-nav .item{
-    padding:10px 12px;
-    border-radius:10px;
-    white-space:nowrap;
-  }
-
-  .logout{
-    margin-top:0;
-    padding:0;
-  }
-  .logout .logout-item{
-    padding:10px 12px;
-    border-radius:10px;
-  }
-
-  .content{padding:12px;}
-
-  .tabs-toggle{width:100%;justify-content:center;}
-  .tabs-btn{padding:8px 18px;font-size:13px;}
-
-  /* Reportes a 1 columna */
-  .reportes-filtros{grid-template-columns:1fr;}
-
-  /* Calendario más compacto */
-  #calendar{max-width:100%;}
-  .fc .fc-toolbar-title{font-size:16px;}
-}
-
-/* <= 520px: botones y acciones apilables */
-@media (max-width:520px){
-  .btn{width:100%;}
-  .form-actions,
-  .form-actions.right{
-    flex-direction:column;
-    align-items:stretch;
-  }
-
-  .tabla th,.tabla td{padding:10px 10px;font-size:13px;}
-
-  .titulo-logistica{font-size:20px;}
-  .card-calendar-title h1{font-size:20px;}
-
-  /* Mapa más bajo en celulares */
-  #map,#mapa,.map-container{
-    height: calc(100vh - 220px);
-    min-height: 320px;
-  }
-}
-
-/* =========================================================
-   TABLAS "STACK" (MÓVIL) -> SOLO para .tabla-stack
-   IMPORTANTE: requiere data-label en cada <td>
-   ========================================================= */
-@media (max-width:600px){
-  .tabla-stack thead{display:none;}
-
-  .tabla-stack,
-  .tabla-stack tbody,
-  .tabla-stack tr,
-  .tabla-stack td{
-    display:block;
-    width:100%;
-  }
-
-  .tabla-stack tr{
-    background:#fff;
-    border:1px solid var(--gris-linea);
-    border-radius:10px;
-    margin-bottom:10px;
-    overflow:hidden;
-  }
-
-  .tabla-stack td{
-    display:flex;
-    justify-content:space-between;
-    gap:12px;
-    padding:10px 12px;
-    border-top:1px solid var(--gris-linea);
-  }
-  .tabla-stack td:first-child{border-top:none;}
-
-  .tabla-stack td::before{
-    content: attr(data-label);
-    font-weight:600;
-    color:#444;
-    min-width:120px;
-  }
-
-  .tabla-stack td.acciones,
-  .tabla-stack td:last-child{
-    justify-content:flex-end;
-  }
-}
 
 /* =========================================================
    OTROS BLOQUES VARIOS
@@ -1054,8 +907,6 @@ canvas {
     border-color: #dcedc8;
 }
 
-
-/* Contenedor para que el select y el botón estén pegados */
 .input-group {
     display: flex;
     align-items: center; 
@@ -1063,7 +914,6 @@ canvas {
     margin-top: 4px;  
 }
 
-/* Ajuste para que el select ocupe el espacio disponible si es necesario */
 #metodoPago {
     flex: 1; 
 }
@@ -1076,8 +926,6 @@ canvas {
     margin-top: 10px;
 }
 
-
-/* Contenedor que agrupa el buscador y los botones */
 .select-with-plus {
     display: flex;
     align-items: center;
@@ -1096,13 +944,11 @@ canvas {
 #modalGestionUnidades { z-index: 1000 !important; }
 #modalNuevoTipoUnidad { z-index: 2000 !important; }
 
-/* Aseguramos que el contenido del modal también suba */
 #modalNuevoTipoUnidad .modal {
     z-index: 2001 !important;
     position: relative;
 }
 
-/* Estilo para el ojito de password */
 #togglePassword {
     opacity: 0.7;
 }
@@ -1135,3 +981,298 @@ canvas {
     width: 40px;
     text-align: right;
 }
+
+/* =========================================================
+    RESPONSIVE DASHBOARD
+   ========================================================= */
+@media (max-width: 768px) {
+  .layout { 
+    grid-template-columns: 1fr; 
+    grid-template-rows: auto 1fr; 
+  }
+
+  .sidebar { 
+    flex-direction: row !important; 
+    align-items: center; 
+    padding: 8px !important; 
+    position: sticky; 
+    top: 0; 
+    z-index: 1000;
+    background: var(--negro);
+    display: flex !important;
+    width: 100% !important;
+    justify-content: center !important; 
+  }
+
+  .side-nav { 
+    flex-direction: row !important; 
+    padding: 0; 
+    margin: 0 !important;
+    overflow: hidden !important; 
+    display: flex !important;
+    gap: 8px !important; 
+    flex: 0 0 auto; 
+  }
+
+  .side-nav .item { 
+    padding: 10px 14px !important; 
+    background: #1a1a1a; 
+    border-radius: 8px; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 50px; 
+  }
+
+  .icon-svg {
+    width: 24px !important; 
+    height: 24px !important;
+  }
+
+  .side-nav .item span, .whoami, .brand { 
+    display: none !important; 
+  }
+
+  .logout { 
+    display: flex !important; 
+    margin-left: 8px !important; 
+    padding: 0 !important;
+    flex: 0 0 auto;
+  }
+  .tabla-wrap, .card {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tabla:not(.tabla-inicio):not(.tabla-stack) {
+    min-width: 700px !important;
+    width: 100%;
+  }
+
+  .tabla:not(.tabla-inicio) th, 
+  .tabla:not(.tabla-inicio) td {
+    padding: 10px 8px !important;
+    font-size: 12px !important;
+    white-space: nowrap;
+  }
+
+  .card-tareas-tabla, 
+  .card-tareas-tabla .tabla-wrap,
+  .card-tareas-tabla .tabla-stack {
+    width: 100% !important;
+    min-width: 0 !important; 
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .card-tareas-tabla thead { display: none; }
+
+  .card-tareas-tabla tbody tr {
+    display: flex !important;
+    flex-direction: column !important;
+    background: #fff;
+    border: 1px solid var(--gris-linea);
+    border-radius: 12px;
+    margin-bottom: 15px;
+    padding: 16px !important; /* Un poco más de aire */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .card-tareas-tabla tbody td {
+    display: block !important;
+    width: 100% !important;
+    padding: 6px 0 !important;
+    border: none !important;
+    white-space: normal !important; 
+    /* Cambiamos break-all por break-word para que no rompa palabras cortas como ESTADO */
+    word-break: break-word !important; 
+    overflow-wrap: break-word !important;
+    font-size: 14px !important;
+  }
+
+  /* Título de ubicación: más pro */
+  .card-tareas-tabla tbody td:first-child {
+    font-weight: 600;
+    color: var(--rojo);
+    border-bottom: 1px solid #f0f0f0 !important;
+    margin-bottom: 8px;
+    font-size: 15px !important;
+    line-height: 1.4;
+  }
+
+  /* SECCION DEL CHECKBOX: Alineación perfecta */
+  .card-tareas-tabla tbody td:last-child {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    border-top: 1px solid #eee !important;
+    margin-top: 12px;
+    padding-top: 15px !important;
+  }
+
+  /* El label de "ESTADO:" ahora no se va a romper */
+  .card-tareas-tabla tbody td:last-child::before {
+    content: "ESTADO:";
+    font-size: 12px;
+    font-weight: 700;
+    color: #555;
+    letter-spacing: 0.5px;
+    flex-shrink: 0; /* Evita que el texto se achique */
+  }
+
+  /* EL CHECKBOX GIGANTE (Mantenemos tu estilo pero aseguramos visibilidad) */
+  .check-tarea {
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    width: 38px !important;
+    height: 38px !important;
+    border: 2px solid var(--rojo) !important; /* Un borde un poco más fino es más elegante */
+    border-radius: 10px !important;
+    background: #fff !important;
+    position: relative !important;
+    flex: 0 0 38px !important; 
+    cursor: pointer !important;
+    margin: 0 0 0 10px !important; /* Espacio con el tacho de basura */
+  }
+
+  .check-tarea:checked { background: var(--rojo) !important; }
+  .check-tarea:checked::after {
+    content: '✔' !important;
+    position: absolute !important;
+    top: 45% !important; left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    color: white !important;
+    font-size: 22px !important;
+  }
+  
+  /* El tacho de basura que se vea alineado */
+  .btn-icon-delete {
+    font-size: 20px !important;
+    opacity: 0.6;
+    margin-left: 10px;
+  }
+
+  .kpi-container { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+  .charts-grid, .charts-wrap { 
+    grid-template-columns: 1fr !important; 
+    display: flex !important; 
+    flex-direction: column !important; 
+    gap: 20px; 
+  }
+
+  .chart-block { width: 100% !important; min-height: 320px !important; }
+  canvas { max-height: 250px !important; }
+
+
+  /* --- ARREGLO MINI TABLA GESTIÓN --- */
+  .mini-table-block {
+    padding: 8px !important;
+    background: #f9f9f9 !important;
+    border: 1px solid #eee !important;
+    overflow-x: auto !important; 
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tabla-mini {
+    min-width: 450px !important; 
+  }
+
+  .tabla-mini th, .tabla-mini td {
+    padding: 10px 8px !important;
+    font-size: 12px !important;
+  }
+
+  #modalCalendarioGrande .modal {
+    margin-top: 60px !important; 
+    height: 80vh !important;  
+    width: 95% !important;
+  }
+
+  .reportes-filtros {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important; 
+    gap: 15px !important;
+    align-items: flex-end;
+  }
+
+  .reportes-filtros .filtro-item:nth-child(3) {
+    grid-column: 1 / -1; 
+  }
+
+  .reportes-filtros .filtro-btn {
+    grid-column: 1 / -1 !important; 
+    display: flex !important;
+    flex-direction: column !important; 
+    align-items: stretch !important; 
+    justify-content: center !important;
+    gap: 12px !important;
+    width: 100% !important;
+    padding: 0 !important;    
+    margin: 15px 0 0 0 !important; 
+  }
+
+  .reportes-filtros .btn {
+    width: 100% !important;
+    margin-left: 0 !important;  
+    margin-right: 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    height: 48px !important;  
+  }
+}
+
+@media (max-width: 600px) {
+  .tabla-inicio thead {
+    display: none;
+  }
+  .tabla-inicio tr {
+    display: block !important;
+    background: #fff;
+    border: 1px solid var(--gris-linea);
+    border-radius: 12px;
+    margin-bottom: 15px;
+    padding: 12px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+  }
+  .tabla-inicio td {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center;
+    padding: 10px 5px !important;
+    border-top: 1px solid #eee;
+  }
+  .tabla-inicio td:first-child {
+    border-top: none;
+    background: #fdfdfd;
+    font-weight: bold;
+  }
+  .tabla-inicio td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: var(--rojo); 
+    text-align: left;
+    flex: 1;
+    font-size: 12px;
+    text-transform: uppercase;
+  }
+  .tabla-inicio .action {
+    width: auto !important;
+    display: inline-flex !important;
+    padding: 6px 12px !important;
+    font-size: 13px !important;
+  }
+  .tabla-inicio td[data-label="Acciones"] .action.danger {
+    background-color: #f7e7e7 !important; 
+    border: 1px solid #e2bcbc !important; 
+    color: #c62828 !important;
+  }
+}
+
+#modalCalendarioGrande { z-index: 1000 !important; }
+.modal-overlay { z-index: 2000 !important; }
+#modalRecordatorio { z-index: 3000 !important; }
+.swal2-container { z-index: 4000 !important; }
