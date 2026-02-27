@@ -39,6 +39,6 @@ app.use('/api/reportes', reporteRoutes);
 
 // --- INICIO DEL SERVIDOR ---
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`Servidor de Alto Portatiles corriendo en puerto ${PORT}`);
 });
