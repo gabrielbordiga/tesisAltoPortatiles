@@ -11,6 +11,7 @@ router.delete('/proveedores/:id', stockController.eliminarProveedor);
 // Productos
 router.get('/productos', stockController.getProductos);
 router.post('/productos', stockController.crearProducto);
+router.put('/productos/:id', stockController.editarProducto);
 router.delete('/productos/:id', stockController.eliminarProducto);
 
 // Compras

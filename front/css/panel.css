@@ -994,7 +994,7 @@ canvas {
   .sidebar { 
     flex-direction: row !important; 
     align-items: center; 
-    padding: 8px !important; 
+    padding: 4px !important; 
     position: sticky; 
     top: 0; 
     z-index: 1000;
@@ -1010,23 +1010,23 @@ canvas {
     margin: 0 !important;
     overflow: hidden !important; 
     display: flex !important;
-    gap: 8px !important; 
+    gap: 4px !important; 
     flex: 0 0 auto; 
   }
 
   .side-nav .item { 
-    padding: 10px 14px !important; 
+    padding: 8px 10px !important; 
     background: #1a1a1a; 
-    border-radius: 8px; 
+    border-radius: 6px; 
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 50px; 
+    min-width: 35px; 
   }
 
   .icon-svg {
-    width: 24px !important; 
-    height: 24px !important;
+    width: 18px !important; 
+    height: 20px !important;
   }
 
   .side-nav .item span, .whoami, .brand { 
@@ -1035,10 +1035,11 @@ canvas {
 
   .logout { 
     display: flex !important; 
-    margin-left: 8px !important; 
+    margin-left: 6px !important; 
     padding: 0 !important;
     flex: 0 0 auto;
   }
+
   .tabla-wrap, .card {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
@@ -1074,7 +1075,7 @@ canvas {
     border: 1px solid var(--gris-linea);
     border-radius: 12px;
     margin-bottom: 15px;
-    padding: 16px !important; /* Un poco más de aire */
+    padding: 16px !important; 
     box-shadow: 0 4px 12px rgba(0,0,0,0.06);
     width: 100% !important;
     box-sizing: border-box !important;
@@ -1086,13 +1087,11 @@ canvas {
     padding: 6px 0 !important;
     border: none !important;
     white-space: normal !important; 
-    /* Cambiamos break-all por break-word para que no rompa palabras cortas como ESTADO */
     word-break: break-word !important; 
     overflow-wrap: break-word !important;
     font-size: 14px !important;
   }
 
-  /* Título de ubicación: más pro */
   .card-tareas-tabla tbody td:first-child {
     font-weight: 600;
     color: var(--rojo);
@@ -1102,7 +1101,6 @@ canvas {
     line-height: 1.4;
   }
 
-  /* SECCION DEL CHECKBOX: Alineación perfecta */
   .card-tareas-tabla tbody td:last-child {
     display: flex !important;
     flex-direction: row !important;
@@ -1113,29 +1111,27 @@ canvas {
     padding-top: 15px !important;
   }
 
-  /* El label de "ESTADO:" ahora no se va a romper */
   .card-tareas-tabla tbody td:last-child::before {
     content: "ESTADO:";
     font-size: 12px;
     font-weight: 700;
     color: #555;
     letter-spacing: 0.5px;
-    flex-shrink: 0; /* Evita que el texto se achique */
+    flex-shrink: 0; 
   }
 
-  /* EL CHECKBOX GIGANTE (Mantenemos tu estilo pero aseguramos visibilidad) */
   .check-tarea {
     -webkit-appearance: none !important;
     appearance: none !important;
     width: 38px !important;
     height: 38px !important;
-    border: 2px solid var(--rojo) !important; /* Un borde un poco más fino es más elegante */
+    border: 2px solid var(--rojo) !important; 
     border-radius: 10px !important;
     background: #fff !important;
     position: relative !important;
     flex: 0 0 38px !important; 
     cursor: pointer !important;
-    margin: 0 0 0 10px !important; /* Espacio con el tacho de basura */
+    margin: 0 0 0 10px !important; 
   }
 
   .check-tarea:checked { background: var(--rojo) !important; }
@@ -1148,7 +1144,6 @@ canvas {
     font-size: 22px !important;
   }
   
-  /* El tacho de basura que se vea alineado */
   .btn-icon-delete {
     font-size: 20px !important;
     opacity: 0.6;
@@ -1166,23 +1161,123 @@ canvas {
   .chart-block { width: 100% !important; min-height: 320px !important; }
   canvas { max-height: 250px !important; }
 
-
-  /* --- ARREGLO MINI TABLA GESTIÓN --- */
+  /* --- MINI TABLAS EN MÓVIL (GESTIÓN Y PAGOS) --- */
   .mini-table-block {
-    padding: 8px !important;
-    background: #f9f9f9 !important;
+    padding: 10px !important;
+    background: #fdfdfd !important;
     border: 1px solid #eee !important;
+    border-radius: 8px;
+    width: 100% !important;
     overflow-x: auto !important; 
     -webkit-overflow-scrolling: touch;
+    margin-top: 10px;
   }
 
   .tabla-mini {
-    min-width: 450px !important; 
+    display: table !important; 
+    width: auto !important;
+    min-width: 500px !important; 
+    border-collapse: collapse;
   }
 
-  .tabla-mini th, .tabla-mini td {
+  .tabla-mini thead { 
+    display: table-header-group !important; 
+  }
+
+  .tabla-mini th {
+    background: #f4f4f4 !important;
+    color: #666 !important;
+    font-size: 11px !important;
+    text-transform: uppercase;
+    padding: 8px !important;
+    text-align: center !important;
+  }
+
+  .tabla-mini tbody tr {
+    display: table-row !important; 
+    background: #fff !important;
+  }
+
+  .tabla-mini td {
+    display: table-cell !important;
     padding: 10px 8px !important;
-    font-size: 12px !important;
+    font-size: 13px !important;
+    border-bottom: 1px solid #eee !important;
+    text-align: center !important;
+    white-space: nowrap !important; 
+  }
+
+  .col-icon-remove {
+    width: 40px !important;
+    cursor: pointer;
+    color: var(--rojo);
+    font-weight: bold;
+  }
+
+  .sidebar { padding: 4px 6px !important; }
+  .side-nav .item { 
+    min-width: 40px !important; 
+    padding: 8px !important; 
+  }
+
+  .icon-svg { 
+    width: 20px !important; 
+    height: 20px !important; 
+  }
+
+  #modalInfoAlquiler .modal {
+    width: 95% !important;
+    max-width: 95vw !important;
+    margin: 20px auto !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #modalInfoAlquiler .modal-body > div[style*="grid-template-columns:1fr 1fr"] {
+    grid-template-columns: 1fr !important; 
+    gap: 8px !important;
+  }
+
+  #modalInfoAlquiler #infoCliente,
+  #modalInfoAlquiler #infoUbicacion,
+  #modalInfoAlquiler #infoUnidades li {
+    display: block !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    line-height: 1.4;
+  }
+
+  #modalInfoAlquiler .tabla-mini {
+    display: table !important;
+    width: 100% !important;
+    min-width: 350px !important; 
+    margin-top: 10px;
+  }
+
+  #modalInfoAlquiler .tabla-mini {
+    display: block !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #modalInfoAlquiler .form-actions.right {
+    display: flex !important;
+    flex-direction: column !important; 
+    gap: 10px;
+    margin-top: 25px !important;
+  }
+
+  #modalInfoAlquiler .form-actions.right .btn {
+    width: 100% !important;
+    margin: 0 !important;
+    height: 44px !important;
+  }
+
+  #infoEstadoSelect {
+    width: 100% !important;
+    max-width: 180px;
   }
 
   #modalCalendarioGrande .modal {
@@ -1191,39 +1286,127 @@ canvas {
     width: 95% !important;
   }
 
+  .card:has(.reportes-filtros) {
+    overflow: visible !important;
+    padding: 10px !important; 
+  }
+
   .reportes-filtros {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important; 
-    gap: 15px !important;
+    gap: 8px !important; 
     align-items: flex-end;
   }
 
-  .reportes-filtros .filtro-item:nth-child(3) {
-    grid-column: 1 / -1; 
+  .reportes-filtros .filtro-item label {
+    font-size: 11px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .reportes-filtros .input, 
+  .reportes-filtros .select {
+    height: 36px !important; 
+    padding: 6px 8px !important;
+    font-size: 12px !important;
   }
 
   .reportes-filtros .filtro-btn {
-    grid-column: 1 / -1 !important; 
+    grid-column: 1 / -1 !important;
     display: flex !important;
-    flex-direction: column !important; 
-    align-items: stretch !important; 
-    justify-content: center !important;
-    gap: 12px !important;
+    flex-direction: row !important; 
+    gap: 8px !important;
+    margin-top: 10px !important;
     width: 100% !important;
-    padding: 0 !important;    
-    margin: 15px 0 0 0 !important; 
   }
 
   .reportes-filtros .btn {
-    width: 100% !important;
-    margin-left: 0 !important;  
-    margin-right: 0 !important;
+    flex: 1 !important; 
+    height: 38px !important;
+    font-size: 12px !important;
+    padding: 0 10px !important;
+    margin: 0 !important; 
+  }
+
+  .tabla-reportes {
+    display: table !important;
+    min-width: 800px !important;
+  }
+
+  #seccionResultados .tabla-wrap {
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    overflow-x: auto !important;
+    border: 1px solid var(--gris-linea);
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  .tabla-reportes thead th {
+    position: sticky !important;
+    top: 0;
+    z-index: 10;
+    background: #f8f8f8 !important;
+  }
+
+  .kpi-container {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .kpi-card { padding: 8px 12px !important; }
+  .kpi-card h4 { font-size: 1rem !important; }
+
+  .tabs-toggle {
     display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-    height: 48px !important;  
+    justify-content: space-between !important;
+    gap: 4px !important;
+    padding: 4px !important;
+    overflow: visible !important; 
+  }
+
+  .tabs-btn {
+    flex: 1 !important;
+    padding: 8px 4px !important;
+    font-size: 11px !important;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  #tabStock .toolbar {
+    display: flex !important;
+    flex-direction: row !important; 
+    gap: 8px !important;
+    align-items: center;
+  }
+
+  #tabStock .input-wrap {
+    max-width: none !important;
+    flex: 1 !important;
+  }
+
+  #tabStock .input {
+    height: 38px !important;
+    font-size: 12px !important;
+    padding: 0 10px !important;
+  }
+
+  .tabla-stack td[data-label="Cantidad Total"] {
+    font-size: 14px !important;
+    text-align: right !important;
+  }
+
+  #modalEditarStock .modal {
+    width: 90% !important;
+    margin: 20px auto !important;
+  }
+
+  #modalEditarStock h3 {
+    font-size: 16px !important;
+    word-break: break-all; 
   }
 }
+
 
 @media (max-width: 600px) {
   .tabla-inicio thead {
