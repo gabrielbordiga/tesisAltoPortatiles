@@ -320,11 +320,22 @@ document.addEventListener('DOMContentLoaded', () => {
         tablaWrap.style.maxHeight = 'none';
         tablaWrap.style.overflowY = 'visible';
 
+        const originalWidth = elemento.style.width;
+
         try {
+            // 2. FORZAMOS MODO ESCRITORIO (1024px es ideal para A4)
+            // Esto hace que los KPIs y gráficos se pongan uno al lado del otro
+            elemento.style.width = '1024px';
+            
+            // Damos un respiro para que el navegador re-renderice el ancho
+            await new Promise(resolve => setTimeout(resolve, 150));
+
             const canvas = await html2canvas(elemento, {
-                scale: 2,
+                scale: 2, // Calidad alta
                 useCORS: true,
-                backgroundColor: '#ffffff'
+                backgroundColor: '#ffffff',
+                // Evitamos que el scroll del celu moleste la captura
+                windowWidth: 1024 
             });
 
             const imgData = canvas.toDataURL('image/png');
@@ -338,10 +349,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const imgProps = pdf.getImageProperties(imgData);
             const imgHeight = (imgProps.height * contentWidth) / imgProps.width;
 
+            // --- HEADER ROJO ---
             pdf.setFillColor(236, 31, 38); 
             pdf.rect(0, 0, pageWidth, 40, 'F');
 
-            // Título en blanco
             pdf.setTextColor(255, 255, 255);
             pdf.setFont("helvetica", "bold");
             pdf.setFontSize(22);
@@ -352,8 +363,11 @@ document.addEventListener('DOMContentLoaded', () => {
             pdf.text("ALTO PORTÁTILES - Sistema de Administración", margin, 28);
 
             const fechaStr = new Date().toLocaleDateString();
-            pdf.text(`Emisión: ${fechaStr}`, pageWidth - margin - 30, 28);
+            pdf.text(`Emisión: ${fechaStr}`, pageWidth - margin - 35, 28);
 
+            // --- CONTENIDO ---
+            // Si el contenido es más largo que una hoja, addImage lo achicará 
+            // (Si tenés muchísimas filas, acá convendría paginar, pero esto arregla el corte lateral)
             pdf.addImage(imgData, 'PNG', margin, 45, contentWidth, imgHeight);
             
             pdf.save(`Reporte_AltoPortatiles_${Date.now()}.pdf`);
@@ -362,9 +376,11 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error(e);
             window.showAlert('Error', 'Fallo al exportar', 'error');
         } finally {
+            // 3. VOLVEMOS TODO A LA NORMALIDAD
+            elemento.style.width = originalWidth; // Restauramos ancho
             tablaWrap.style.maxHeight = originalMaxHeight;
             tablaWrap.style.overflowY = originalOverflow;
-            btn.textContent = 'Exportar a PDF';
+            btn.textContent = '📄 Exportar a PDF';
             btn.disabled = false;
         }
     });

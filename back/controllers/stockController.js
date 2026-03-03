@@ -161,3 +161,26 @@ exports.eliminarCompra = async (req, res) => {
         res.status(400).json({ error: err.message });
     }
 };
+
+exports.editarProducto = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nombre, unidadMedida, stock_base } = req.body;
+        
+        const { data, error } = await supabase
+            .from('Productos')
+            .update({ 
+                nombre, 
+                unidadMedida, 
+                stock_base, 
+                updated_at: new Date() 
+            })
+            .eq('idProducto', id)
+            .select();
+
+        if (error) throw error;
+        res.json(data[0]);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+};

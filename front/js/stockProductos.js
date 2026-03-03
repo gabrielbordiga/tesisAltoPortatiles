@@ -11,10 +11,10 @@
 
   // DOM
   const tbody = document.getElementById('tbodyMovimientos');
-  const tbodyStock = document.getElementById('tbodyStock'); // Nueva tabla Stock
+  const tbodyStock = document.getElementById('tbodyStock');
   const inpBuscar = document.getElementById('movBuscar');
-  const inpStkBuscar = document.getElementById('stkBuscar'); // Buscador Stock
-  const inpStkFiltroCant = document.getElementById('stkFiltroCant'); // Filtro Cantidad Stock
+  const inpStkBuscar = document.getElementById('stkBuscar');
+  const inpStkFiltroCant = document.getElementById('stkFiltroCant');
   const formMov = document.getElementById('formMovimiento');
   const btnCancelar = document.getElementById('movCancelar');
 
@@ -203,7 +203,6 @@
   }
 
   async function loadData() {
-    injectEditModal();
     try {
       const [resMov, resProd, resProv] = await Promise.all([
         fetch(API_COMPRAS),
@@ -213,15 +212,18 @@
       
       if (resMov.ok) MOVIMIENTOS = await resMov.json();
       if (resProd.ok) {
-            PRODUCTOS = await resProd.json();
-            actualizarComboUnidades();
-        }
+          PRODUCTOS = await resProd.json();
+          if (typeof actualizarComboUnidades === 'function') actualizarComboUnidades();
+      }
       if (resProv.ok) PROVEEDORES = await resProv.json();
       
-      fillSelects();
-      renderTabla();
-      renderStockTable();
-    } catch (e) { console.error(e); }
+      fillSelects(); 
+      renderTabla(); 
+      renderStockTable(); 
+
+    } catch (e) { 
+        console.error("Error cargando datos:", e); 
+    }
   }
 
   function transformToSearchable(el, data, idKey, labelFn, placeholder) {
@@ -281,11 +283,16 @@
   }
 
   function fillSelects() {
-    // Proveedores
-    selProv = transformToSearchable(selProv, PROVEEDORES, 'idProveedor', p => p.nombre, 'Buscar proveedor...');
+    const elProv = document.getElementById('movProveedor');
+    const elProd = document.getElementById('movProducto');
 
-    // Productos
-    selProd = transformToSearchable(selProd, PRODUCTOS, 'idProducto', p => `${p.nombre} (${p.unidadMedida || 'u'})`, 'Buscar producto...');
+    if (elProv && PROVEEDORES.length > 0) {
+      transformToSearchable(elProv, PROVEEDORES, 'idProveedor', p => p.nombre, 'Buscar proveedor...');
+    }
+
+    if (elProd && PRODUCTOS.length > 0) {
+      transformToSearchable(elProd, PRODUCTOS, 'idProducto', p => `${p.nombre} (${p.unidadMedida || 'u'})`, 'Buscar producto...');
+    }
   }
 
   function renderTabla() {
@@ -317,62 +324,52 @@
     `).join('');
   }
 
-  // --- RENDER TABLA STOCK (AGREGADO) ---
+  // --- RENDER TABLA STOCK ---
   function renderStockTable() {
     if (!tbodyStock) return;
-
+    
     const q = (inpStkBuscar ? inpStkBuscar.value : '').toLowerCase().trim();
-    const maxCant = inpStkFiltroCant ? parseFloat(inpStkFiltroCant.value) : NaN;
-    
-    // Calcular stock por producto sumando movimientos
-    const stockMap = {};
-    PRODUCTOS.forEach(p => stockMap[p.idProducto] = 0);
-    
+    const maxCant = (inpStkFiltroCant && inpStkFiltroCant.value) ? parseFloat(inpStkFiltroCant.value) : Infinity;
+
+    const comprasMap = {};
+    PRODUCTOS.forEach(p => comprasMap[p.idProducto] = 0);
     MOVIMIENTOS.forEach(m => {
-      if (stockMap[m.idProducto] !== undefined) {
-        stockMap[m.idProducto] += Number(m.cantidad || 0);
-      }
+        if (comprasMap[m.idProducto] !== undefined) {
+            comprasMap[m.idProducto] += Number(m.cantidad || 0);
+        }
     });
 
-    // Crear lista enriquecida
     let lista = PRODUCTOS.map(p => ({
-      ...p,
-      total: stockMap[p.idProducto] || 0
+        ...p,
+        total: (Number(p.stock_base) || 0) + (comprasMap[p.idProducto] || 0)
     }));
 
-    // Filtrar
+    // Filtrado
     lista = lista.filter(item => {
       const matchText = item.nombre.toLowerCase().includes(q);
-      const matchCant = isNaN(maxCant) || item.total <= maxCant;
+      const matchCant = item.total <= maxCant;
       return matchText && matchCant;
     });
 
-    // Ordenar
+    // Ordenamiento
     lista.sort((a, b) => {
       let valA = stkSort.col === 'cantidad' ? a.total : a.nombre.toLowerCase();
       let valB = stkSort.col === 'cantidad' ? b.total : b.nombre.toLowerCase();
-      
       if (valA < valB) return stkSort.asc ? -1 : 1;
       if (valA > valB) return stkSort.asc ? 1 : -1;
       return 0;
     });
 
-    // Renderizar
-    tbodyStock.innerHTML = lista.map(p => {
-        return `
-            <tr>
-                <td data-label="Producto">${p.nombre}</td>
-                <td data-label="Unidad">${p.unidadMedida || '-'}</td>
-                <td data-label="Cantidad Total" style="font-weight:bold; font-size:1.1em;">${p.total}</td>
-                <td class="acciones">
-                    <button class="action" onclick="window.openEditStock('${p.idProducto}', ${p.total}, '${p.nombre}')">✎ Editar</button>
-                </td>
-            </tr>
-        `;
-    }).join('');
-
-    // Actualizar iconos de ordenamiento
-    updateSortIcons();
+    tbodyStock.innerHTML = lista.map(p => `
+        <tr>
+            <td data-label="Producto">${p.nombre}</td>
+            <td data-label="Unidad">${p.unidadMedida || '-'}</td>
+            <td data-label="Cantidad Total" style="font-weight:bold;">${p.total}</td>
+            <td class="acciones">
+                <button class="action" onclick="window.openEditStock('${p.idProducto}', ${p.total}, '${p.nombre}')">✎ Editar</button>
+            </td>
+        </tr>
+    `).join('');
   }
 
   function updateSortIcons() {
@@ -388,49 +385,44 @@
       lblStkNombre.textContent = nombre;
       inpStkActual.value = current;
       inpStkNuevo.value = current;
-      if (modalEditStock) modalEditStock.classList.remove('hidden');
+      modalEditStock.classList.remove('hidden');
   };
 
   // --- GUARDAR AJUSTE STOCK ---
   if (formEditStock) {
-      formEditStock.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          const idProd = inpStkId.value;
-          const current = Number(inpStkActual.value);
-          const target = Number(inpStkNuevo.value);
-          
-          if (current === target) {
-              modalEditStock.classList.add('hidden');
-              return;
-          }
+    formEditStock.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const idProd = inpStkId.value;
+        const targetTotal = Number(inpStkNuevo.value); 
+        
+        const prod = PRODUCTOS.find(x => x.idProducto == idProd);
+        if(!prod) return;
 
-          const diff = target - current;
-          
-          // Creamos un movimiento de ajuste
-          const payload = {
-              idProducto: idProd,
-              cantidad: diff,
-              fecha: new Date().toISOString().split('T')[0],
-              precio: 0,
-              metodoPago: 'AJUSTE_STOCK',
-              idProveedor: null // Ajuste interno
-          };
-          
-          try {
-               const res = await fetch(API_COMPRAS, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(payload)
-                });
-                if (!res.ok) throw new Error('Error al ajustar stock');
-                
-                window.showAlert('Éxito', 'Stock ajustado', 'success');
-                modalEditStock.classList.add('hidden');
-                loadData();
-          } catch (err) {
-              window.showAlert('Error', err.message, 'error');
-          }
-      });
+        const sumaCompras = MOVIMIENTOS
+            .filter(m => m.idProducto == idProd)
+            .reduce((acc, curr) => acc + Number(curr.cantidad), 0);
+        const nuevoStockBase = targetTotal - sumaCompras;
+
+        try {
+            const res = await fetch(`${API_PROD}/${idProd}`, { 
+                method: 'PUT', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    nombre: prod.nombre,
+                    unidadMedida: prod.unidadMedida,
+                    stock_base: nuevoStockBase 
+                })
+            });
+
+            if (!res.ok) throw new Error('Error al actualizar el producto');
+            
+            window.showAlert('Éxito', 'Stock ajustado correctamente', 'success');
+            modalEditStock.classList.add('hidden');
+            loadData(); 
+        } catch (err) {
+            window.showAlert('Error', err.message, 'error');
+        }
+    });
   }
   
   if (btnCancelStock) btnCancelStock.addEventListener('click', () => modalEditStock.classList.add('hidden'));
@@ -438,29 +430,27 @@
   // Guardar Compra
   formMov.addEventListener('submit', async (e) => {
     e.preventDefault();
-
-    // CAPTURA DE VALORES
-    const provId = selProv.value;
-    const prodId = selProd.value;
+    const provId = document.getElementById('movProveedor').value;
+    const prodId = document.getElementById('movProducto').value;
+    
     const cantidad = inpCant.value;
     const precio = inpPrecio.value;
+    const fecha = inpFecha.value;
 
-    // VALIDACIÓN DETALLADA
-    if (!provId) return window.showAlert('Atención', 'Debe seleccionar un Proveedor.', 'warning');
-    if (!prodId) return window.showAlert('Atención', 'Debe seleccionar un Producto.', 'warning');
+    // VALIDACIÓN
+    if (!provId) return window.showAlert('Atención', 'Debe seleccionar un Proveedor de la lista.', 'warning');
+    if (!prodId) return window.showAlert('Atención', 'Debe seleccionar un Producto de la lista.', 'warning');
     if (!cantidad || cantidad <= 0) return window.showAlert('Atención', 'La cantidad debe ser mayor a cero.', 'warning');
     if (!precio || precio <= 0) return window.showAlert('Atención', 'El precio debe ser un valor positivo.', 'warning');
 
     const payload = {
       idProveedor: provId,
       idProducto: prodId,
-      fecha: inpFecha.value,
+      fecha: fecha,
       cantidad: cantidad,
       precio: precio,
       metodoPago: selMetodo.value ? selMetodo.value.toUpperCase() : null
     };
-
-    if (!payload.idProveedor || !payload.idProducto) return window.showAlert('Atención', 'Complete todos los campos', 'warning');
 
     try {
       const res = await fetch(API_COMPRAS, {
@@ -471,8 +461,12 @@
       if (!res.ok) throw new Error('Error al registrar compra');
       
       window.showAlert('Éxito', 'Compra registrada', 'success');
+      
       formMov.reset();
-      loadData(); // Recargar tabla
+      const txtInputs = formMov.querySelectorAll('input[type="text"]');
+      txtInputs.forEach(inp => inp.value = ''); 
+      
+      loadData(); 
     } catch (err) { window.showAlert('Error', err.message, 'error'); }
   });
 
