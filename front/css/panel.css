@@ -1,5 +1,5 @@
 /* =========================================================
-   PANEL / DASHBOARD - ALTO PORTÁTILES (LIMPIO + RESPONSIVE)
+   PANEL / DASHBOARD - ALTO PORTÁTILES 
    ========================================================= */
 :root{
   --rojo:#ec1f26;
@@ -268,39 +268,51 @@ body.dashboard-body{
 /* =========================================================
    MODALES (ÚNICO BLOQUE)
    ========================================================= */
-.modal-overlay{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.45);
-  display:flex;                
-  align-items:center;
-  justify-content:center;
-  z-index:999;
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000 !important;
+    padding: 10px; 
 }
 
-.modal-overlay.hidden{
-  display:none !important;      
+.modal {
+    background: var(--gris-card);
+    border-radius: 12px;
+    border: 1px solid var(--gris-linea);
+    width: min(520px, 100%);
+    max-height: 92vh; 
+    box-shadow: 0 8px 30px rgba(0, 0, 0, .35);
+    display: flex; 
+    flex-direction: column;
+    overflow: hidden;
 }
 
-.modal{
-  background:var(--gris-card);
-  border-radius:10px;
-  border:1px solid var(--gris-linea);
-  width:min(520px, 92vw);
-  box-shadow:0 8px 30px rgba(0,0,0,.35);
-  overflow:hidden;
+.modal-header {
+    background: var(--rojo);
+    color: #fff;
+    padding: 14px 22px;
+    font-weight: 600;
+    text-align: center;
+    letter-spacing: .5px;
+    flex-shrink: 0; 
 }
-.modal.modal-small{width:min(420px, 92vw);}
 
-.modal-header{
-  background:var(--rojo);
-  color:#fff;
-  padding:14px 22px;
-  font-weight:600;
-  text-align:center;
-  letter-spacing:.5px;
+.modal-body {
+    padding: 18px 22px;
+    overflow-y: auto; 
+    flex-grow: 1; 
+    -webkit-overflow-scrolling: touch; 
 }
-.modal-body{padding:18px 22px 20px;}
+
+.modal .form-actions {
+    margin-top: 16px;
+    flex-shrink: 0; 
+    padding-bottom: 4px;
+}
 
 .form-vertical{
   display:flex;
@@ -1405,6 +1417,17 @@ canvas {
     font-size: 16px !important;
     word-break: break-all; 
   }
+
+  .form-actions {
+        display: flex;
+        flex-direction: column-reverse; 
+        gap: 8px;
+    }
+
+    .form-actions .btn {
+        width: 100% !important;
+        margin: 0 !important;
+    }
 }
 
 
