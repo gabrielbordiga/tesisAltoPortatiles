@@ -19,13 +19,11 @@ async function enriquecerConNombres(data) {
 
     const getNombre = (id) => {
         if (!id) return 'Sin ID';
-        // Lógica en cadena: Detalle -> Unidades -> Tipo
         const u = unidades.find(x => String(x.idUnidad) === String(id));
         if (u) {
             const t = tipos.find(x => String(x.idTipo) === String(u.idTipo));
             if (t) return t.nombre;
         }
-        // Fallback: ID directo de tipo (por si acaso)
         const tDirect = tipos.find(x => String(x.idTipo) === String(id));
         if (tDirect) return tDirect.nombre;
         return 'Desconocido';
@@ -34,7 +32,7 @@ async function enriquecerConNombres(data) {
     list.forEach(a => {
         if (a.lineas && Array.isArray(a.lineas)) {
             a.lineas = a.lineas.map(l => {
-                if (l.unidad) return l; // Ya tiene nombre
+                if (l.unidad) return l;
                 const id = l.idUnidad || l.idunidad;
                 return { ...l, unidad: getNombre(id) };
             });
@@ -42,11 +40,9 @@ async function enriquecerConNombres(data) {
     });
 }
 
-// Helper para parsear pagos (compatibilidad con monto en metodo)
 function parsearPagos(listaPagos) {
     if (!listaPagos) return [];
     return listaPagos.map(p => {
-        // Si no tiene monto pero el método tiene el formato "Metodo | Monto"
         if ((p.monto === null || p.monto === undefined) && p.metodo && String(p.metodo).includes(' | ')) {
             const parts = p.metodo.split(' | ');
             const posibleMonto = parseFloat(parts[parts.length - 1]);
@@ -58,7 +54,6 @@ function parsearPagos(listaPagos) {
     });
 }
 
-// Helper para normalizar texto (Mayúsculas y sin acentos)
 const normalizeMetodo = (m) => {
     if (!m) return null;
     return String(m).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
@@ -82,13 +77,11 @@ exports.obtenerAlquileres = async (req, res) => {
         if (aCambiar && aCambiar.length > 0) {
             const ids = aCambiar.map(a => a.idAlquiler);
 
-            // Actualización masiva de estado
             await supabase
                 .from('Alquileres')
                 .update({ estado: 'PARA RETIRAR' })
                 .in('idAlquiler', ids);
 
-            // Creación masiva de registros en el historial
             const entradasHistorial = aCambiar.map(a => ({
                 idAlquiler: a.idAlquiler,
                 detalle: `VENCIMIENTO: Estado cambiado de ${a.estado} a PARA RETIRAR`, 
@@ -161,8 +154,7 @@ exports.obtenerAlquilerPorId = async (req, res) => {
 
     if (error) {
         console.error("❌ Error al obtener alquiler por ID con detalles:", error.message);
-        
-        // Fallback manual
+
         const { data: alq, error: errAlq } = await supabase
             .from('Alquileres')
             .select('*')
@@ -171,8 +163,6 @@ exports.obtenerAlquilerPorId = async (req, res) => {
             
         if (errAlq) return res.status(400).json({ error: errAlq.message });
 
-        // Cargar detalles específicos
-        // Intentamos con 'idAlquiler' y si no trae nada, probamos 'idalquiler' (minúsculas)
         let d = [];
         let resD = await supabase.from('DetalleAlquiler').select('*').eq('idAlquiler', id);
         if (resD.error || !resD.data?.length) resD = await supabase.from('DetalleAlquiler').select('*').eq('idalquiler', id);
@@ -316,31 +306,40 @@ exports.actualizarAlquiler = async (req, res) => {
     const { id } = req.params;
     const { idCliente, ubicacion, fechaDesde, fechaHasta, lineas, pagos, estado, precioTotal, idUsuarioEjecutor } = req.body;
 
-    // 1. Validar disponibilidad
+    const total = Number(precioTotal);
+    const pagado = (pagos || []).reduce((acc, p) => acc + Number(p.monto || 0), 0);
+    const saldo = total - pagado;
+
+    let estadoFinal = estado ? estado.toUpperCase() : 'PENDIENTE';
+
+    if (estadoFinal === 'FINALIZADO' && saldo > 0) {
+        estadoFinal = 'RETIRADO';
+    } else if (estadoFinal === 'RETIRADO' && saldo <= 0) {
+        estadoFinal = 'FINALIZADO';
+    }
+
     const v = await validarDisponibilidadReal(lineas, fechaDesde, fechaHasta, id);
     if (!v.ok) return res.status(400).json({ error: v.msg });
 
-    // 2. Actualizar cabecera
     await supabase.from('Alquileres').update({
-        idCliente, ubicacion,
+        idCliente, 
+        ubicacion,
         fechaDesde: fechaDesde || null,
         fechaHasta: fechaHasta || null,
-        precioTotal: precioTotal,
-        estado: estado ? estado.toUpperCase() : 'PENDIENTE',
+        precioTotal: total,
+        estado: estadoFinal,
         updated_at: new Date()
     }).eq('idAlquiler', id);
 
-    // 3. ACTUALIZAR LÍNEAS 
     if (lineas && Array.isArray(lineas) && lineas.length > 0) {
         const lineasInsert = [];
         for (const l of lineas) {
             const idTipoBusqueda = l.idTipo || l.idUnidad || l.idunidad;
-            
             if (!idTipoBusqueda) continue;
 
             const { data: u } = await supabase.from('Unidades')
                 .select('idUnidad')
-                .eq('idTipo', idTipoBusqueda) 
+                .eq('idTipo', idTipoBusqueda)
                 .limit(1).single();
 
             if (u) {
@@ -359,7 +358,6 @@ exports.actualizarAlquiler = async (req, res) => {
         }
     }
 
-    // 4. Actualizar Pagos 
     if (pagos) {
         await supabase.from('Pagos').delete().eq('idAlquiler', id);
         if (pagos.length > 0) {
@@ -374,13 +372,10 @@ exports.actualizarAlquiler = async (req, res) => {
         }
     }
 
-    const detalleHistorial = estado 
-    ? `Alquiler actualizado - Nuevo estado: ${estado.toUpperCase()}` 
-    : `Alquiler actualizado (cambio de datos generales)`;
-
+    const detalleHistorial = `Cambio de estado a ${estadoFinal}. Saldo: ${saldo}`;
     await registrarHistorial(id, detalleHistorial, idUsuarioEjecutor);
 
-    res.json({ mensaje: 'Actualizado correctamente' });
+    res.json({ mensaje: 'Actualizado correctamente', estado: estadoFinal });
 };
 
 // Eliminar alquiler
@@ -406,7 +401,7 @@ const registrarHistorial = async (idAlquiler, detalle, idUsuarios = null) => {
             fecha: new Date().toISOString()
         };
 
-        if (idUsuarios) {
+        if (idUsuarios && idUsuarios !== 'null' && idUsuarios !== undefined) {
             dataToInsert.idUsuarios = idUsuarios;
         }
 
@@ -414,7 +409,7 @@ const registrarHistorial = async (idAlquiler, detalle, idUsuarios = null) => {
             .from('HistorialAlquileres')
             .insert([dataToInsert]);
 
-        if (error) console.error("❌ Error Supabase al insertar historial:", error.message);
+        if (error) console.error("❌ Error Supabase historial:", error.message);
     } catch (err) { 
         console.error("❌ Error crítico registrarHistorial:", err.message); 
     }
@@ -422,7 +417,6 @@ const registrarHistorial = async (idAlquiler, detalle, idUsuarios = null) => {
 
 // Nueva ruta para obtener el historial 
 exports.obtenerHistorial = async (req, res) => {
-
     const { id } = req.params;
     try {
         const { data, error } = await supabase
@@ -450,25 +444,23 @@ exports.obtenerHistorial = async (req, res) => {
 // FUNCIÓN MAESTRA DE VALIDACIÓN DE STOCK
 async function validarDisponibilidadReal(lineas, fDesde, fHasta, idAlquilerExcluir = null) {
     if (!lineas || !Array.isArray(lineas) || lineas.length === 0) return { ok: true };
-    if (!fDesde || !fHasta) return { ok: false, msg: "Faltan fechas para validar" };
+    if (!fDesde || !fHasta) return { ok: false, msg: "Faltan fechas" };
 
     try {
         const { data: stockFisico } = await supabase.from('Unidades').select('stock, idTipo');
 
-        // Usamos .not('Alquileres.estado', 'in', ...) asegurando que los strings coincidan
         const { data: ocupacion, error: errOcup } = await supabase
             .from('DetalleAlquiler')
             .select('cantidad, idUnidad, Unidades!inner(idTipo), Alquileres!inner(idAlquiler, fechaDesde, fechaHasta, estado)')
             .lte('Alquileres.fechaDesde', fHasta)
             .gte('Alquileres.fechaHasta', fDesde)
-            .not('Alquileres.estado', 'in', '("FINALIZADO", "CANCELADO", "RETIRADO")');
+            .not('Alquileres.estado', 'in', '("FINALIZADO", "CANCELADO")');
 
         if (errOcup) throw errOcup;
 
         for (const linea of lineas) {
-            // Normalizamos el ID para evitar errores de comparación
             const idModeloBuscado = String(linea.idTipo || linea.idUnidad || '').trim();
-            if (!idModeloBuscado || idModeloBuscado === 'undefined') continue;
+            if (!idModeloBuscado) continue;
 
             const totalEmpresa = (stockFisico || [])
                 .filter(s => String(s.idTipo).trim() === idModeloBuscado)
@@ -478,19 +470,16 @@ async function validarDisponibilidadReal(lineas, fDesde, fHasta, idAlquilerExclu
                 .filter(o => {
                     const idModeloEnDB = String(o.Unidades?.idTipo).trim();
                     const idAlquilerOcupante = String(o.Alquileres?.idAlquiler);
-                    // No contamos el alquiler que estamos editando actualmente
                     return idModeloEnDB === idModeloBuscado && idAlquilerOcupante !== String(idAlquilerExcluir);
                 })
                 .reduce((acc, c) => acc + (Number(c.cantidad) || 0), 0);
 
             if (totalEmpresa > 0 && (yaReservado + Number(linea.cantidad)) > totalEmpresa) {
-                const realesLibres = totalEmpresa - yaReservado;
-                return { ok: false, msg: `Stock insuficiente para esas fechas. Disponibles: ${realesLibres}` };
+                return { ok: false, msg: `Stock insuficiente.` };
             }
         }
         return { ok: true };
     } catch (err) {
-        console.error("❌ Error en validación de stock:", err.message);
-        return { ok: false, msg: "Error técnico al verificar stock" };
+        return { ok: false, msg: "Error técnico" };
     }
 }
