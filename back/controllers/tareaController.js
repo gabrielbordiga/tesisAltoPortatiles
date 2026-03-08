@@ -49,16 +49,15 @@ exports.crearTarea = async (req, res) => {
 
 exports.actualizarEstadoTarea = async (req, res) => {
     const { id } = req.params;
-    const { completada } = req.body;
+    const { completada, idUsuarioEjecutor } = req.body; 
 
     try {
-        // 1. Obtenemos datos de la tarea y del alquiler vinculado 
+        // 1. Obtenemos datos de la tarea
         const { data: tarea, error: errT } = await supabase
             .from('Tareas')
             .select(`
                 detalle, 
                 idAlquiler,
-                idUsuarios,
                 alquiler:Alquileres(precioTotal, pagos:Pagos(monto))
             `)
             .eq('id', id)
@@ -66,7 +65,7 @@ exports.actualizarEstadoTarea = async (req, res) => {
 
         if (errT) throw errT;
 
-        // 2. Actualizamos la tarea en sí
+        // 2. Actualizamos la tarea
         const { data: tareaActualizada, error: errUpdate } = await supabase
             .from('Tareas')
             .update({ completada })
@@ -85,7 +84,6 @@ exports.actualizarEstadoTarea = async (req, res) => {
                 nuevoEstado = "ENTREGADO";
             } 
             else if (detalleTarea.includes("SERVICIO")) {
-                console.log("✅ Detectada tarea de SERVICIO. Cambiando alquiler a SERVICIO REALIZADO");
                 nuevoEstado = "SERVICIO REALIZADO";
             }
             else if (detalleTarea.includes("RETIRAR")) {
@@ -95,25 +93,29 @@ exports.actualizarEstadoTarea = async (req, res) => {
             }
 
             if (nuevoEstado) {
-                console.log(`Intentando actualizar Alquiler ${tarea.idAlquiler} a estado: ${nuevoEstado}`);
-                
-                const { data: resUpdate, error: errAlqUpdate } = await supabase
+                const { error: errAlqUpdate } = await supabase
                     .from('Alquileres')
                     .update({ estado: nuevoEstado })
-                    .eq('idAlquiler', tarea.idAlquiler)
-                    .select();
+                    .eq('idAlquiler', tarea.idAlquiler);
 
                 if (errAlqUpdate) {
-                    console.error("❌ ERROR DE SUPABASE AL ACTUALIZAR ALQUILER:", errAlqUpdate.message);
+                    console.error("❌ Error actualizando alquiler:", errAlqUpdate.message);
                 } else {
-                    console.log("✅ ALQUILER ACTUALIZADO EXITOSAMENTE:", resUpdate);
+                    const detalleHistorial = `Tarea completada: ${tarea.detalle}. Estado cambiado a ${nuevoEstado}`;
+                    
+                    await supabase.from('HistorialAlquileres').insert([{
+                        idAlquiler: tarea.idAlquiler,
+                        detalle: detalleHistorial,
+                        fecha: new Date().toISOString(),
+                        idUsuarios: idUsuarioEjecutor 
+                    }]);
                 }
             }
         }
 
         res.json(tareaActualizada);
     } catch (err) {
-        console.error("Error en automatización de estados:", err.message);
+        console.error("Error en automatización:", err.message);
         res.status(400).json({ error: err.message });
     }
 };

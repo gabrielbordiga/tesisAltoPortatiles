@@ -313,8 +313,8 @@
         <td data-label="Fecha">${formatFecha(m.fecha)}</td>
         <td data-label="Proveedor">${m.Proveedores?.nombre || 'Desconocido'}</td>
         <td data-label="Producto">${m.Productos?.nombre || 'Desconocido'}</td>
-        <td data-label="Cantidad">${m.cantidad} ${m.Productos?.unidadMedida || ''}</td>
-        <td data-label="Precio">$${Number(m.precio).toLocaleString('es-AR')}</td>
+        <td data-label="Cantidad" class="text-right">${m.cantidad} ${m.Productos?.unidadMedida || ''}</td>
+        <td data-label="Precio" class="text-right">$${Number(m.precio).toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
         <td data-label="Método">${m.metodoPago || '-'}</td>
         <td class="acciones">
           <button class="action" onclick="window.editMovimiento('${m.idCompra}')">Editar</button>
@@ -364,7 +364,7 @@
         <tr>
             <td data-label="Producto">${p.nombre}</td>
             <td data-label="Unidad">${p.unidadMedida || '-'}</td>
-            <td data-label="Cantidad Total" style="font-weight:bold;">${p.total}</td>
+            <td data-label="Cantidad Total" class="text-right" style="font-weight:bold;">${p.total}</td>
             <td class="acciones">
                 <button class="action" onclick="window.openEditStock('${p.idProducto}', ${p.total}, '${p.nombre}')">✎ Editar</button>
             </td>

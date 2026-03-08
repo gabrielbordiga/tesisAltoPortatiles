@@ -343,25 +343,25 @@
     }
 
     tbody.innerHTML = data.map(u => {
-        const colorDisp = u.disponibles > 0 ? 'green' : 'red';
-        return `
-          <tr>
-            <td data-label="Unidad" style="font-weight: 500;">${u.nombre}</td>
-            <td data-label="Disponibles"><span style="font-weight:bold; color:${colorDisp};">${u.disponibles}</span></td>
-            <td data-label="Alquiladas">
-                <span style="font-weight:bold; color:orange; cursor:pointer; text-decoration:underline;" 
-                      onclick="window.verDetalleAlquiladas('${u.idTipo}', '${u.nombre}')">
-                    ${u.alquiladas}
-                </span>
-            </td>
-            <td data-label="En servicio"><span style="font-weight:bold; color:#666;">${u.servicio}</span></td>
-            <td data-label="Precio">$${(u.precio || 0).toLocaleString('es-AR')}</td>
-            <td data-label="Acciones">
-              <button class="action danger" data-accion="${u.idTipo}" data-nombre="${u.nombre}" data-precio="${u.precio}">
-                Editar
-              </button>
-            </td>
-          </tr>`;
+      const colorDisp = u.disponibles > 0 ? 'green' : 'red';
+      return `
+        <tr>
+          <td data-label="Unidad" style="font-weight: 500;">${u.nombre}</td>
+          <td data-label="Disponibles" class="text-right"><span style="font-weight:bold; color:${colorDisp};">${u.disponibles}</span></td>
+          <td data-label="Alquiladas" class="text-right">
+              <span style="font-weight:bold; color:orange; cursor:pointer; text-decoration:underline;" 
+                    onclick="window.verDetalleAlquiladas('${u.idTipo}', '${u.nombre}')">
+                  ${u.alquiladas}
+              </span>
+          </td>
+          <td data-label="En servicio" class="text-right"><span style="font-weight:bold; color:#666;">${u.servicio}</span></td>
+          <td data-label="Precio" class="text-right">$${(u.precio || 0).toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+          <td data-label="Acciones">
+            <button class="action danger" data-accion="${u.idTipo}" data-nombre="${u.nombre}" data-precio="${u.precio}">
+              Editar
+            </button>
+          </td>
+        </tr>`;
     }).join('');
   }
 

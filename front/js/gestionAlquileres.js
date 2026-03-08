@@ -38,15 +38,18 @@
     try {
       const res = await fetch(API_UNIDADES);
       const data = res.ok ? await res.json() : [];
-      console.log("Unidades cargadas:", data); // Para depuración
+      console.log("Unidades cargadas:", data); 
       return data;
     } catch (e) { return []; }
   }
 
   function formatMoneda(n) {
     if (n == null || isNaN(n)) return '-';
-    return '$' + Number(n).toLocaleString('es-AR');
-  }
+    return '$' + Number(n).toLocaleString('es-AR', {
+        minimumFractionDigits: 2, 
+        maximumFractionDigits: 2
+    });
+}
 
   function diffDias(f1, f2) {
     if (!f1 || !f2) return 1;
@@ -70,17 +73,16 @@
 
   function estadoDesdeSaldo({ total, pagado, saldo }) {
     if (saldo <= 0 && total > 0) return 'COMPLETO';
-    return 'PARCIAL';
+    if (pagado > 0 && saldo > 0) return 'PARCIAL';a
+    return 'PENDIENTE DE PAGO';
   }
 
-  // Helper para mostrar fecha amigable (DD/MM/YYYY) aunque se guarde como YYYY-MM-DD
   function formatFechaVisual(f) {
     if (!f) return '-';
     if (f.match(/^\d{4}-\d{2}-\d{2}$/)) {
       const [y, m, d] = f.split('-');
       return `${d}/${m}/${y}`;
     }
-    // Intento de parsear ISO string completo (YYYY-MM-DDTHH:mm:ss)
     if (f.includes('T')) {
         const [fechaPart] = f.split('T');
         if (fechaPart) return formatFechaVisual(fechaPart);
@@ -91,14 +93,13 @@
   // ------ Estado global de la pantalla ------
   let ALQUILERES = [];
   let UNIDADES_DISPONIBLES_RANGO = [];
-  let currentId = null;   // null = nuevo
-  let lineas = [];        // unidades del alquiler que se está editando
-  let pagos  = [];        // pagos del alquiler que se está editando
-  let ubicacionValida = false; // Para verificar que la ubicación existe
+  let currentId = null;   
+  let lineas = [];  
+  let pagos  = [];      
+  let ubicacionValida = false; 
   let userLat = null, userLon = null;
-  let sortState = { col: null, asc: true }; // Estado de ordenamiento
+  let sortState = { col: null, asc: true }; 
 
-  // Obtener ubicación actual para ordenar sugerencias
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(p => {
       userLat = p.coords.latitude;
@@ -112,9 +113,8 @@
   let selUnidad, inpCantidad, tbodyLineas;
   let inpMontoPagado, selMetodoPago, btnAgregarPago, tbodyPagos;
   let modalInfo, btnCerrarInfo;
-  let inpClienteNombre; // Input de texto para búsqueda con datalist
+  let inpClienteNombre; 
 
-  // Helper distancia (Haversine)
   function getDistancia(lat1, lon1, lat2, lon2) {
     const R = 6371; // km
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -138,21 +138,17 @@
     if (!input || input.dataset.autocompleteInit) return;
     input.dataset.autocompleteInit = 'true';
 
-    // Wrapper para posicionar la lista
     const wrapper = document.createElement('div');
     wrapper.style.position = 'relative';
     wrapper.style.width = '100%';
     
-    // Insertar wrapper y mover input dentro
     input.parentNode.insertBefore(wrapper, input);
     wrapper.appendChild(input);
 
-    // Crear lista UL
     const ul = document.createElement('ul');
     ul.className = 'suggestions-list hidden';
     wrapper.appendChild(ul);
 
-    // Crear mensaje de error (NUEVO)
     const errorMsg = document.createElement('div');
     errorMsg.style.color = 'var(--rojo)';
     errorMsg.style.fontSize = '12px';
@@ -164,11 +160,9 @@
 
     const fetchAddress = async (q) => {
         try {
-            // Usamos Nominatim (OpenStreetMap)
-            // Pedimos 10 para tener margen de ordenamiento
+
             let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&addressdetails=1&limit=10`;
-            
-            // Si tenemos ubicación, enviamos viewbox para ayudar a la API
+
             if (userLat && userLon) {
                 const box = [userLon-0.5, userLat+0.5, userLon+0.5, userLat-0.5].join(',');
                 url += `&viewbox=${box}`;
@@ -177,7 +171,6 @@
             const res = await fetch(url);
             if (res.ok) {
                 let data = await res.json();
-                // Ordenar por cercanía si tenemos coordenadas
                 if (userLat && userLon) {
                     data.sort((a, b) => getDistancia(userLat, userLon, a.lat, a.lon) - getDistancia(userLat, userLon, b.lat, b.lon));
                 }
@@ -202,8 +195,7 @@
         }
         data.forEach(item => {
             const li = document.createElement('li');
-            
-            // Formatear dirección: Calle Nro, Barrio, Ciudad
+
             const a = item.address || {};
             const calle = a.road || a.pedestrian || '';
             const nro = a.house_number || '';
@@ -211,12 +203,12 @@
             const ciudad = a.city || a.town || a.village || a.municipality || '';
 
             let texto = [calle + (nro ? ' ' + nro : ''), barrio, ciudad].filter(Boolean).join(', ');
-            if (!texto || !calle) texto = item.display_name; // Fallback si no hay datos suficientes
+            if (!texto || !calle) texto = item.display_name; 
 
             li.textContent = texto;
             li.addEventListener('click', () => {
                 input.value = texto;
-                ubicacionValida = true; // Validado
+                ubicacionValida = true; 
                 updateValidationUI();
                 ul.classList.add('hidden');
                 input.classList.remove('is-invalid');
@@ -228,7 +220,7 @@
 
     const onInput = debounce((e) => {
         const val = e.target.value.trim();
-        ubicacionValida = false; // Al escribir se invalida hasta seleccionar
+        ubicacionValida = false; 
         if (val.length < 3) {
             ul.classList.add('hidden');
             return;
@@ -242,7 +234,6 @@
         onInput(e);
     });
 
-    // Cerrar lista si click fuera
     document.addEventListener('click', (e) => {
         if (!wrapper.contains(e.target)) ul.classList.add('hidden');
     });
@@ -253,7 +244,7 @@
     const div = document.createElement('div');
     div.id = 'modalRegistroAlquiler';
     div.className = 'modal-overlay hidden';
-    div.style.zIndex = '1001'; // Por encima del modal de info
+    div.style.zIndex = '1001'; 
     div.innerHTML = `
       <div class="modal">
         <div class="modal-header">Registro de Cambios</div>
@@ -336,20 +327,16 @@
     `;
     document.body.appendChild(div);
 
-    // Evento para guardar el cambio de estado desde el modal
     document.getElementById('btnUpdateEstado').addEventListener('click', async () => {
       const id = document.getElementById('infoIdHidden').value;
       const nuevoEstado = document.getElementById('infoEstadoSelect').value;
-      
-      // Obtenemos el usuario logueado desde el localStorage
+
       const userSession = JSON.parse(localStorage.getItem('ap_current') || '{}');
       const idUsuarioLogueado = userSession.idUsuarios || userSession.id;
-      
-      // Buscamos el alquiler actual para preservar sus datos obligatorios
+ 
       const alq = ALQUILERES.find(a => String(a.idAlquiler || a.idalquiler) === String(id));
       if (!alq) return;
 
-      // Preparamos payload incluyendo el idUsuarioEjecutor
       const payload = {
           idCliente: alq.idCliente || alq.idcliente,
           ubicacion: alq.ubicacion,
@@ -357,7 +344,7 @@
           fechaHasta: alq.fechaHasta || alq.fechahasta,
           precioTotal: alq.precioTotal !== undefined ? alq.precioTotal : alq.preciototal,
           estado: nuevoEstado,
-          idUsuarioEjecutor: idUsuarioLogueado // Identificamos quién realiza el cambio
+          idUsuarioEjecutor: idUsuarioLogueado 
       };
 
       try {
@@ -374,7 +361,6 @@
           
           window.showAlert('Éxito', 'Estado actualizado', 'success');
           
-          // Recargamos datos de fondo
           ALQUILERES = await loadAlquileres();
           renderTablaAlquileres(txtBuscar ? txtBuscar.value : '');
           
@@ -401,8 +387,7 @@
 
       try {
           if (!id || id === 'undefined') throw new Error("ID de alquiler no válido.");
-          
-          // Llamada a la nueva ruta que configuraremos en el backend
+
           const res = await fetch(`${API_URL}/${id}/historial`);
           if (!res.ok) throw new Error('No se pudo cargar el historial.');
           
@@ -442,7 +427,6 @@
 
     if (!tbody || !form) return false;
 
-    // Transformar el SELECT de clientes en un INPUT + DATALIST
     const originalSel = document.getElementById('alqCliente');
     if (originalSel && originalSel.tagName === 'SELECT') {
       const container = document.createElement('div');
@@ -460,23 +444,21 @@
 
       const hid = document.createElement('input');
       hid.type = 'hidden';
-      hid.id = 'alqCliente'; // Mismo ID para mantener compatibilidad
+      hid.id = 'alqCliente';
 
       originalSel.parentNode.replaceChild(container, originalSel);
       container.appendChild(inpClienteNombre);
       container.appendChild(dl);
       container.appendChild(hid);
 
-      selCliente = hid; // selCliente ahora apunta al hidden input (guarda el ID)
+      selCliente = hid; 
 
-      // Al escribir, buscamos el ID correspondiente en el cache
       inpClienteNombre.addEventListener('input', () => {
         const val = inpClienteNombre.value;
         const found = CLIENTES_CACHE.find(c => getClienteLabel(c) === val);
         selCliente.value = found ? found.idCliente : '';
       });
     } else {
-      // Fallback por si ya se transformó
       selCliente = document.getElementById('alqCliente');
       inpClienteNombre = document.getElementById('alqClienteInput');
     }
@@ -504,13 +486,10 @@
       btnCerrarInfo.addEventListener('click', () => modalInfo.classList.add('hidden'));
     }
 
-    // Cambiar nombre de columna Saldo a Pendiente dinámicamente
     const headers = document.querySelectorAll('th');
     const table = tbody.closest('table');
     if (table) {
         const ths = table.querySelectorAll('thead th');
-        // Mapeo de índices a claves de ordenamiento
-        // 1: Cliente, 3: Fecha, 5: Estado, 6: Pendiente
         const mapSort = {
             1: 'nombreCliente',
             3: 'fechaDesde',
@@ -541,19 +520,15 @@
   function renderTablaAlquileres(filtro = '') {
     const q = String(filtro || '').trim().toLowerCase();
 
-    // 1. Pre-procesar datos (Enriquecer)
     let data = ALQUILERES.map(a => {
-        // Mapear idCliente a Nombre usando la caché
         const c = CLIENTES_CACHE.find(x => String(x.idCliente) === String(a.idCliente));
         const nombreCliente = c 
           ? (c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial) 
           : 'Cliente desconocido';
-        
-        // Normalizar ID por si viene en minúsculas desde el backend
+
         const idAlquiler = a.idAlquiler || a.idalquiler;
 
         const dias = diffDias(a.fechaDesde, a.fechaHasta);
-        // Usar precioTotal de la BD si existe, sino calcularlo de las líneas
         const totalLineas = (a.lineas || []).reduce((acc, l) => acc + l.cantidad * (l.precioUnit || l.precioUnitario || 0), 0);
         const total = a.precioTotal !== undefined ? Number(a.precioTotal) : (totalLineas * dias);
         const pagado = (a.pagos || []).reduce((acc, p) => acc + Number(p.monto || 0), 0);
@@ -574,8 +549,6 @@
         data.sort((a, b) => {
             let valA = a[sortState.col];
             let valB = b[sortState.col];
-
-            // Manejo de strings case-insensitive y nulos
             if (typeof valA === 'string') valA = valA.toLowerCase();
             if (typeof valB === 'string') valB = valB.toLowerCase();
             if (valA == null) valA = '';
@@ -596,12 +569,10 @@
         const fDesde = a.fechaDesde ? formatFechaVisual(a.fechaDesde) : '';
         const fHasta = a.fechaHasta ? formatFechaVisual(a.fechaHasta) : '';
         const fechaRango = (fDesde && fHasta) ? `${fDesde} - ${fHasta} (${a.dias} días)` : (fDesde || fHasta || '-');
-
-        // Acortar visualmente el ID si es muy largo (ej. UUID)
         const idRaw = String(a.idAlquiler);
         const idDisplay = idRaw.length > 8 ? idRaw.slice(0, 8) + '...' : idRaw.padStart(3, '0');
 
-        // --- LÓGICA DE ESTADOS RESALTADOS ---
+        // --- LÓGICA DE ESTADOS ---
         const estadoRaw = a.estado || 'PENDIENTE';
         const estadoClase = estadoRaw.toLowerCase().replace(/ /g, '-');
 
@@ -613,7 +584,7 @@
           <td>${fechaRango}</td>
           <td>${unidadesTexto}</td>
           <td><span class="status-badge ${estadoClase}">${estadoRaw}</span></td>
-          <td>${formatMoneda(a.saldo)}</td>
+          <td class="text-right">${formatMoneda(a.saldo)}</td>
           <td>
             <button class="action info" data-info="${a.idAlquiler}" title="Ver detalles">ℹ</button>
             <button class="action" data-edit="${a.idAlquiler}">Editar</button>
@@ -634,7 +605,6 @@
 
       ths.forEach((th, idx) => {
           if (mapSort[idx]) {
-              // Limpiar iconos previos
               let text = th.textContent.replace(/ [▲▼]$/, '');
               if (sortState.col === mapSort[idx]) {
                   text += sortState.asc ? ' ▲' : ' ▼';
@@ -662,9 +632,7 @@
     const totalSpan = document.querySelector('.mini-table-block .precio-total-resaltado');
     if (totalSpan) totalSpan.textContent = formatMoneda(totales.total);
 
-    renderPagos(); // actualiza saldo en pagos
-
-    // Actualizar stock en el desplegable restando lo que ya está en la grilla
+    renderPagos();
     fillUnidadesSelect();
   }
 
@@ -675,22 +643,17 @@
     const { saldo } = totales;
 
     if (!pagos.length) {
-      tbodyPagos.innerHTML = `
-        <tr>
-          <td colspan="5" style="text-align:center; font-size:13px; color:#777;">
-            Sin pagos registrados.
-          </td>
-        </tr>`;
-      return;
+        tbodyPagos.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:#999;">Sin pagos registrados.</td></tr>`;
+        return;
     }
 
     tbodyPagos.innerHTML = pagos.map((p, i) => `
       <tr>
         <td>${formatFechaVisual(p.fecha)}</td>
-        <td>${formatMoneda(p.monto)}</td>
+        <td class="text-right">${formatMoneda(p.monto)}</td>
         <td>${p.metodo}</td>
-        <td class="saldo-pendiente">${formatMoneda(saldo)}</td>
-        <td class="col-icon-remove" data-pago="${i}">✖</td>
+        <td class="text-right monto-salida">${formatMoneda(saldo)}</td>
+        <td class="col-icon-remove" data-pago="${i}">×</td>
       </tr>
     `).join('');
   }
@@ -700,15 +663,11 @@
     if (!modalInfo) return;
     
     const idReal = a.idAlquiler || a.idalquiler;
-    // Calcular datos
-    // Cliente
     const c = CLIENTES_CACHE.find(x => String(x.idCliente) === String(a.idCliente));
     const nombreCliente = c 
         ? (c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial) 
         : 'Cliente desconocido';
 
-    // Totales
-    // Normalizar precioUnitario vs precioUnit
     const lineasNorm = (a.lineas || []).map(l => ({
       ...l,
       precioUnit: l.precioUnit !== undefined ? l.precioUnit : l.precioUnitario
@@ -729,7 +688,7 @@
     document.getElementById('infoId').textContent = idReal || '-';
     document.getElementById('infoCliente').textContent = nombreCliente;
     document.getElementById('infoUbicacion').textContent = a.ubicacion || '-';
-    document.getElementById('infoEstadoSelect').value = estadoAlquiler; // Seteamos el select
+    document.getElementById('infoEstadoSelect').value = estadoAlquiler; 
     document.getElementById('infoEstadoPago').textContent = estadoPago;
 
     const fDesde = a.fechaDesde ? formatFechaVisual(a.fechaDesde) : '';
@@ -1043,131 +1002,114 @@ function renderizarOpcionesUnidad(lista) {
       }
     });
 
-    // Guardar alquiler (alta/edición)
     form.addEventListener('submit', async e => {
-      e.preventDefault();
+        e.preventDefault();
 
-      // 1. CAPTURA INICIAL DE VARIABLES
-      const idCliente = selCliente.value; 
-      const fDesde = inpDesde.value;
-      const fHasta = inpHasta.value;
-      const ubicacion = inpUbicacion.value.trim();
+        const idCliente = selCliente.value; 
+        const fDesde = inpDesde.value;
+        const fHasta = inpHasta.value;
+        const ubicacion = inpUbicacion.value.trim();
 
-      // --- NUEVAS VALIDACIONES DE FECHA ---
-      const fDesdeDate = new Date(fDesde);
-      const fHastaDate = new Date(fHasta);
-      const hoy = new Date();
-      const añoActual = hoy.getFullYear();
+        const fDesdeDate = new Date(fDesde);
+        const fHastaDate = new Date(fHasta);
+        const hoy = new Date();
+        const añoActual = hoy.getFullYear();
 
-      console.log("ID del Cliente a enviar:", idCliente); 
-      if (!idCliente) {
-          return window.showAlert('Error', 'Selecciona un cliente de la lista desplegable', 'error');
-      }
-
-      // A. Validar campos básicos
-      if (!idCliente || !lineas.length || !fDesde || !fHasta) {
-          return window.showAlert('Atención', 'Completa cliente, fechas y al menos una unidad.', 'warning');
-      }
-
-      // B. Validar que no sea un año muy viejo 
-      if (fDesdeDate.getFullYear() < (añoActual - 1)) {
-          return window.showAlert('Fecha Inválida', `La fecha de inicio no puede ser anterior a ${añoActual - 1}.`, 'error');
-      }
-
-      // C. Validar que la duración no sea eterna 
-      const limiteFuturo = new Date();
-      limiteFuturo.setFullYear(añoActual + 2);
-      if (fHastaDate > limiteFuturo) {
-          return window.showAlert('Rango Excesivo', 'El periodo de alquiler no puede superar los 2 años a futuro.', 'error');
-      }
-
-      // D. Validar coherencia (ya lo hace el navegador, pero por seguridad)
-      if (fHastaDate < fDesdeDate) {
-          return window.showAlert('Error', 'La fecha de fin no puede ser anterior a la de inicio.', 'error');
-      }
-
-      try {
-
-        const resCheck = await fetch(`/api/unidades/disponibilidad?desde=${fDesde}&hasta=${fHasta}&excluir=${currentId || ''}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('ap_token')}` }
-        });
-        const disponibilidadFresca = await resCheck.json();
-
-        for (const linea of lineas) {
-            const infoServer = disponibilidadFresca.find(u => String(u.idTipo) === String(linea.idTipo));
-            
-            if (infoServer) {
-                let unidadesQueYaTeniaEstePedido = 0;
-                // Si estoy EDITANDO, le sumo al disponible lo que este pedido ya ocupaba
-                if (currentId) {
-                    const alqOriginal = ALQUILERES.find(a => String(a.idAlquiler || a.idalquiler) === String(currentId));
-                    const lineaOriginal = alqOriginal?.lineas?.find(l => String(l.idTipo || l.idUnidad) === String(linea.idTipo));
-                    unidadesQueYaTeniaEstePedido = lineaOriginal ? (Number(lineaOriginal.cantidad) || 0) : 0;
-                }
-
-                const cupoMaximoParaEsteCliente = Number(infoServer.disponibles) + unidadesQueYaTeniaEstePedido;
-
-                if (Number(linea.cantidad) > cupoMaximoParaEsteCliente) {
-                    // SI NO HAY STOCK, CORTAMOS TODO AQUÍ
-                    return window.showAlert(
-                        'Stock Insuficiente', 
-                        `No se puede guardar. Para estas fechas solo quedan ${cupoMaximoParaEsteCliente} unidades de "${linea.unidad}".`, 
-                        'error'
-                    );
-                }
-            }
+        if (!idCliente) {
+            return window.showAlert('Error', 'Selecciona un cliente de la lista desplegable', 'error');
         }
 
-          // 4. DEFINICIÓN DE ESTADO (Soluciona el ReferenceError)
-          let estadoFinal = 'PENDIENTE'; 
-          if (currentId) {
-              const actual = ALQUILERES.find(a => String(a.idAlquiler || a.idalquiler) === String(currentId));
-              if (actual) estadoFinal = actual.estado;
-          }
+        if (!idCliente || !lineas.length || !fDesde || !fHasta) {
+            return window.showAlert('Atención', 'Completa cliente, fechas y al menos una unidad.', 'warning');
+        }
 
-          // 5. PREPARAR PAYLOAD Y GUARDAR
-          const dias = diffDias(fDesde, fHasta);
-          const totalesActuales = calcTotales(lineas, pagos, dias);
+        if (fDesdeDate.getFullYear() < (añoActual - 1)) {
+            return window.showAlert('Fecha Inválida', `La fecha de inicio no puede ser anterior a ${añoActual - 1}.`, 'error');
+        }
 
-          const payload = {
-              idCliente,
-              ubicacion,
-              fechaDesde: fDesde,
-              fechaHasta: fHasta,
-              precioTotal: totalesActuales.total,
-              estado: estadoFinal,
-              lineas: lineas, 
-              pagos: pagos,
-              idUsuarioEjecutor: JSON.parse(localStorage.getItem('ap_current'))?.idUsuarios
-          };
+        const limiteFuturo = new Date();
+        limiteFuturo.setFullYear(añoActual + 2);
+        if (fHastaDate > limiteFuturo) {
+            return window.showAlert('Rango Excesivo', 'El periodo de alquiler no puede superar los 2 años a futuro.', 'error');
+        }
 
-          const method = currentId ? 'PUT' : 'POST';
-          const url = currentId ? `${API_URL}/${currentId}` : API_URL;
-          const user = JSON.parse(localStorage.getItem('ap_current'));
-          console.log("DEBUG ENVÍO:", {
-              cliente: idCliente,
-              usuario: user?.idUsuarios || user?.id,
-              precio: totalesActuales.total
-          });
+        if (fHastaDate < fDesdeDate) {
+            return window.showAlert('Error', 'La fecha de fin no puede ser anterior a la de inicio.', 'error');
+        }
 
-          const res = await fetch(url, {
-              method,
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload)
-          });
+        try {
+            const resCheck = await fetch(`/api/unidades/disponibilidad?desde=${fDesde}&hasta=${fHasta}&excluir=${currentId || ''}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('ap_token')}` }
+            });
+            const disponibilidadFresca = await resCheck.json();
 
-          if (!res.ok) throw new Error((await res.json()).error || 'Error al guardar');
+            for (const linea of lineas) {
+                const infoServer = disponibilidadFresca.find(u => String(u.idTipo) === String(linea.idTipo));
+                if (infoServer) {
+                    let unidadesQueYaTeniaEstePedido = 0;
+                    if (currentId) {
+                        const alqOriginal = ALQUILERES.find(a => String(a.idAlquiler || a.idalquiler) === String(currentId));
+                        const lineaOriginal = alqOriginal?.lineas?.find(l => String(l.idTipo || l.idUnidad) === String(linea.idTipo));
+                        unidadesQueYaTeniaEstePedido = lineaOriginal ? (Number(lineaOriginal.cantidad) || 0) : 0;
+                    }
 
-          window.showAlert('Éxito', 'Alquiler guardado correctamente', 'success');
-          clearFormAlquiler();
-          ALQUILERES = await loadAlquileres();
-          renderTablaAlquileres();
+                    const cupoMaximoParaEsteCliente = Number(infoServer.disponibles) + unidadesQueYaTeniaEstePedido;
+                    if (Number(linea.cantidad) > cupoMaximoParaEsteCliente) {
+                        return window.showAlert('Stock Insuficiente', `Solo quedan ${cupoMaximoParaEsteCliente} unidades de "${linea.unidad}".`, 'error');
+                    }
+                }
+            }
 
-      } catch (err) { 
-          console.error("Error en submit:", err);
-          window.showAlert('Error', err.message, 'error'); 
-      }
-  });
+            const dias = diffDias(fDesde, fHasta);
+            const totalesActuales = calcTotales(lineas, pagos, dias);
+
+            let estadoFinal = 'PENDIENTE'; 
+            if (currentId) {
+                const actual = ALQUILERES.find(a => String(a.idAlquiler || a.idalquiler) === String(currentId));
+                if (actual) {
+                    estadoFinal = actual.estado;
+                    
+                    if (estadoFinal === 'RETIRADO' && totalesActuales.saldo <= 0) {
+                        estadoFinal = 'FINALIZADO';
+                    } else if (estadoFinal === 'FINALIZADO' && totalesActuales.saldo > 0) {
+                        estadoFinal = 'RETIRADO';
+                    }
+                }
+            }
+
+            const payload = {
+                idCliente,
+                ubicacion,
+                fechaDesde: fDesde,
+                fechaHasta: fHasta,
+                precioTotal: totalesActuales.total,
+                estado: estadoFinal,
+                lineas, 
+                pagos,
+                idUsuarioEjecutor: JSON.parse(localStorage.getItem('ap_current'))?.idUsuarios
+            };
+
+            const method = currentId ? 'PUT' : 'POST';
+            const url = currentId ? `${API_URL}/${currentId}` : API_URL;
+
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) throw new Error((await res.json()).error || 'Error al guardar');
+
+            window.showAlert('Éxito', 'Alquiler guardado correctamente', 'success');
+            clearFormAlquiler();
+            ALQUILERES = await loadAlquileres();
+            renderTablaAlquileres();
+
+        } catch (err) { 
+            console.error("Error en submit:", err);
+            window.showAlert('Error', err.message, 'error'); 
+        }
+    });
 
     // arrancamos con el formulario limpio y placeholders seleccionados
     clearFormAlquiler();

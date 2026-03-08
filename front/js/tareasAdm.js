@@ -476,6 +476,10 @@ async function handleGuardarTarea() {
       if (chk) {
         const id = chk.dataset.id;
         const completada = chk.checked;
+        
+        const userSession = JSON.parse(localStorage.getItem('ap_current') || '{}');
+        const idEmpleadoLogueado = userSession.idUsuarios || userSession.id;
+
         try {
             const res = await fetch(`${API_TAREAS}/${id}`, {
                 method: 'PATCH',
@@ -483,22 +487,24 @@ async function handleGuardarTarea() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('ap_token')}`
                 },
-                body: JSON.stringify({ completada })
+                body: JSON.stringify({ 
+                    completada,
+                    idUsuarioEjecutor: idEmpleadoLogueado 
+                })
             });
 
             if (res.ok) {
-                // Actualizamos el estado local para que el render refleje el cambio
                 const t = tareas.find(x => String(x.idTarea || x.idtarea || x.id) === String(id));
                 if (t) t.completada = completada;
                 renderTabla(); 
             } else {
-                chk.checked = !completada; // Revertir si falló el servidor
+                chk.checked = !completada;
             }
         } catch (err) { 
             console.error(err);
             chk.checked = !completada; 
         }
-      }
+    }
 
         if (btnDel) {
     // Usamos el ID del atributo data-del

@@ -12,8 +12,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function formatMoney(n) { 
         return new Intl.NumberFormat('es-AR', { 
-            style: 'currency', currency: 'ARS', minimumFractionDigits: 0, maximumFractionDigits: 0 
-        }).format(Math.round(n || 0)); 
+            style: 'currency', 
+            currency: 'ARS', 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+        }).format(n || 0); 
     }
 
     function formatDate(s) { return s ? new Date(s).toLocaleDateString('es-AR') : '-'; }
@@ -288,16 +291,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderTabla(data = []) {
         const arr = Array.isArray(data) ? data : [];
-        tbody.innerHTML = arr.sort((a,b) => new Date(b.fecha) - new Date(a.fecha)).map(r => `
-            <tr>
-                <td>${formatDate(r.fecha)}</td>
-                <td><span class="tag ${r.tipo === 'Ingreso' ? 'success' : 'danger'}">${r.tipo}</span></td>
-                <td>${r.tercero}</td>
-                <td>${r.producto}</td>
-                <td>${r.cantidad || '-'}</td>
-                <td>${formatMoney(r.monto)}</td>
-                <td>${r.metodo}</td>
-            </tr>`).join('');
+        tbody.innerHTML = arr.sort((a,b) => new Date(b.fecha) - new Date(a.fecha)).map(r => {
+            const esEntrada = r.tipo === 'Ingreso';
+            const claseColorMonto = esEntrada ? 'monto-entrada' : 'monto-salida';
+
+            return `
+                <tr>
+                    <td>${formatDate(r.fecha)}</td>
+                    <td>${r.tipo}</td>
+                    <td>${r.tercero}</td>
+                    <td>${r.producto}</td>
+                    <td class="text-right">${r.cantidad || '-'}</td>
+                    <td class="text-right ${claseColorMonto}">${formatMoney(r.monto)}</td>
+                    <td>${r.metodo}</td>
+                </tr>`;
+        }).join('');
     }
 
     btnGenerar.addEventListener('click', generarReporte);
