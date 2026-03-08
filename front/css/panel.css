@@ -1618,3 +1618,14 @@ canvas {
     font-weight: bold;
     cursor: pointer;
 }
+
+.hidden {
+    display: none !important;
+}
+#modalGestionUnidades, 
+#modalNuevoTipoUnidad, 
+#modalAccionesUnidad,
+#modalRecordatorio,
+#modalCalendarioGrande {
+    display: none;
+}
