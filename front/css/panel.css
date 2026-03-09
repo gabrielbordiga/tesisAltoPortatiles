@@ -1622,6 +1622,7 @@ canvas {
 .hidden {
     display: none !important;
 }
+
 #modalGestionUnidades, 
 #modalNuevoTipoUnidad, 
 #modalAccionesUnidad,
@@ -1629,3 +1630,39 @@ canvas {
 #modalCalendarioGrande {
     display: none;
 }
+
+@media (min-width: 769px) {
+    .layout {
+        display: grid;
+        grid-template-columns: var(--sidebar-w) 1fr;
+        height: 100vh; /* Obliga al layout a ocupar toda la pantalla */
+    }
+
+    .sidebar {
+        background: var(--negro);
+        display: flex !important;
+        flex-direction: column !important;
+        height: 100vh !important; /* Fuerza a la barra negra a llegar al fondo */
+        position: sticky;
+        top: 0;
+    }
+
+    .side-nav {
+        flex: 1 1 auto; /* Esto empuja al logout hacia abajo */
+        overflow-y: auto;
+        padding: 16px 0;
+    }
+
+    /* Para que no se vea la barra de scroll gris fea */
+    .side-nav::-webkit-scrollbar {
+        width: 0px;
+    }
+
+    .logout {
+        margin-top: auto; /* Ahora sí tiene espacio para empujar al fondo */
+        padding-bottom: 20px;
+        background: var(--negro);
+        border-top: 1px solid rgba(255,255,255,0.1);
+    }
+}
+
