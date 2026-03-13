@@ -151,7 +151,6 @@
         });
     }
 
-    // Cerrar si hace clic fuera del contenido del modal
     modalRoles?.addEventListener('click', (e) => {
         if (e.target === modalRoles) modalRoles.classList.add('hidden');
     });
@@ -215,7 +214,7 @@
         nombre: f.nombre.value.trim(),
         apellido: f.apellido.value.trim(),
         dni: f.dni.value.trim(),
-        email: f.correo.value.trim(), // Sincronizado con el backend
+        email: f.correo.value.trim(), 
         rol: f.rol.value,
         estado: f.estado.value,
         id_area: f.area.value || null

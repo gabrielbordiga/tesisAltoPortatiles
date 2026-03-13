@@ -11,8 +11,6 @@
 
 <body class="dashboard-body">
   <div class="layout">
-
-    <!-- SIDEBAR -->
     <aside class="sidebar">
       <div class="brand">
         <img src="../recursos/imagenes/AltoPortatiles.png" alt="Alto Portátiles" class="brand-logo" />
@@ -68,7 +66,7 @@
         </div>
       </section>
 
-      <!-- ================== TAB STOCK (NUEVA) ================== -->
+      <!-- ================== TAB STOCK ================== -->
       <section id="tabStock" class="tab-panel">
         <section class="card">
           <div class="toolbar" style="justify-content: space-between;">
@@ -276,7 +274,7 @@
     </div>
   </div>
 
-  <!-- MODAL: EDITAR STOCK (AJUSTE) -->
+  <!-- MODAL: EDITAR STOCK  -->
   <div class="modal-overlay hidden" id="modalEditarStock">
     <div class="modal modal-small">
       <div class="modal-header">
@@ -305,11 +303,7 @@
   </div>
 
   <!-- ================== SCRIPTS ================== -->
-
-  <!-- app.js debe ser module porque usa import -->
   <script type="module" src="../js/app.js"></script>
-
-  <!-- Si estos archivos después importan supabase, también deben ser module -->
   <script type="module" src="../js/stockProveedores.js"></script>
   <script type="module" src="../js/stockProductos.js"></script>
 

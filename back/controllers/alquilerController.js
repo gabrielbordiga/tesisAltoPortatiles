@@ -1,11 +1,10 @@
 const supabase = require('../config/supabase');
 
-// Helper para resolver nombres de unidades (Tipo o Unidad Física)
+// Helper para resolver nombres de unidades
 async function enriquecerConNombres(data) {
     if (!data) return;
     const list = Array.isArray(data) ? data : [data];
     
-    // Verificar si hay líneas para procesar
     const tieneLineas = list.some(a => a.lineas && a.lineas.length > 0);
     if (!tieneLineas) return;
 
@@ -59,12 +58,12 @@ const normalizeMetodo = (m) => {
     return String(m).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
 };
 
-
+// Obtener alquileres
 exports.obtenerAlquileres = async (req, res) => {
     try {
         const hoy = new Date().toISOString().split('T')[0];
 
-        // 1. IDENTIFICAR CAMBIOS AUTOMÁTICOS
+        // 1. IDENTIFICAR CAMBIOS 
         const { data: aCambiar, error: errCheck } = await supabase
             .from('Alquileres')
             .select('idAlquiler, estado')
@@ -73,7 +72,7 @@ exports.obtenerAlquileres = async (req, res) => {
 
         if (errCheck) console.error("Error al verificar vencimientos:", errCheck.message);
 
-        // 2. PROCESAR ACTUALIZACIÓN E HISTORIAL GRUPAL
+        // 2. PROCESAR ACTUALIZACIÓN 
         if (aCambiar && aCambiar.length > 0) {
             const ids = aCambiar.map(a => a.idAlquiler);
 
@@ -96,13 +95,12 @@ exports.obtenerAlquileres = async (req, res) => {
             if (errHist) console.error("Error al registrar historial automático:", errHist.message);
         }
 
-        // 3. CARGA DE DATOS PRINCIPAL 
+        // 3. CARGA DE DATOS 
         let { data, error } = await supabase
             .from('Alquileres')
             .select('*, lineas:DetalleAlquiler(*), pagos:Pagos(*)')
             .order('created_at', { ascending: false });
 
-        // 4. FALLBACK: Carga manual si falla la relación de Supabase
         if (error) {
             console.error("❌ Error al obtener alquileres con detalles:", error.message);
             console.warn("⚠️ Ejecutando carga manual de relaciones (Manual Join)...");
@@ -133,7 +131,7 @@ exports.obtenerAlquileres = async (req, res) => {
             });
         }
 
-        // 5. ENRIQUECER Y ENVIAR RESPUESTA
+        // 5. ENVIAR RESPUESTA
         await enriquecerConNombres(data);
         res.json(data);
 
@@ -190,17 +188,14 @@ exports.crearAlquiler = async (req, res) => {
         const fHastaDate = new Date(fechaHasta);
         const anioActual = new Date().getFullYear();
 
-        // 1. Evitar años absurdos hacia atrás 
         if (fDesdeDate.getFullYear() < anioActual) {
             return res.status(400).json({ error: `La fecha de inicio no puede ser anterior al año ${anioActual}.` });
         }
 
-        // 2. Evitar alquileres eternos 
         if (fHastaDate.getFullYear() > (anioActual + 2)) {
             return res.status(400).json({ error: "El periodo de alquiler no puede superar los 2 años a futuro." });
         }
 
-        // 3. Coherencia (Desde <= Hasta) 
         if (fHastaDate < fDesdeDate) {
             return res.status(400).json({ error: "La fecha 'Hasta' debe ser posterior a la fecha 'Desde'." });
         }
@@ -210,23 +205,20 @@ exports.crearAlquiler = async (req, res) => {
     if (!v.ok) {
         return res.status(400).json({ error: v.msg });
     }
-    
-    // Obtenemos la fecha de hoy en formato YYYY-MM-DD para comparar
+
     const hoy = new Date().toISOString().split('T')[0];
 
     console.log("📝 Intentando crear alquiler:", req.body);
 
-    // 1. VALIDACIÓN Y NORMALIZACIÓN DE DATOS
+    // 1. VALIDACIÓN DE DATOS
     const fDesde = (fechaDesde && String(fechaDesde).trim() !== '') ? fechaDesde : null;
     const fHasta = (fechaHasta && String(fechaHasta).trim() !== '') ? fechaHasta : null;
 
-    // LÓGICA DE ESTADO DINÁMICO:
     let estadoInicial = estado || 'PENDIENTE';
     if (fHasta && fHasta <= hoy) {
         estadoInicial = 'PARA RETIRAR';
     }
 
-    // 2. INSERCIÓN DE CABECERA
     const { data, error } = await supabase
         .from('Alquileres')
         .insert([{
@@ -250,7 +242,7 @@ exports.crearAlquiler = async (req, res) => {
     const nuevoAlquiler = data[0];
     const idAlquiler = nuevoAlquiler.idAlquiler;
 
-    // 3. INSERTAR LÍNEAS (Detalle)
+    // 2. INSERTAR DETALLE
     if (lineas && lineas.length > 0) {
         const lineasParaInsertar = [];
 
@@ -280,7 +272,7 @@ exports.crearAlquiler = async (req, res) => {
         }
     }
 
-    // 4. INSERTAR PAGOS
+    // 3. INSERTAR PAGOS
     if (pagos && pagos.length > 0) {
         const pagosInsert = pagos.map(p => ({
             idAlquiler,
@@ -392,7 +384,7 @@ exports.eliminarAlquiler = async (req, res) => {
 };
 
 
-// Función auxiliar para registrar en el historial
+// Registrar en el historial
 const registrarHistorial = async (idAlquiler, detalle, idUsuarios = null) => {
     try {
         const dataToInsert = {
@@ -415,7 +407,7 @@ const registrarHistorial = async (idAlquiler, detalle, idUsuarios = null) => {
     }
 };
 
-// Nueva ruta para obtener el historial 
+// Obtener el historial 
 exports.obtenerHistorial = async (req, res) => {
     const { id } = req.params;
     try {
@@ -441,7 +433,7 @@ exports.obtenerHistorial = async (req, res) => {
     }
 };
 
-// FUNCIÓN MAESTRA DE VALIDACIÓN DE STOCK
+// Validacion de stock
 async function validarDisponibilidadReal(lineas, fDesde, fHasta, idAlquilerExcluir = null) {
     if (!lineas || !Array.isArray(lineas) || lineas.length === 0) return { ok: true };
     if (!fDesde || !fHasta) return { ok: false, msg: "Faltan fechas" };

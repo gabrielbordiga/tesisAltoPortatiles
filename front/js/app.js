@@ -1,16 +1,14 @@
 // ======================================================
-// app.js – Sistema de sesión, roles, seguridad y contraseñas
+// Sistema de sesión, roles, seguridad y contraseñas
 // ======================================================
 
 (() => {
-// 1. CONFIGURACIÓN INICIAL (Reemplaza con tus datos de Supabase)
 const SB_URL = 'https://xpxvbtdhzylmokkguljk.supabase.co'; 
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhweHZidGRoenlsbW9ra2d1bGprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAwMjc4ODYsImV4cCI6MjA3NTYwMzg4Nn0.fjPD6yMwENx_7JWFr5QqhTbsRmao2leuyjzwbFMZEDI';
 
 const KEY_CURRENT = "ap_current";
 const KEY_TOKEN = "ap_token";
 
-// --- SWEETALERT2 & HELPERS ---
 (function() {
     if (!document.getElementById('swal-lib')) {
         const s = document.createElement('script');
@@ -41,8 +39,6 @@ window.confirmAction = async function(title, text='') {
     return confirm(title);
 };
 
-// --- HELPERS DE STORAGE ---
-
 function getCurrent() {
     const data = localStorage.getItem(KEY_CURRENT);
     return data ? JSON.parse(data) : null;
@@ -57,8 +53,6 @@ function clearCurrent() {
     localStorage.removeItem(KEY_CURRENT);
     localStorage.removeItem(KEY_TOKEN);
 }
-
-// --- GUARDAS Y SEGURIDAD ---
 
 function requireAuth() {
     const user = getCurrent();
@@ -99,7 +93,6 @@ function applyRoleVisibility(role) {
     });
 }
 
-// Estilo para ocultar elementos
 (function ensureHiddenRule() {
     if (document.getElementById("ap-hidden-style")) return;
     const st = document.createElement("style");
@@ -111,7 +104,7 @@ function applyRoleVisibility(role) {
 // --- LÓGICA PRINCIPAL ---
 document.addEventListener("DOMContentLoaded", async () => {
     
-    // --- LOGICA OJITO CONTRASEÑA (INVERSA) ---
+    // --- LOGICA OJITO CONTRASEÑA  ---
     document.addEventListener("click", (e) => {
         const toggleBtn = e.target.closest("#togglePassword");
         if (!toggleBtn) return;
@@ -142,7 +135,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const resForm = document.getElementById("resPasswordForm");
     const formNueva = document.getElementById("formNuevaPass");
 
-    // 1. LÓGICA DE RECUPERAR (Solicitar correo)
+    // 1. LÓGICA DE RECUPERAR 
     if (resForm) {
         resForm.addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -192,7 +185,6 @@ document.addEventListener("DOMContentLoaded", async () => {
                 if (!window.supabase) throw new Error("Librería Supabase no cargada.");
                 const _supabase = window.supabase.createClient(SB_URL, SB_KEY);
 
-                // Supabase procesa el token de la URL automáticamente
                 const { error } = await _supabase.auth.updateUser({ password: p1 });
                 if (error) throw error;
 
@@ -225,7 +217,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Error al iniciar sesión');
 
-                localStorage.clear(); // Limpiamos caché antes de guardar lo nuevo
+                localStorage.clear(); 
                 const { token, usuario } = data;
 
                 setCurrent({
@@ -250,19 +242,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     const user = getCurrent();
     const currentFile = path.split('/').pop() || 'inicio.html';
 
-    // A. Si intenta entrar al Login estando ya logueado, lo mandamos al Inicio
     if (path.includes("login.html") && user) {
         location.replace("./inicio.html");
         return;
     }
 
-    // B. Si NO hay usuario y NO está en el Login, lo sacamos (Protección contra "Atrás")
     if (!path.includes("login.html") && !user) {
         location.replace("./login.html");
         return;
     }
 
-    // C. Si estamos en el Login y no hay usuario, no ejecutamos el resto (permisos)
     if (path.includes("login.html")) return;
 
     // --- Control de Permisos por Rol ---
@@ -276,13 +265,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const misPaginas = permisos[userRol] || permisos['empleado'];
 
-    // D. Redirección de seguridad si intenta entrar a una URL prohibida
     if (!misPaginas.includes(currentFile.toLowerCase())) {
         location.replace(`./${misPaginas[0]}`);
         return;
     }
 
-    // 3. Limpieza física del menú lateral (Solo deja ver lo permitido)
     document.querySelectorAll('.side-nav .item').forEach(item => {
         if (item.classList.contains('logout-item')) return;
         const href = item.getAttribute('href').split('/').pop().toLowerCase();
@@ -297,7 +284,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         const name = user.usuario || user.email || "Usuario";
         const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
         
-        // Restauramos el <a> para que sea clicable
         whoami.innerHTML = `
             <a href="./mis-datos.html" style="color: white; text-decoration: none; font-size: 0.85em; opacity: 0.9; display: block; cursor: pointer;">
                 ${name} <br> 
@@ -314,8 +300,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
         }
     });
-
-    // Detectar si el usuario entra a la página usando las flechas del navegador
+    
     window.addEventListener('pageshow', (event) => {
         if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
             const user = getCurrent();

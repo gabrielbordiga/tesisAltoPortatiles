@@ -3,7 +3,7 @@ const supabase = require('../config/supabase');
 // Obtener tareas por fecha
 exports.obtenerTareasPorFecha = async (req, res) => {
     const { fecha } = req.params;
-    const { idUsuario } = req.query; // Capturar el id de la URL
+    const { idUsuario } = req.query; 
 
     try {
         let query = supabase
@@ -11,7 +11,6 @@ exports.obtenerTareasPorFecha = async (req, res) => {
             .select('*, alquiler:Alquileres(*, lineas:DetalleAlquiler(*))')
             .eq('fecha', fecha);
 
-        // Si viene el ID por la URL, filtramos
         if (idUsuario && idUsuario !== "null" && idUsuario !== "undefined") {
             query = query.eq('idUsuarios', idUsuario);
         }
@@ -34,7 +33,7 @@ exports.crearTarea = async (req, res) => {
                 idUsuarios: idUsuario, 
                 idAlquiler, 
                 fecha, 
-                detalle, // Guardamos el detalle
+                detalle, 
                 completada: false 
             }])
             .select();
@@ -65,7 +64,6 @@ exports.actualizarEstadoTarea = async (req, res) => {
 
         if (errT) throw errT;
 
-        // 2. Actualizamos la tarea
         const { data: tareaActualizada, error: errUpdate } = await supabase
             .from('Tareas')
             .update({ completada })
@@ -75,7 +73,7 @@ exports.actualizarEstadoTarea = async (req, res) => {
 
         if (errUpdate) throw errUpdate;
 
-        // 3. Lógica Automática de Estados del Alquiler
+        // Lógica de Estados del Alquiler
         if (completada && tarea.idAlquiler) {
             let nuevoEstado = null;
             const detalleTarea = String(tarea.detalle || "").toUpperCase();

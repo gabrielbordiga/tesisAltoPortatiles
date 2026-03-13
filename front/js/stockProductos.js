@@ -49,23 +49,20 @@
   const inpStkNuevo = document.getElementById('stkNuevaCantidad');
   const btnCancelStock = document.getElementById('btnCancelarStock');
 
-  // Estado de ordenamiento Stock
   let stkSort = { col: 'nombre', asc: true };
 
-  // --- INYECCIÓN DE BOTÓN "EDITAR PRODUCTOS" ---
+  // --- EDITAR PRODUCTOS---
   (function injectGestionBtn() {
     if (!btnNuevoProd || document.getElementById('btnGestionProductos')) return;
     
     const btnEdit = document.createElement('button');
     btnEdit.id = 'btnGestionProductos';
     btnEdit.type = 'button';
-    btnEdit.className = 'btn-plus'; // Reutilizamos estilo de botón cuadrado
-    btnEdit.innerHTML = '✎'; // Icono de lápiz
+    btnEdit.className = 'btn-plus'; 
+    btnEdit.innerHTML = '✎'; 
     btnEdit.title = 'Gestionar Productos';
     btnEdit.style.marginLeft = '5px';
     btnEdit.style.fontSize = '16px';
-    
-    // Insertar después del botón "+"
     btnNuevoProd.parentNode.insertBefore(btnEdit, btnNuevoProd.nextSibling);
 
     btnEdit.addEventListener('click', () => {
@@ -120,12 +117,12 @@
         if (!res.ok) throw new Error('No se puede eliminar (posiblemente tenga compras asociadas).');
         
         window.showAlert('Éxito', 'Producto eliminado', 'success');
-        await loadData(); // Recarga PRODUCTOS y MOVIMIENTOS
-        renderGestionProductos(); // Actualiza la grilla del modal
+        await loadData(); 
+        renderGestionProductos(); 
     } catch (e) { window.showAlert('Error', e.message, 'error'); }
   };
 
-  // --- MODAL EDICIÓN (Inyectado dinámicamente) ---
+  // --- MODAL EDICIÓN  ---
   function injectEditModal() {
     if (document.getElementById('modalEditCompra')) return;
     const div = document.createElement('div');
@@ -151,7 +148,6 @@
     `;
     document.body.appendChild(div);
 
-    // Eventos del modal
     document.getElementById('btnCancelEditCompra').addEventListener('click', () => div.classList.add('hidden'));
     
     document.getElementById('formEditCompra').addEventListener('submit', async (e) => {
@@ -189,7 +185,7 @@
       const m = MOVIMIENTOS.find(x => x.idCompra == id);
       if (!m) return;
       
-      injectEditModal(); // Asegurar que existe
+      injectEditModal();
       const modal = document.getElementById('modalEditCompra');
       document.getElementById('editCompraId').value = m.idCompra;
       document.getElementById('editCompraCantidad').value = m.cantidad;
@@ -239,7 +235,6 @@
       return el;
     }
 
-    // Transformación inicial
     const container = document.createElement('div');
     container.style.position = 'relative';
 
@@ -304,8 +299,6 @@
       const texto = `${prov} ${prod} ${metodo} ${m.fecha}`.toLowerCase();
       return texto.includes(q);
     });
-
-    // Ordenar por fecha descendente (más reciente primero)
     filtrados.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
     tbody.innerHTML = filtrados.map(m => `
@@ -344,14 +337,12 @@
         total: (Number(p.stock_base) || 0) + (comprasMap[p.idProducto] || 0)
     }));
 
-    // Filtrado
     lista = lista.filter(item => {
       const matchText = item.nombre.toLowerCase().includes(q);
       const matchCant = item.total <= maxCant;
       return matchText && matchCant;
     });
 
-    // Ordenamiento
     lista.sort((a, b) => {
       let valA = stkSort.col === 'cantidad' ? a.total : a.nombre.toLowerCase();
       let valB = stkSort.col === 'cantidad' ? b.total : b.nombre.toLowerCase();
@@ -491,14 +482,13 @@
       window.showAlert('Éxito', 'Producto creado', 'success');
       modalProd.classList.add('hidden');
       formNuevoProd.reset();
-      loadData(); // Recargar selects
+      loadData(); 
     } catch (err) { window.showAlert('Error', err.message, 'error'); }
   });
 
   inpBuscar.addEventListener('input', renderTabla);
   btnCancelar.addEventListener('click', () => formMov.reset());
 
-  // Listeners Stock (Búsqueda y Ordenamiento)
   if (inpStkBuscar) inpStkBuscar.addEventListener('input', renderStockTable);
   if (inpStkFiltroCant) inpStkFiltroCant.addEventListener('input', renderStockTable);
 
@@ -515,7 +505,6 @@
     });
   });
 
-  // 1. Llenar el combo con lo que ya existe en PRODUCTOS
   function actualizarComboUnidades() {
     if (!selUnidad) return;
     const unidadesExistentes = [...new Set(PRODUCTOS.map(p => p.unidadMedida).filter(u => u))];
@@ -523,7 +512,6 @@
     selUnidad.innerHTML = unidadesExistentes.map(u => `<option value="${u}">${u}</option>`).join('');
   }
 
-  // 2. Eventos para el intercambio
   document.addEventListener('click', (e) => {
       // Botón Lápiz (Habilitar edición)
       if (e.target && e.target.id === 'btnHabilitarNuevaUnidad') {
@@ -532,14 +520,14 @@
           inpNuevaUnidad.focus();
       }
       
-      // Botón Cancelar (Volver al combo)
+      // Botón Cancelar
       if (e.target && e.target.id === 'btnCancelarNuevaUnidad') {
           labelCombo.classList.remove('hidden');
           labelNueva.classList.add('hidden');
           inpNuevaUnidad.value = '';
       }
 
-      // Botón OK (Guardar nueva unidad en el combo)
+      // Botón OK 
       if (e.target && e.target.id === 'btnGuardarNuevaUnidad') {
           const valor = inpNuevaUnidad.value.trim();
           if (valor === "") return;
@@ -555,7 +543,6 @@
           
           selUnidad.value = valor; 
 
-          // Volver al modo combo
           labelCombo.classList.remove('hidden');
           labelNueva.classList.add('hidden');
           inpNuevaUnidad.value = '';
@@ -573,7 +560,6 @@
       const valor = inpNuevaUnidad.value.trim();
       if (valor === "") return;
 
-      // Crear la nueva opción y seleccionarla
       const opt = document.createElement('option');
       opt.value = valor;
       opt.textContent = valor;
@@ -612,6 +598,5 @@ if (btnNuevoMov) {
         formMov.scrollIntoView({ behavior: 'smooth' });
     });
 }
-  // Init
   loadData();
 })();

@@ -18,9 +18,8 @@
   
     let currentUserFull = null;
 
-    // Helper para obtener el token y armar los headers
     function getHeaders() {
-        const token = localStorage.getItem('ap_token'); // O 'token', según uses en login.js
+        const token = localStorage.getItem('ap_token'); 
         return {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
@@ -37,7 +36,6 @@
       if (!localUser) return;
 
       try {
-        // Agregamos headers para que la lista de usuarios no venga vacía
         const resU = await fetch(API_USUARIOS, { headers: getHeaders() });
         if (!resU.ok) throw new Error('Error al cargar datos de usuario');
         const usuarios = await resU.json();
@@ -53,7 +51,6 @@
         const idAreaUser = miUsuario.idArea || miUsuario.id_area;
         
         if (idAreaUser) {
-            // Agregamos headers para cargar las áreas
             const resA = await fetch(API_AREAS, { headers: getHeaders() });
             if (resA.ok) {
                 const areas = await resA.json();
@@ -88,14 +85,13 @@
       const id = currentUserFull.idUsuarios || currentUserFull.id;
       
       try {
-        // ENVIAMOS EL PUT: Ahora el backend debe usar supabase.auth.admin.updateUserById
         const res = await fetch(`${API_USUARIOS}/${id}`, {
             method: 'PUT',
             headers: getHeaders(),
             body: JSON.stringify({
                 nombre: f.usuario.value,
                 correo: f.correo.value,
-                contrasena: p1, // El controlador ahora usará esto para Auth
+                contrasena: p1, 
                 permisos: f.rol.value,
                 estado: f.estado.value,
                 id_area: currentUserFull.idArea || currentUserFull.id_area

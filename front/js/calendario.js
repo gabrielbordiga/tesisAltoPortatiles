@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let clientesCache = [];
 
-    // --- 1. SEGURIDAD: Obtener token ---
     function getHeaders() {
         const token = localStorage.getItem('ap_token');
         return {
@@ -18,13 +17,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
-    // --- 2. CARGA INICIAL DE CLIENTES (Para mostrar nombres en vez de IDs) ---
+    // --- CARGA INICIAL DE CLIENTES  ---
     try {
         const resC = await fetch(API_CLIENTES, { headers: getHeaders() });
         if (resC.ok) clientesCache = await resC.json();
     } catch (e) { console.error("Error cargando clientes:", e); }
 
-    // --- 3. CONFIGURACIÓN DE FULLCALENDAR ---
+    // --- CONFIGURACIÓN DE FULLCALENDAR ---
     const calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
         locale: 'es',
@@ -44,7 +43,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         // --- Carga dinámica de eventos ---
         events: async function(info, successCallback, failureCallback) {
             try {
-                // Pedir datos al servidor
                 const [resA, resT] = await Promise.all([
                     fetch(API_ALQUILERES, { headers: getHeaders() }),
                     fetch(API_TAREAS, { headers: getHeaders() })
@@ -52,13 +50,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const alquileres = resA.ok ? await resA.json() : [];
                 const tareas = resT.ok ? await resT.json() : [];
-                
-                // Cargar recordatorios del navegador (LocalStorage)
+ 
                 const reminders = JSON.parse(localStorage.getItem(LS_REMINDERS) || '[]');
 
                 const eventosFinales = [];
 
-                // A. Mapear Recordatorios Personales (Color Salmón)
+                // A. Mapear Recordatorios Personales 
                 recordatoriosBD.forEach(r => {
                     eventosFinales.push({
                         id: r.id,
@@ -71,7 +68,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                 });
 
-                // B. Mapear Alquileres (Entregas y Retiros)
+                // B. Mapear Alquileres 
                 alquileres.forEach(a => {
                     const c = clientesCache.find(x => String(x.idCliente) === String(a.idCliente));
                     const nom = c ? (c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial) : 'Cliente';
@@ -92,7 +89,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 });
 
-                // C. Mapear Tareas (Verde/Rojo)
+                // C. Mapear Tareas 
                 tareas.forEach(t => {
                     const color = t.completada ? '#28a745' : '#ec1f26';
                     eventosFinales.push({
@@ -117,7 +114,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const p = info.event.extendedProps;
             
             if (p.tipo === 'RECORDATORIO') {
-                // Opción para eliminar recordatorios desde el calendario
                 const confirmar = await window.confirmAction('¿Eliminar recordatorio?', info.event.title);
                 if (confirmar) {
                     let list = JSON.parse(localStorage.getItem(LS_REMINDERS) || '[]');
@@ -127,23 +123,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                     window.showAlert('Eliminado', 'El recordatorio se quitó de la lista', 'success');
                 }
             } else {
-                // Mostrar detalles de Alquileres/Tareas
                 window.showAlert(info.event.title, p.detalle || 'Sin descripción adicional', 'info');
             }
         },
 
         // --- Al hacer click en un día vacío (Crear nuevo recordatorio) ---
         dateClick: function(info) {
-            // Esto permite que el usuario use el calendario para agendar
             const msg = `Crear recordatorio para el ${info.dateStr}?`;
-            // Aquí podrías disparar el modal de tu inicio si lo tienes referenciado
             console.log("Día clickeado:", info.dateStr);
         }
     });
 
     calendar.render();
-
-    // Listener por si el usuario cierra el modal o cambia algo, refrescar datos
     window.refreshCalendario = () => {
         calendar.refetchEvents();
     };

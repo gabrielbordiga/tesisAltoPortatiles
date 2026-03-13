@@ -15,7 +15,6 @@
     };
   }
 
-  // ------ Helpers de storage ------
   async function loadAlquileres() {
     try {
       const res = await fetch(API_URL);
@@ -116,7 +115,7 @@
   let inpClienteNombre; 
 
   function getDistancia(lat1, lon1, lat2, lon2) {
-    const R = 6371; // km
+    const R = 6371; 
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -125,7 +124,6 @@
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   }
 
-  // ------ Autocomplete Helper ------
   function debounce(func, wait) {
     let timeout;
     return function(...args) {
@@ -369,7 +367,6 @@
       }
     });
 
-    // Evento para ver registro
     document.getElementById('btnVerRegistro').addEventListener('click', () => {
         const id = document.getElementById('infoIdHidden').value;
         if (id) showRegistro(id);
@@ -516,7 +513,6 @@
     return true;
   }
 
-  // ------ Render tabla principal ------
   function renderTablaAlquileres(filtro = '') {
     const q = String(filtro || '').trim().toLowerCase();
 
@@ -537,14 +533,12 @@
         return { ...a, idAlquiler, nombreCliente, saldo, total, pagado, dias };
     });
 
-    // 2. Filtrar
     data = data.filter(a =>
         [String(a.idAlquiler), a.nombreCliente, a.ubicacion].some(v =>
           String(v || '').toLowerCase().includes(q)
         )
     );
 
-    // 3. Ordenar
     if (sortState.col) {
         data.sort((a, b) => {
             let valA = a[sortState.col];
@@ -560,7 +554,6 @@
         });
     }
 
-    // 4. Renderizar HTML
     tbody.innerHTML = data.map(a => {
         const unidadesTexto = (a.lineas || [])
           .map(l => `${l.cantidad} ${(l.unidad || '').toLowerCase()}`)
@@ -572,7 +565,6 @@
         const idRaw = String(a.idAlquiler);
         const idDisplay = idRaw.length > 8 ? idRaw.slice(0, 8) + '...' : idRaw.padStart(3, '0');
 
-        // --- LÓGICA DE ESTADOS ---
         const estadoRaw = a.estado || 'PENDIENTE';
         const estadoClase = estadoRaw.toLowerCase().replace(/ /g, '-');
 
@@ -614,7 +606,6 @@
       });
   }
 
-  // ------ Render mini tabla de unidades ------
   function renderLineas() {
     const dias = diffDias(inpDesde.value, inpHasta.value);
 
@@ -636,7 +627,6 @@
     fillUnidadesSelect();
   }
 
-  // ------ Render mini tabla de pagos ------
   function renderPagos() {
     const dias = diffDias(inpDesde.value, inpHasta.value);
     const totales = calcTotales(lineas, pagos, dias);
@@ -658,7 +648,6 @@
     `).join('');
   }
 
-  // ------ Mostrar Modal Info ------
   function showModalInfo(a) {
     if (!modalInfo) return;
     
@@ -683,7 +672,6 @@
     const estadoPago = estadoDesdeSaldo({ total, pagado, saldo });
     const estadoAlquiler = a.estado || 'PENDIENTE';
 
-    // Llenar DOM
     document.getElementById('infoIdHidden').value = idReal;
     document.getElementById('infoId').textContent = idReal || '-';
     document.getElementById('infoCliente').textContent = nombreCliente;
@@ -720,8 +708,7 @@
     modalInfo.classList.remove('hidden');
   }
 
-  // ------ Helpers formulario principal ------
-function clearFormAlquiler() {
+  function clearFormAlquiler() {
     currentId = null;
 
     if (selCliente) selCliente.value = '';
@@ -772,7 +759,6 @@ function clearFormAlquiler() {
     inpDesde.value     = a.fechaDesde || '';
     inpHasta.value     = a.fechaHasta || '';
 
-    // Mapeamos para normalizar precioUnitario (BD) a precioUnit (Front)
     lineas = (a.lineas || []).map(l => ({
       ...l,
       idTipo: l.idTipo || l.idUnidad || l.idunidad, 
@@ -798,7 +784,6 @@ function clearFormAlquiler() {
     return `${nombre} (${doc})`;
   }
 
-  // ------ Carga de combo clientes desde storage ------
   function fillClientesSelect() {
     const dl = document.getElementById('dlClientes');
     if (!dl) return;
@@ -812,7 +797,6 @@ function clearFormAlquiler() {
     });
   }
 
-  // ------ Carga de combo unidades desde BD ------
 async function fillUnidadesSelect() {
     if (UNIDADES_CACHE.length > 0) {
         renderizarOpcionesUnidad(UNIDADES_CACHE);
@@ -841,30 +825,26 @@ function renderizarOpcionesUnidad(lista) {
     });
 }
 
-  // ------ Init ------
   document.addEventListener('DOMContentLoaded', async () => {
     if (!initDomAlquileres()) return;
 
     CLIENTES_CACHE = await loadClientes();
     UNIDADES_CACHE = await loadUnidades(); 
     fillClientesSelect();
-    fillUnidadesSelect(); // <--- Llamada inmediata al iniciar el módulo
+    fillUnidadesSelect(); 
     ALQUILERES = await loadAlquileres();
     renderTablaAlquileres();
 
-    // Buscar
     if (txtBuscar) {
       txtBuscar.addEventListener('input', () => {
         renderTablaAlquileres(txtBuscar.value);
       });
     }
 
-    // Botón + Nuevo -> limpia el formulario
     if (btnNuevoAlquiler) {
       btnNuevoAlquiler.addEventListener('click', clearFormAlquiler);
     }
 
-    // Click en tabla principal (editar / eliminar)
     tbody.addEventListener('click', async e => {
       const btnEdit = e.target.getAttribute('data-edit');
       const btnDel  = e.target.getAttribute('data-del');
@@ -877,7 +857,7 @@ function renderizarOpcionesUnidad(lista) {
       }
 
       if (btnEdit) {
-        const id = btnEdit; // ID como string (por si es UUID)
+        const id = btnEdit; 
         const alq = ALQUILERES.find(a => String(a.idAlquiler || a.idalquiler) === String(id));
         if (alq) fillFormAlquiler(alq);
       }
@@ -921,7 +901,6 @@ function renderizarOpcionesUnidad(lista) {
       const cantNueva = Number(inpCantidad.value);
 
       try {
-          // Construimos la URL de forma segura
           let url = `/api/unidades/disponibilidad?desde=${fDesde}&hasta=${fHasta}`;
           if (currentId) url += `&excluir=${currentId}`;
 
@@ -934,8 +913,6 @@ function renderizarOpcionesUnidad(lista) {
           
           const disponibilidad = await res.json();
           const infoStock = disponibilidad.find(u => String(u.idTipo) === String(idTipo));
-
-          // Si el servidor no devuelve info de ese tipo, asumimos disponible 0
           const disponibleReal = infoStock ? Number(infoStock.disponibles) : 0;
           
           const yaEnGrilla = lineas
@@ -982,9 +959,8 @@ function renderizarOpcionesUnidad(lista) {
       }
 
       const hoy = new Date();
-      const fecha = hoy.toISOString().split('T')[0]; // YYYY-MM-DD para que la BD lo acepte
+      const fecha = hoy.toISOString().split('T')[0]; 
 
-      // Normalizar: Mayúsculas y sin acentos (ej: "Crédito" -> "CREDITO")
       const metodoNorm = metodo.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
       pagos.push({ fecha, monto, metodo: metodoNorm });
       renderPagos();
@@ -1110,11 +1086,8 @@ function renderizarOpcionesUnidad(lista) {
             window.showAlert('Error', err.message, 'error'); 
         }
     });
-
-    // arrancamos con el formulario limpio y placeholders seleccionados
     clearFormAlquiler();
 
-    // Exponer refresh para tabs externas
   window.refreshAlquileres = async function() {
     ALQUILERES = await loadAlquileres();
     renderTablaAlquileres(txtBuscar ? txtBuscar.value : '');

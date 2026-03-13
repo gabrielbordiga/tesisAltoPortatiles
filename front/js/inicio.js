@@ -21,8 +21,6 @@
 
   document.addEventListener('DOMContentLoaded', async () => {
     try {
-      // --- OPTIMIZACIÓN: CARGA EN PARALELO ---
-      // Lanzamos todas las peticiones al mismo tiempo
       await Promise.all([
         fetchClientes(),
         loadTiposUnidad(),
@@ -30,7 +28,6 @@
         renderRemindersList()
       ]);
 
-      // Una vez que tenemos los datos base, inicializamos la lógica visual
       initCalendarLogic();
       initUnidadesLogic();
       initRemindersLogic();
@@ -43,7 +40,6 @@
     }
   });
 
-  // Helper para cargar clientes sin bloquear el resto
   async function fetchClientes() {
     try {
       const res = await fetch(API_CLIENTES, { headers: getHeaders() });
@@ -52,7 +48,7 @@
   }
 
   // =========================================================
-  // AGENDA UNIFICADA (LADO DERECHO)
+  // CALENDARIO UNIFICADO
   // =========================================================
   async function renderRemindersList() {
     const ul = document.getElementById('listaRecordatorios');
@@ -60,7 +56,6 @@
 
     try {
       const h = getHeaders();
-      // Peticiones paralelas específicas de la agenda
       const [resA, resR] = await Promise.all([
         fetch(`${API_ALQUILERES}?t=${Date.now()}`, { headers: h }),
         fetch(`${API_RECORDATORIOS}?t=${Date.now()}`, { headers: h })
@@ -156,32 +151,40 @@
 
     if (!btnAbrir || !modal || !calendarEl) return;
 
-    btnAbrir.addEventListener('click', () => {
+    btnAbrir.addEventListener('click', (e) => {
+      e.preventDefault();
+    
       modal.classList.remove('hidden');
-      
+      modal.style.display = 'flex';
+      modal.style.zIndex = '2500';
+
       if (!calendarInstance) {
         calendarInstance = new FullCalendar.Calendar(calendarEl, {
           initialView: 'dayGridMonth',
           locale: 'es',
-          height: 'auto', 
-          contentHeight: 'auto',
-          aspectRatio: 1.35, 
+          height: 600, 
           headerToolbar: { 
-            left: 'prev,next', 
+            left: 'prev,next today', 
             center: 'title', 
-            right: 'today'
+            right: 'dayGridMonth,listWeek'
           },
-          events: fetchAllEvents,
+          events: fetchAllEvents, 
           dateClick: (info) => openModalRecordatorio(info.dateStr),
           eventClick: handleEventClick
         });
         calendarInstance.render();
-      }
-      setTimeout(() => {
+      } else {
         calendarInstance.updateSize();
-      }, 200);
+        calendarInstance.refetchEvents();
+      }
     });
-    if (btnCerrar) btnCerrar.addEventListener('click', () => modal.classList.add('hidden'));
+
+    if (btnCerrar) {
+      btnCerrar.addEventListener('click', () => {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+      });
+    }
   }
 
   async function fetchAllEvents(info, successCallback, failureCallback) {
@@ -310,7 +313,8 @@
     if (modal && inpFecha) {
       inpFecha.value = dateStr.split('T')[0];
       modal.classList.remove('hidden');
-      modal.style.zIndex = "2000"; 
+      modal.style.display = 'flex'; 
+      modal.style.zIndex = "3000"; 
     }
   }
 
@@ -412,7 +416,13 @@
             modalGestion.style.display = 'none';
         });
     }
-    if (btnCerrarAcciones) btnCerrarAcciones.addEventListener('click', () => modalAcciones.classList.add('hidden'));
+    if (btnCerrarAcciones) {
+        btnCerrarAcciones.addEventListener('click', (e) => {
+            e.preventDefault();
+            modalAcciones.classList.add('hidden');
+            modalAcciones.style.display = 'none';
+        });
+    }
 
     if (formGestion) formGestion.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -490,18 +500,31 @@
     }
 
     const tbody = document.getElementById('tbodyUnidades');
-    if (tbody) tbody.addEventListener('click', (e) => {
-        const btn = e.target.closest('button[data-accion]');
-        if (btn) {
-            const { accion, nombre, precio } = btn.dataset;
-            document.getElementById('idTipoAccion').value = accion;
-            document.getElementById('lblNombreUnidad').textContent = nombre;
-            document.getElementById('editPrecio').value = precio;
-            modalAcciones.classList.remove('hidden');
-        }
-    });
+    if (tbody) {
+        tbody.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-accion]');
+            if (btn) {
+                e.preventDefault();
+                const { accion, nombre, precio } = btn.dataset;
+                const idInput = document.getElementById('idTipoAccion');
+                const lblNombre = document.getElementById('lblNombreUnidad');
+                const editPrecio = document.getElementById('editPrecio');
 
-    // Dentro de initUnidadesLogic()
+                if (idInput) idInput.value = accion;
+                if (lblNombre) lblNombre.textContent = nombre;
+                if (editPrecio) editPrecio.value = precio;
+                if (modalAcciones) {
+                    modalAcciones.classList.remove('hidden');
+                    Object.assign(modalAcciones.style, {
+                        display: 'flex',
+                        zIndex: '9999',
+                        opacity: '1'
+                    });
+                }
+            }
+        });
+    }
+
     document.addEventListener('click', (e) => {
         if (e.target && e.target.id === 'btnAbrirNuevoTipoUnidad') {
             e.preventDefault();
@@ -528,7 +551,7 @@
         }
     });
 
-    // 3. Lógica para guardar el nuevo tipo (el submit del segundo modal)
+    // Lógica para guardar el nuevo tipo 
     const formNuevoTipo = document.getElementById('formNuevoTipoUnidad');
     if (formNuevoTipo) {
         formNuevoTipo.addEventListener('submit', async (e) => {
@@ -546,7 +569,6 @@
                     window.showAlert('Éxito', 'Tipo de unidad creado', 'success');
                     document.getElementById('modalNuevoTipoUnidad').classList.add('hidden');
                     formNuevoTipo.reset();
-                    // Recargamos los combos para que aparezca el nuevo tipo
                     await loadTiposUnidad(); 
                 } else {
                     const err = await res.json();

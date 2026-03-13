@@ -1,7 +1,6 @@
 const supabase = require('../config/supabase');
 
 // --- PROVEEDORES ---
-
 exports.getProveedores = async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -60,8 +59,8 @@ exports.eliminarProveedor = async (req, res) => {
     }
 };
 
-// --- PRODUCTOS ---
 
+// --- PRODUCTOS ---
 exports.getProductos = async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -104,7 +103,6 @@ exports.eliminarProducto = async (req, res) => {
 };
 
 // --- COMPRAS (MOVIMIENTOS) ---
-
 exports.getCompras = async (req, res) => {
     try {
         const { data, error } = await supabase

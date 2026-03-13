@@ -13,7 +13,6 @@
 <body class="dashboard-body">
   <div class="layout">
 
-    <!-- ========== SIDEBAR ========== -->
     <aside class="sidebar">
       <div class="brand">
         <img src="../recursos/imagenes/AltoPortatiles.png" alt="Alto Portátiles" class="brand-logo">
@@ -108,7 +107,6 @@
           <form id="formCliente" class="form-grid-clientes">
             <input type="hidden" id="clienteId" />
 
-            <!-- Tipo de cliente -->
             <div class="tipo-cliente">
               <label><input type="radio" name="tipoCliente" value="persona" checked> Persona física</label>
               <label><input type="radio" name="tipoCliente" value="empresa"> Empresa</label>
@@ -212,7 +210,6 @@
                 </tr>
               </thead>
               <tbody id="tbodyAlquileres">
-                <!-- tus filas por JS / seed -->
               </tbody>
             </table>
           </div>
@@ -290,7 +287,6 @@
                   </tr>
                 </thead>
                 <tbody id="tbodyLineasUnidades">
-                  <!-- ejemplo -->
                   <tr>
                     <td>Baño estándar</td>
                     <td>5</td>
@@ -398,7 +394,6 @@
         btn.addEventListener("click", () => show(btn.dataset.tab));
       });
 
-      // Inicial
       show("clientes");
     });
   </script>

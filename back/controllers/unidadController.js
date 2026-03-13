@@ -19,7 +19,7 @@ exports.crearTipo = async (req, res) => {
     try {
         const { nombre } = req.body;
 
-        // VALIDACIÓN: Nombre único de tipo de unidad
+        // VALIDACIÓN
         const { data: existe } = await supabase
             .from('Tipo_Unidades')
             .select('idTipo')
@@ -106,7 +106,7 @@ exports.gestionarStock = async (req, res) => {
     try {
         const { idTipo, stock, estado, precio, accion, origen, destino } = req.body;
 
-        // 1. PRIMERO PROCESAMOS EL PRECIO
+        //PROCESAMOS EL PRECIO
         if (accion === 'precio') {
             const nuevoPrecio = parseFloat(precio);
             if (isNaN(nuevoPrecio)) return res.status(400).json({ error: "Precio inválido" });
@@ -120,13 +120,13 @@ exports.gestionarStock = async (req, res) => {
             return res.json({ mensaje: "Precio actualizado correctamente" });
         }
 
-        // 2. VALIDAMOS CANTIDAD 
+        // VALIDAMOS CANTIDAD 
         const cantidad = parseInt(stock);
         if (isNaN(cantidad) || cantidad <= 0) {
             return res.status(400).json({ error: "La cantidad debe ser mayor a 0 para esta acción." });
         }
 
-        // 3. Acción: Baja
+        // Acción: Baja
         if (accion === 'baja') {
             const { data: row } = await supabase.from('Unidades')
                 .select('*').eq('idTipo', idTipo).eq('esatdo', estado).maybeSingle();
@@ -146,7 +146,7 @@ exports.gestionarStock = async (req, res) => {
             return res.json({ mensaje: "Baja realizada correctamente" });
         }
 
-        // 4. Acción: Mover 
+        // Acción: Mover 
         if (accion === 'mover') {
             if (!origen || !destino) return res.status(400).json({ error: "Faltan origen o destino" });
             
@@ -228,7 +228,7 @@ exports.gestionarStock = async (req, res) => {
     }
 };
 
-// ENDPOINT: Listar unidades por estado 
+// Listar unidades por estado 
 exports.getUnidadesPorEstado = async (req, res) => {
     try {
         const { estado } = req.params;
@@ -253,8 +253,6 @@ exports.getDisponibilidadPorRango = async (req, res) => {
 
     try {
         const { data: stockFisico } = await supabase.from('Unidades').select('stock, idTipo, precio, esatdo');
-
-        // Buscamos colisiones de fechas
         let queryOcupacion = supabase
             .from('DetalleAlquiler')
             .select(`

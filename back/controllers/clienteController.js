@@ -1,6 +1,6 @@
 const supabase = require('../config/supabase');
 
-// 1. OBTENER CLIENTES (Solo los activos para la grilla principal)
+// 1. OBTENER CLIENTES 
 exports.obtenerClientes = async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -16,7 +16,7 @@ exports.obtenerClientes = async (req, res) => {
     }
 };
 
-// 2. CREAR / REACTIVAR CLIENTE
+// 2. CREAR CLIENTE
 exports.crearCliente = async (req, res) => {
     try {
         const tipoRecibido = req.body.tipo || req.body.tipoCliente;
@@ -24,12 +24,10 @@ exports.crearCliente = async (req, res) => {
 
         console.log("[CREAR CLIENTE] Datos:", { tipo: tipoRecibido, nombre, cuit });
 
-        // Sanitizar campos vacíos a NULL para evitar errores de constraints en BD
         const cuitLimpio = (cuit && String(cuit).trim() !== '') ? String(cuit).trim() : null;
         const tel1Limpio = (tel1 && String(tel1).trim() !== '') ? String(tel1).trim() : null;
         const tel2Limpio = (tel2 && String(tel2).trim() !== '') ? String(tel2).trim() : null;
 
-        // Verificar si el CUIT ya existe (en cualquier estado) - SOLO SI NO ES VACÍO
         if (cuitLimpio) {
             const { data: existe, error: errBusq } = await supabase
                 .from('Cliente')
@@ -41,7 +39,6 @@ exports.crearCliente = async (req, res) => {
                 if (existe.activo) {
                     return res.status(400).json({ error: "EXISTE_ACTIVO", mensaje: "El CUIT ya pertenece a un cliente activo." });
                 } else {
-                    // Existe pero está inactivo: Enviamos 409 para que el front pregunte
                     return res.status(409).json({ 
                         error: "INACTIVO", 
                         idCliente: existe.idCliente,
@@ -55,13 +52,13 @@ exports.crearCliente = async (req, res) => {
         if (tipoUpper.includes('PERSONA')) tipoUpper = 'PERSONA';
         if (tipoUpper.includes('EMPRESA')) tipoUpper = 'EMPRESA';
 
-        // VALIDACIÓN: Coincidencia DNI en CUIT (Solo Personas)
+        // VALIDACIÓN
         if (tipoUpper === 'PERSONA' && cuitLimpio && dni) {
             const cuitNumeros = cuitLimpio.replace(/\D/g, '');
             const dniNumeros = String(dni).replace(/\D/g, '');
             
             if (cuitNumeros.length === 11) {
-                const dniDelCuit = cuitNumeros.substring(2, 10); // Indices 2 a 9 (8 dígitos centrales)
+                const dniDelCuit = cuitNumeros.substring(2, 10); 
                 if (parseInt(dniDelCuit, 10) !== parseInt(dniNumeros, 10)) {
                     return res.status(400).json({ error: "CUIT_INVALIDO", mensaje: "El CUIT no coincide con el DNI ingresado." });
                 }
@@ -107,7 +104,7 @@ exports.editarCliente = async (req, res) => {
         const tel1Limpio = (tel1 && String(tel1).trim() !== '') ? String(tel1).trim() : null;
         const tel2Limpio = (tel2 && String(tel2).trim() !== '') ? String(tel2).trim() : null;
 
-        // VALIDACIÓN: Coincidencia DNI en CUIT (Solo Personas)
+        // VALIDACIÓN
         if (tipoUpper === 'PERSONA' && cuitLimpio && dni) {
             const cuitNumeros = cuitLimpio.replace(/\D/g, '');
             const dniNumeros = String(dni).replace(/\D/g, '');
@@ -130,7 +127,7 @@ exports.editarCliente = async (req, res) => {
             tel1: tel1Limpio,
             tel2: tel2Limpio,
             ubicacion, contribuyente,
-            activo: true // Al editar, aseguramos que quede activo
+            activo: true 
         };
 
         const { data, error } = await supabase.from('Cliente').update(datos).eq('idCliente', id).select();
@@ -145,7 +142,7 @@ exports.editarCliente = async (req, res) => {
     }
 };
 
-// 4. ELIMINAR (Baja lógica)
+// 4. ELIMINAR 
 exports.eliminarCliente = async (req, res) => {
     try {
         const { id } = req.params;

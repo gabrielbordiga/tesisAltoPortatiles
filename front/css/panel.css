@@ -144,7 +144,7 @@ body.dashboard-body{
 .input-wrap.w-60{width:60%;}
 .tabla-wrap{
   overflow-x:auto;
-  max-height: 350px; /* Altura aproximada para 5-6 filas */
+  max-height: 350px; 
   overflow-y: auto;
 }
 
@@ -223,7 +223,7 @@ body.dashboard-body{
   font-weight:600;
   position: sticky;
   top: 0;
-  background: var(--gris-card); /* Fondo opaco para que no se transparente al scrollear */
+  background: var(--gris-card); 
   z-index: 5;
 }
 
@@ -234,7 +234,6 @@ body.dashboard-body{
 .tabla tbody tr:first-child{border-top:0;}
 .tabla tbody td{color:var(--texto-oscuro);}
 
-/* Acciones en la última columna: SIEMPRE en fila */
 .tabla td.acciones,
 .tabla td:last-child{
   display:flex;
@@ -244,7 +243,6 @@ body.dashboard-body{
   flex-wrap:nowrap;
 }
 
-/* ====== FORM GRID (si lo usás en algunos módulos) ====== */
 .form-grid{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -266,7 +264,7 @@ body.dashboard-body{
 .form-actions.right{justify-content:flex-end;}
 
 /* =========================================================
-   MODALES (ÚNICO BLOQUE)
+   MODALES 
    ========================================================= */
 .modal-overlay {
     position: fixed;
@@ -347,7 +345,7 @@ body.dashboard-body{
 .btn-plus:hover{background:#f0f0f0;}
 
 /* =========================================================
-   STOCK (tabs + form vertical)
+   STOCK 
    ========================================================= */
 .tabs-toggle{
   display:inline-flex;
@@ -383,9 +381,8 @@ body.dashboard-body{
 .form-proveedor .input{height:40px;}
 
 /* =========================================================
-   GESTIÓN (mini tablas + plus)
+   GESTIÓN 
    ========================================================= */
-/* Bloque mini-tabla dentro del form */
 .mini-table-block{
   margin-top:16px;
   padding:12px 14px 14px;
@@ -422,7 +419,6 @@ body.dashboard-body{
   width:34px;
 }
 
-/* Input + mini plus (unidades/pagos) */
 .input-with-plus{
   display:flex;
   align-items:center;
@@ -453,20 +449,20 @@ body.dashboard-body{
 }
 
 /* =========================================================
-   TAREAS (arreglos)
+   TAREAS 
    ========================================================= */
 .card-tareas-header{
   display:flex;
   justify-content:space-between;
   align-items:center;
   gap:12px;
-  flex-wrap:wrap; /* <-- esto evita que “se rompa” */
+  flex-wrap:wrap; 
 }
 
 .tabs-empleados{
   display:flex;
   gap:8px;
-  flex-wrap:wrap; /* <-- nombres de conductores se acomodan */
+  flex-wrap:wrap; 
 }
 
 .tabs-empleados .tab{
@@ -535,7 +531,7 @@ body.dashboard-body{
 }
 
 /* =========================================================
-   REPORTES (desktop 4 columnas, se adapta)
+   REPORTES 
    ========================================================= */
 .reportes-filtros{
   display:grid;
@@ -578,7 +574,7 @@ body.dashboard-body{
 }
 
 /* =========================================================
-   CALENDARIO (reduce tamaño en pantallas chicas)
+   CALENDARIO 
    ========================================================= */
 .card-calendar-title{
   text-align:center;
@@ -595,7 +591,7 @@ body.dashboard-body{
   margin: 0 auto;
 }
 
-/* FullCalendar: compacto */
+/* FullCalendar */
 .fc .fc-toolbar-title{font-size:18px;font-weight:600;}
 .fc .fc-button{
   border-radius:999px;
@@ -629,12 +625,11 @@ body.dashboard-body{
   margin:5px 0 18px;
 }
 
-/* IMPORTANTE: si no tenés altura, Leaflet NO se ve */
 #map,
 #mapa,
 .map-container{
   width:100%;
-  height: calc(100vh - 180px); /* ajusta según tu header/cards */
+  height: calc(100vh - 180px); 
   min-height: 420px;
   border-radius: 12px;
   overflow:hidden;
@@ -644,9 +639,6 @@ body.dashboard-body{
 .leaflet-container{width:100%;height:100%;}
 
 
-/* =========================================================
-   OTROS BLOQUES VARIOS
-   ========================================================= */
 .inicio-toolbar {
   display: flex;
   align-items: center;
@@ -728,14 +720,12 @@ body.dashboard-body{
   }
 }
 
-/* Estilo para el input con error */
 .is-invalid {
     border: 2px solid #e74c3c !important;
     background-color: #fdf2f2 !important;
     animation: shake 0.2s ease-in-out 0s 2;
 }
 
-/* Texto de error debajo del input */
 .error-message {
     color: #e74c3c;
     font-size: 12px;
@@ -751,9 +741,6 @@ body.dashboard-body{
     100% { margin-left: 0rem; }
 }
 
-/* =========================================================
-   AUTOCOMPLETE UBICACIÓN
-   ========================================================= */
 .suggestions-list {
   position: absolute;
   top: 100%;
@@ -1173,7 +1160,6 @@ canvas {
   .chart-block { width: 100% !important; min-height: 320px !important; }
   canvas { max-height: 250px !important; }
 
-  /* --- MINI TABLAS EN MÓVIL (GESTIÓN Y PAGOS) --- */
   .mini-table-block {
     padding: 10px !important;
     background: #fdfdfd !important;
@@ -1635,31 +1621,30 @@ canvas {
     .layout {
         display: grid;
         grid-template-columns: var(--sidebar-w) 1fr;
-        height: 100vh; /* Obliga al layout a ocupar toda la pantalla */
+        height: 100vh; 
     }
 
     .sidebar {
         background: var(--negro);
         display: flex !important;
         flex-direction: column !important;
-        height: 100vh !important; /* Fuerza a la barra negra a llegar al fondo */
+        height: 100vh !important; 
         position: sticky;
         top: 0;
     }
 
     .side-nav {
-        flex: 1 1 auto; /* Esto empuja al logout hacia abajo */
+        flex: 1 1 auto; 
         overflow-y: auto;
         padding: 16px 0;
     }
 
-    /* Para que no se vea la barra de scroll gris fea */
     .side-nav::-webkit-scrollbar {
         width: 0px;
     }
 
     .logout {
-        margin-top: auto; /* Ahora sí tiene espacio para empujar al fondo */
+        margin-top: auto; 
         padding-bottom: 20px;
         background: var(--negro);
         border-top: 1px solid rgba(255,255,255,0.1);

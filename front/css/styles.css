@@ -144,7 +144,7 @@ button:hover { opacity: 0.9; }
     width: 100%;        
 }
 
-/* --- RESPONSIVE ) --- */
+/* --- RESPONSIVE --- */
 @media (max-width: 900px) {
     body, html {
         overflow: auto; 
