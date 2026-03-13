@@ -1,7 +1,7 @@
 const supabase = require('../config/supabase');
 const jwt = require('jsonwebtoken');
 
-// 1. Obtener todos los usuarios
+// Obtener todos los usuarios
 exports.obtenerUsuarios = async (req, res) => {
     const { data, error } = await supabase
         .from('Usuarios')
@@ -22,7 +22,7 @@ exports.obtenerUsuarios = async (req, res) => {
     res.json(usuariosFormateados);
 };
 
-// 1.5. Obtener todas las áreas 
+// Obtener todas las áreas 
 exports.obtenerAreas = async (req, res) => {
     let { data, error } = await supabase.from('Areas').select('*');
     if (error) return res.status(400).json({ error: error.message });
@@ -34,60 +34,98 @@ exports.obtenerAreas = async (req, res) => {
     res.json(areas);
 };
 
-// Crear usuario (CORREGIDO)
+
+// Crear usuario 
 exports.crearUsuario = async (req, res) => {
-    // Desestructuración única para evitar errores de referencia
     const { usuario, nombre, apellido, dni, email, correo, contrasena, rol, permisos, estado, id_area } = req.body;
-
-    console.log("DATOS RECIBIDOS EN EL BACKEND:", { usuario, email, correo, dni });
-
-    const emailFinal = email || correo; // Asegura capturar el email sin importar el nombre del campo
+    const emailFinal = (email || correo || "").trim();
     const rolFinal = rol || permisos;
+    const dniFinal = (dni || "").trim();
+    const usuarioFinal = (usuario || "").trim();
 
-    if (!emailFinal) {
-        return res.status(400).json({ error: "No se puede crear un usuario sin email." });
-    }
+    if (!emailFinal) return res.status(400).json({ error: "El email es obligatorio." });
 
     try {
-        // 1. Crear en Auth de Supabase
+        const { data: existente } = await supabase
+            .from('Usuarios')
+            .select('*')
+            .eq('email', emailFinal)
+            .maybeSingle();
+
+        if (existente && (existente.rol === 'Borrados' || !existente.activo)) {
+            console.log("Reactivando usuario detectado...");
+            const { error: errUpd } = await supabase
+                .from('Usuarios')
+                .update({
+                    usuario: usuarioFinal,
+                    nombre: nombre,
+                    apellido: apellido,
+                    dni: dniFinal,
+                    rol: rolFinal,
+                    activo: true,
+                    idArea: id_area || null
+                })
+                .eq('idUsuarios', existente.idUsuarios);
+
+            if (errUpd) throw new Error("Error al reactivar en DB: " + errUpd.message);
+            
+            await supabase.auth.admin.updateUserById(existente.auth_id, { password: contrasena });
+            return res.status(200).json({ mensaje: "Usuario re-activado con éxito" });
+        }
+
+        const { data: checkDni } = await supabase.from('Usuarios').select('dni').eq('dni', dniFinal).maybeSingle();
+        if (checkDni) return res.status(400).json({ error: "Ese DNI ya pertenece a otro usuario." });
+        const { data: checkUser } = await supabase.from('Usuarios').select('usuario').eq('usuario', usuarioFinal).maybeSingle();
+        if (checkUser) return res.status(400).json({ error: "Ese nombre de usuario ya está en uso." });
+
+        console.log("Intentando crear en Auth...");
         const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
             email: emailFinal,
             password: contrasena,
-            email_confirm: true
+            email_confirm: true,
+            user_metadata: { 
+                creado_por: 'sistema_tesis',
+                nombre_completo: `${nombre} ${apellido}`
+            }
         });
 
-        if (authError) return res.status(400).json({ error: authError.message });
+        if (authError) {
+            console.error("ERROR CRÍTICO EN AUTH:", authError);
+            if (authError.message.includes("already registered")) {
+                return res.status(400).json({ error: "Este email ya está registrado en el motor de autenticación." });
+            }
+            throw new Error(`Error del motor de seguridad (Auth): ${authError.message}`);
+        }
 
-        // 2. Insertar en Tabla Usuarios de la base de datos
+        console.log("Insertando en tabla Usuarios...");
         const { error: dbError } = await supabase
             .from('Usuarios')
-            .upsert([{ 
-                usuario: usuario, 
+            .insert([{ 
+                usuario: usuarioFinal, 
                 nombre: nombre,
                 apellido: apellido,
-                dni: dni,
+                dni: dniFinal,
                 email: emailFinal, 
                 rol: rolFinal, 
                 activo: estado === 'Activo', 
                 idArea: id_area || null,
                 auth_id: authUser.user.id 
-            }], { onConflict: 'email' });
+            }]);
         
         if (dbError) {
-            console.error("ERROR REAL DE BASE DE DATOS:", dbError);
-            // Si la base de datos falla, se elimina de Auth para mantener consistencia
             await supabase.auth.admin.deleteUser(authUser.user.id);
-            throw dbError;
+            throw new Error("Error en tabla Usuarios: " + dbError.message);
         }
 
-        res.status(201).json({ mensaje: "Usuario procesado con éxito" });
+        res.status(201).json({ mensaje: "Usuario creado con éxito" });
 
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        console.error("LOG DETALLADO DEL ERROR:", error);
+        res.status(400).json({ error: error.message || "Error desconocido al crear usuario" });
     }
 };
 
-// 3. Editar un usuario 
+// Editar un usuario 
 exports.editarUsuario = async (req, res) => {
     const { id } = req.params;
     const { usuario, nombre, apellido, dni, email, correo, contrasena, rol, estado, id_area } = req.body;
@@ -133,7 +171,7 @@ exports.editarUsuario = async (req, res) => {
     }
 };
 
-// 4. Eliminar un usuario 
+// Eliminar un usuario 
 exports.eliminarUsuario = async (req, res) => {
     const { id } = req.params;
 
@@ -155,7 +193,7 @@ exports.eliminarUsuario = async (req, res) => {
     }
 };
 
-// 5. Login 
+// Login 
 exports.login = async (req, res) => {
     const { correo, contrasena } = req.body; 
 
@@ -178,7 +216,6 @@ exports.login = async (req, res) => {
         if (authError) return res.status(401).json({ error: "Contraseña incorrecta" });
 
         const secreto = process.env.JWT_SECRET || 'secreto_super_seguro_temporal';
-        // Incluimos el ROL real en el token
         const token = jwt.sign({ id: perfil.idUsuarios, rol: perfil.rol.toLowerCase() }, secreto, { expiresIn: '8h' });
         
         res.json({ token, usuario: perfil });
@@ -188,12 +225,11 @@ exports.login = async (req, res) => {
     }
 };
 
-// 6. Nueva función para Recuperar Password 
+//Recuperar Contraseña
 exports.recuperarPassword = async (req, res) => {
     const { email } = req.body;
 
     try {
-        // 1. Verificamos si el usuario existe en nuestra tabla primero
         const { data: usuario, error: errorBusq } = await supabase
             .from('Usuarios')
             .select('email')
@@ -204,9 +240,7 @@ exports.recuperarPassword = async (req, res) => {
             return res.status(404).json({ error: "El correo no está registrado en el sistema." });
         }
 
-        // 2. Pedimos a Supabase que envíe el mail de recuperación
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            // Esta es la página donde el usuario escribirá su nueva clave
             redirectTo: 'http://localhost:3000/html/nuevo-password.html', 
         });
 
@@ -230,7 +264,7 @@ exports.cambiarPasswordPropia = async (req, res) => {
             .eq('idUsuarios', idUsuarios)
             .single();
 
-        // 2. Actualizamos la contraseña en el motor de seguridad
+        // 2. Actualizamos la contraseña 
         const { error } = await supabase.auth.admin.updateUserById(
             user.auth_id,
             { password: nuevaContrasena }
@@ -243,12 +277,9 @@ exports.cambiarPasswordPropia = async (req, res) => {
     }
 };
 
-// 7. Procesar el cambio final de contraseña desde el enlace del mail
+// Procesar el cambio final de contraseña desde el enlace del mail
 exports.actualizarPasswordOlvidada = async (req, res) => {
     const { nuevaContrasena } = req.body;
-    
-    // El token de recuperación lo maneja Supabase automáticamente 
-    // a través de la sesión que se crea al hacer clic en el enlace del mail.
     try {
         const { error } = await supabase.auth.updateUser({
             password: nuevaContrasena

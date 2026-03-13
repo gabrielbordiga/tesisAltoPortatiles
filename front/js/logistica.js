@@ -1,10 +1,9 @@
 (() => {
   'use strict';
 
-  // --- Configuración ---
   const API_ALQUILERES = '/api/alquileres';
   const API_CLIENTES = '/api/clientes';
-  const CACHE_KEY = 'ap_geo_cache'; // Para guardar coordenadas y no saturar la API
+  const CACHE_KEY = 'ap_geo_cache'; 
   
   let map;
   let markersGroup;
@@ -13,7 +12,6 @@
   let colaGeocoding = [];
   let procesandoCola = false;
 
-  // --- Inicialización ---
   document.addEventListener('DOMContentLoaded', async () => {
     initMap();
     const [alquileres, clientes] = await Promise.all([loadAlquileres(), loadClientes()]);
@@ -23,8 +21,6 @@
 
   // 1. Inicializar Mapa (Leaflet)
   function initMap() {
-    // Coordenadas por defecto (Centro de Argentina aprox, o Córdoba)
-    // Se ajustará automáticamente si hay marcadores o geolocalización
     map = L.map('map').setView([-31.4201, -64.1888], 12);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -33,7 +29,6 @@
 
     markersGroup = L.layerGroup().addTo(map);
 
-    // Intentar ubicar al usuario
     map.locate({ setView: true, maxZoom: 14 });
     map.on('locationfound', e => {
       L.circle(e.latlng, { radius: e.accuracy / 2, color: '#ec1f26', fillOpacity: 0.1 }).addTo(map);
@@ -76,15 +71,11 @@
 
     lista.forEach(alq => {
       if (!alq.ubicacion) return;
-
-      // Normalizar dirección para usarla como clave de caché
       const direccion = alq.ubicacion.trim();
 
-      // Si ya tenemos las coordenadas en caché, mostramos directo
       if (geoCache[direccion]) {
         addMarker(alq, geoCache[direccion]);
       } else {
-        // Si no, a la cola para buscar en la API
         encolarGeocodificacion(direccion, (coords) => {
           addMarker(alq, coords);
         });
@@ -104,7 +95,6 @@
 
     const unidades = (alq.lineas || []).map(l => `<li>${l.cantidad} x ${l.unidad}</li>`).join('');
     
-    // Calcular saldo para color (Verde si saldo <= 0)
     const pagado = (alq.pagos || []).reduce((acc, p) => acc + (Number(p.monto)||0), 0);
     const saldo = (Number(alq.precioTotal)||0) - pagado;
     const estadoClass = saldo <= 0 ? 'color:green' : 'color:#ec1f26';
@@ -130,9 +120,6 @@
     const marker = L.marker([lat, lon]).addTo(markersGroup);
     marker.bindPopup(popupContent);
   }
-
-  // --- Sistema de Geocodificación (Cola + Caché) ---
-  // Nominatim tiene límite de 1 request por segundo. Usamos una cola.
   
   function encolarGeocodificacion(direccion, callback) {
     colaGeocoding.push({ direccion, callback });
@@ -145,15 +132,12 @@
     procesandoCola = true;
     const item = colaGeocoding.shift();
 
-    // Verificar caché de nuevo por si acaso
     if (geoCache[item.direccion]) {
       item.callback(geoCache[item.direccion]);
       procesandoCola = false;
-      procesarCola(); // Siguiente inmediato
+      procesarCola(); 
       return;
     }
-
-    // Fetch a Nominatim
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(item.direccion)}&limit=1`;
     
     fetch(url)
@@ -162,7 +146,6 @@
         if (data && data.length > 0) {
           const coords = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
           
-          // Guardar en caché
           geoCache[item.direccion] = coords;
           localStorage.setItem(CACHE_KEY, JSON.stringify(geoCache));
           
@@ -173,7 +156,6 @@
       })
       .catch(err => console.error("Error geocoding:", err))
       .finally(() => {
-        // Esperar 1.2 segundos antes del siguiente para respetar API
         setTimeout(() => {
           procesandoCola = false;
           procesarCola();

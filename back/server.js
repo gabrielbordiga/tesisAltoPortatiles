@@ -17,10 +17,8 @@ app.use(cors());
 app.use(express.json()); 
 
 // --- FRONTEND ---
-// Servir los archivos de la carpeta 'front' como estáticos
 app.use(express.static(path.join(__dirname, '../front')));
 
-// Redirigir la raíz '/' a la pantalla de login (o inicio)
 app.get('/', (req, res) => {
     res.redirect('/html/login.html');
 });

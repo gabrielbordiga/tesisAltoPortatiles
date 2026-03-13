@@ -59,7 +59,6 @@
     if(inpEmail) inpEmail.value = '';
   }
 
-  // Exponer funciones globales para onclick
   window.editProveedor = (id) => {
     const p = PROVEEDORES.find(x => x.idProveedor == id);
     if (!p) return;
@@ -86,12 +85,9 @@
       e.target.value = e.target.value.replace(/[^0-9]/g, '');
     });
   }
-  
-  // Eventos
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-
-    // --- NUEVA VALIDACIÓN DE CAMPOS ---
     if (!inpNombre.value.trim()) {
       return window.showAlert('Atención', 'El nombre del proveedor es obligatorio.', 'warning');
     }
@@ -152,6 +148,5 @@
       });
   }
 
-  // Init
   loadProveedores();
 })();

@@ -57,7 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 metodo: g.metodoPago || 'S/D'
             }));
 
-            // LÓGICA DINÁMICA ASEGURANDO ARREGLOS
             if (catFiltro === 'todos') {
                 updateKPITodos(ingresos, gastos);
                 renderChartsTodos(ingresos, gastos);
@@ -77,9 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- FUNCIONES DE KPIs CON BLINDAJE ---
     function updateKPITodos(ing = [], gas = []) {
-        // Aseguramos que sean arreglos antes de usar reduce
         const arrIng = Array.isArray(ing) ? ing : [];
         const arrGas = Array.isArray(gas) ? gas : [];
 
@@ -127,7 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if(document.getElementById('valBalance')) document.getElementById('valBalance').innerText = formatMoney(tIng - tGas);
     }
 
-    // --- GRÁFICOS CON BLINDAJE ---
     function renderChartsTodos(ing = [], gas = []) {
         if (pieChart) pieChart.destroy();
         if (barChart) barChart.destroy();
@@ -160,7 +156,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (barChart) barChart.destroy();
         const arrIng = Array.isArray(ing) ? ing : [];
 
-        // --- CONFIGURACIÓN VISUAL AQUÍ ---
         const pieOptions = {
             responsive: true,
             maintainAspectRatio: false,
@@ -171,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     labels: { 
                         boxWidth: 12, 
                         font: { size: 11, family: 'Poppins' },
-                        padding: 15 // Espaciado entre items de leyenda
+                        padding: 15 
                     }
                 },
                 tooltip: {
@@ -183,7 +178,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     displayColors: true
                 }
             },
-            // Añade esto para separar los gajos del gráfico
             elements: {
                 arc: {
                     borderWidth: 2,
@@ -201,8 +195,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 y: { beginAtZero: true, ticks: { font: { size: 10 } } }
             }
         };
-
-        // --- CREACIÓN DE GRÁFICOS USANDO LAS OPTIONS ---
         const unidades = {};
         arrIng.forEach(i => (i.lineasRaw || []).forEach(l => {
             const n = l.unidades?.tipo?.nombre || 'Unidad';
@@ -247,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     borderRadius: 5
                 }]
             },
-            options: barOptions // <--- Aplicamos las opciones aquí
+            options: barOptions 
         });
     }
 
@@ -331,18 +323,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const originalWidth = elemento.style.width;
 
         try {
-            // 2. FORZAMOS MODO ESCRITORIO (1024px es ideal para A4)
-            // Esto hace que los KPIs y gráficos se pongan uno al lado del otro
             elemento.style.width = '1024px';
-            
-            // Damos un respiro para que el navegador re-renderice el ancho
+
             await new Promise(resolve => setTimeout(resolve, 150));
 
             const canvas = await html2canvas(elemento, {
-                scale: 2, // Calidad alta
+                scale: 2, 
                 useCORS: true,
                 backgroundColor: '#ffffff',
-                // Evitamos que el scroll del celu moleste la captura
                 windowWidth: 1024 
             });
 
@@ -357,7 +345,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const imgProps = pdf.getImageProperties(imgData);
             const imgHeight = (imgProps.height * contentWidth) / imgProps.width;
 
-            // --- HEADER ROJO ---
             pdf.setFillColor(236, 31, 38); 
             pdf.rect(0, 0, pageWidth, 40, 'F');
 
@@ -372,20 +359,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const fechaStr = new Date().toLocaleDateString();
             pdf.text(`Emisión: ${fechaStr}`, pageWidth - margin - 35, 28);
-
-            // --- CONTENIDO ---
-            // Si el contenido es más largo que una hoja, addImage lo achicará 
-            // (Si tenés muchísimas filas, acá convendría paginar, pero esto arregla el corte lateral)
             pdf.addImage(imgData, 'PNG', margin, 45, contentWidth, imgHeight);
-            
             pdf.save(`Reporte_AltoPortatiles_${Date.now()}.pdf`);
 
         } catch (e) {
             console.error(e);
             window.showAlert('Error', 'Fallo al exportar', 'error');
         } finally {
-            // 3. VOLVEMOS TODO A LA NORMALIDAD
-            elemento.style.width = originalWidth; // Restauramos ancho
+            elemento.style.width = originalWidth; 
             tablaWrap.style.maxHeight = originalMaxHeight;
             tablaWrap.style.overflowY = originalOverflow;
             btn.textContent = '📄 Exportar a PDF';

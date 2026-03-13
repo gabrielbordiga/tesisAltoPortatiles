@@ -6,14 +6,12 @@
   const API_ALQUILERES = '/api/alquileres';
   const API_CLIENTES = '/api/clientes';
 
-  // 1. Al inicio del archivo, detectamos el usuario logueado
     const userSession = JSON.parse(localStorage.getItem('ap_current') || '{}');
     const userRol = String(userSession.rol || "").toLowerCase();
     const esAdmin = userRol === 'administrador' || userRol === 'owner';
 
   function formatFechaLarga(iso) {
     if (!iso) return '-';
-    // Crear fecha asumiendo input YYYY-MM-DD local
     const [y, m, d] = iso.split('-');
     const fecha = new Date(y, m - 1, d);
     return fecha.toLocaleDateString('es-AR', {
@@ -27,7 +25,6 @@
   let alquileres = [];
   let clientes = [];
   let empleadoActualId = null;
-  // Usar fecha local para evitar errores de zona horaria (UTC vs Local)
   const hoy = new Date();
   const year = hoy.getFullYear();
   const month = String(hoy.getMonth() + 1).padStart(2, '0');
@@ -53,7 +50,6 @@
     inpFechaTarea   = document.getElementById('tareaFecha');
     inpTareaDetalle = document.getElementById('tareaDetalle');
 
-    // Inyectar select de tareas predefinidas si no existe
     if (inpTareaDetalle && !document.getElementById('selTareaTipo')) {
         const div = document.createElement('div');
         div.style.marginBottom = '15px';
@@ -96,7 +92,6 @@
     return !!tbody;
   }
 
-  // ---------- API Calls ----------
   async function fetchEmpleados() {
     try {
         const res = await fetch(API_USUARIOS, {
@@ -129,13 +124,11 @@
             return [];
         }
         const data = await res.json();
-        // Normalizar tareas
         return data.map(t => ({
             ...t,
             idTarea: t.idTarea || t.idtarea || t.id,
             idUsuarios: t.idUsuarios || t.idusuarios || t.idUsuario,
             idAlquiler: t.idAlquiler || t.idalquiler,
-            // Asegurar que alquiler tenga ID normalizado también
             alquiler: t.alquiler ? { ...t.alquiler, idAlquiler: t.alquiler.idAlquiler || t.alquiler.idalquiler } : null
         }));
     } catch (e) { console.error(e); return []; }
@@ -167,7 +160,6 @@
             alquileres = alqs;
             clientes = clis;
 
-            // --- LÓGICA DE SELECCIÓN POR DEFECTO ---
             if (esAdmin) {
                 if (containerTabs) containerTabs.style.display = 'flex'; 
                 if (btnAgregarTarea) btnAgregarTarea.style.display = 'block';
@@ -181,14 +173,12 @@
                     }
                 }
             } else {
-                // Si es empleado, su ID es el actual por defecto
                 empleadoActualId = userSession.idUsuarios || userSession.id;
             }
 
             renderTabs();
             renderHeader();
             
-            // Ejecutamos la carga de tareas para el empleado seleccionado
             if (empleadoActualId) {
                 await loadTareas();
             }
@@ -225,7 +215,6 @@
     const tareasEmp = tareas.filter(t => String(t.idUsuarios) === String(idActivo));
 
     tbody.innerHTML = tareasEmp.map(t => {
-        // Normalizamos el ID para no tener problemas
         const idReal = t.idTarea || t.idtarea || t.id;
         const alq = alquileres.find(a => String(a.idAlquiler || a.idalquiler) === String(t.idAlquiler)) || t.alquiler;
         
@@ -271,8 +260,6 @@
   // ---------- Tabs empleados ----------
   function renderTabs() {
     containerTabs.innerHTML = '';
-
-    // Contar ocurrencias de nombres para detectar duplicados
     const conteoNombres = {};
     empleados.forEach(e => {
         const n = (e.nombre || '').trim().toLowerCase();
@@ -302,9 +289,7 @@
     const q = filtro.toLowerCase();
     const selectedId = inpPedidoId.value;
 
-    // Filtrar alquileres activos o relevantes
     const data = alquileres.filter(a => {
-        // Enriquecer con nombre cliente
         const c = clientes.find(x => x.idCliente == a.idCliente);
         a._nombreCliente = c ? (c.tipo === 'PERSONA' ? `${c.nombre} ${c.apellido}` : c.razonSocial) : 'Desconocido';
         
@@ -329,17 +314,14 @@
     }).join('');
   }
 
-  // Exponer función global para el onclick del string template
   window.selectPedido = function(id, cliente, ubicacion) {
     inpPedidoId.value = id;
     lblPedidoInfo.textContent = `Seleccionado: #${id} - ${cliente} (${ubicacion})`;
-    // Re-render para actualizar el highlight
     renderPedidosModal(inpBuscarPedido.value);
   };
 
   // ---------- Modal ----------
   function openModal() {
-    // llenar combo de empleados (si aún no)
     selEmpleadoModal.innerHTML = '';
     
     if (empleados.length === 0) {
@@ -360,9 +342,9 @@
     inpBuscarPedido.value = '';
     renderPedidosModal();
 
-    inpFechaTarea.value = fechaFiltro; // Sugerir fecha actual del filtro
-    if (inpTareaDetalle) inpTareaDetalle.value = ''; // Limpiar detalle
-    if (selTareaTipo) selTareaTipo.value = ''; // Limpiar tipo
+    inpFechaTarea.value = fechaFiltro; 
+    if (inpTareaDetalle) inpTareaDetalle.value = ''; 
+    if (selTareaTipo) selTareaTipo.value = ''; 
 
     modalOverlay.classList.remove('hidden');
   }
@@ -372,8 +354,6 @@
   }
 
   // ---------- Alta de tarea ----------
-// front/js/tareasAdm.js
-
 async function handleGuardarTarea() {
     const idUsuario = selEmpleadoModal.value;
     const idAlquiler = inpPedidoId.value;
@@ -382,7 +362,6 @@ async function handleGuardarTarea() {
     const tipo = selTareaTipo ? selTareaTipo.value : '';
     const texto = inpTareaDetalle ? inpTareaDetalle.value.trim() : '';
     
-    // 1. Construimos el detalle final
     let detalle = texto;
     if (tipo && !tipo.startsWith('Otro')) {
         detalle = texto ? `${tipo} - ${texto}` : tipo; 
@@ -393,12 +372,9 @@ async function handleGuardarTarea() {
     }
 
     try {
-        // 2. Traemos todas las tareas de la fecha seleccionada para validar
         const resCheck = await fetch(`${API_TAREAS}/${fecha}`);
         if (resCheck.ok) {
             const todasLasTareasDia = await resCheck.json();
-            
-            // CAMBIO CLAVE: Validamos si existe una tarea con el MISMO pedido Y el MISMO detalle
             const tareaDuplicada = todasLasTareasDia.some(t => 
                 String(t.idAlquiler || t.idalquiler) === String(idAlquiler) && 
                 String(t.detalle).toUpperCase() === detalle.toUpperCase()
@@ -413,7 +389,6 @@ async function handleGuardarTarea() {
             }
         }
 
-        // 3. Si no es duplicada, procedemos al guardado
         const res = await fetch(API_TAREAS, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -437,13 +412,10 @@ async function handleGuardarTarea() {
   document.addEventListener('DOMContentLoaded', async () => {
     if (!initDom()) return;
 
-    // --- AJUSTE DE UI SEGÚN ROL ---
     if (!esAdmin) {
-        // Ocultar elementos de jefe
         if (containerTabs) containerTabs.style.display = 'none';
         if (btnAgregarTarea) btnAgregarTarea.style.display = 'none';
-        
-        // Cambiar el título visual
+    
         const cardInfo = document.querySelector('.card-tareas-info');
         if (cardInfo) {
             cardInfo.style.marginTop = '10px';
@@ -507,10 +479,8 @@ async function handleGuardarTarea() {
     }
 
         if (btnDel) {
-    // Usamos el ID del atributo data-del
     const delId = btnDel.getAttribute('data-del');
-    
-    // Validación de seguridad
+
     if (!delId || delId === "undefined" || delId === "null") {
             return window.showAlert('Error', 'No se pudo obtener el ID de la tarea.', 'error');
         }
@@ -529,7 +499,6 @@ async function handleGuardarTarea() {
 
                 if (res.ok) {
                     window.showAlert('Éxito', 'Tarea eliminada correctamente', 'success');
-                    // IMPORTANTE: Volver a cargar para que desaparezca de la vista
                     await loadTareas(); 
                 } else {
                     const errData = await res.json();
